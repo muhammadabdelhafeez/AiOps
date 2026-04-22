@@ -1,0 +1,417 @@
+/**
+ * Alerts Explorer - Page Styles
+ * Uses shared Beyond Horizons tokens from ../../shared/css/kfh-theme.css
+ */
+
+/* Remove duplicate tokens: rely on kfh-theme.css */
+
+/* Layout helpers specific to this page */
+.alerts-page {
+  height: 100%;
+  display: flex;
+  background: var(--surface-bg);
+}
+
+/* Main area top accent (matches Dashboard) */
+.alerts-top-accent {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 260px;
+  background: linear-gradient(to bottom, rgba(226, 247, 221, 0.60), transparent);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Header layout */
+.alerts-header {
+  height: 5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2rem;
+  position: relative;
+  z-index: 10;
+}
+
+.alerts-header-title {
+  font-size: 1.875rem; /* ~30px */
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.alerts-header-subtitle {
+  margin-top: 4px;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+/* Section title */
+.section-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.section-subtitle {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+/* KPI tiles inside kfh-card: match dashboard style */
+.kpi-tile {
+  position: relative;
+  overflow: hidden;
+  padding: 1rem;
+}
+
+.kpi-label {
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.kpi-value {
+  margin-top: 0.5rem;
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.kpi-icon {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+}
+
+/* Charts cards */
+.chart-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+
+/* Tables: reuse kfh-table but keep sticky header on this page */
+.kfh-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+/* Alert groups grid card alignment (screenshot) */
+.alert-group-card {
+  padding: 24px;
+}
+
+.alert-group-title {
+  font-weight: 800;
+  font-size: 18px;
+  color: var(--text-primary);
+  margin: 10px 0 14px;
+}
+
+.alert-group-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.alert-group-chips {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.alert-group-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 10px;
+}
+
+.alert-group-stat {
+  background: var(--surface-off-white);
+  border: 1px solid rgba(0,0,0,0.04);
+  border-radius: 12px;
+  padding: 14px 16px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+}
+
+.alert-group-stat-label {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+}
+
+.alert-group-stat-value {
+  margin-top: 6px;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.alert-group-footer {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* ============ BUTTON ALIASES ============ */
+.btn-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: var(--radius-btn);
+  border: 1px solid #E5E7EB;
+  background-color: var(--surface-card);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.btn-outline:hover {
+  background-color: var(--surface-off-white);
+  border-color: #D1D5DB;
+}
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: var(--radius-btn);
+  border: none;
+  background-color: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.btn-ghost:hover {
+  background-color: var(--surface-off-white);
+  color: var(--text-primary);
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: var(--radius-btn);
+  border: none;
+  background-color: var(--kfh-primary);
+  color: var(--text-white);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  box-shadow: var(--shadow-btn);
+}
+
+.btn-primary:hover {
+  background-color: var(--kfh-primary-dark);
+  transform: translateY(-1px);
+}
+
+/* ============ DRAWER OVERLAY & PANEL ============ */
+.drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  z-index: 40;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.drawer-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 50%;
+  max-width: 680px;
+  background: var(--surface-card);
+  z-index: 50;
+  transform: translateX(100%);
+  transition: transform 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-drawer);
+}
+
+.drawer.open {
+  transform: translateX(0);
+}
+
+.drawer-close {
+  padding: 8px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: background-color 0.2s ease;
+}
+
+.drawer-close:hover {
+  background: var(--surface-off-white);
+}
+
+/* ============ TAB STYLES ============ */
+.tab-btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: var(--radius-btn);
+  border: none;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text-secondary);
+  transition: all var(--transition-normal);
+}
+
+.tab-btn:hover {
+  background: var(--surface-off-white);
+  color: var(--text-primary);
+}
+
+.tab-btn.active {
+  background: var(--kfh-primary);
+  color: var(--text-white);
+}
+
+/* ============ INPUT / SELECT STYLES ============ */
+.input-search {
+  width: 100%;
+  padding: 0.625rem 0.875rem 0.625rem 2.5rem;
+  font-size: 0.875rem;
+  background-color: var(--surface-card);
+  border: 1px solid #E5E7EB;
+  border-radius: var(--radius-btn);
+  color: var(--text-primary);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.input-search:focus {
+  outline: none;
+  border-color: var(--kfh-primary);
+  box-shadow: 0 0 0 3px rgba(18, 135, 84, 0.1);
+}
+
+.input-search::placeholder {
+  color: var(--text-muted);
+}
+
+.select-control {
+  padding: 0.625rem 0.875rem;
+  font-size: 0.875rem;
+  background-color: var(--surface-card);
+  border: 1px solid #E5E7EB;
+  border-radius: var(--radius-btn);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.select-control:focus {
+  outline: none;
+  border-color: var(--kfh-primary);
+}
+
+/* ============ SPACE-Y UTILITY ============ */
+.space-y-1 > * + * {
+  margin-top: 0.25rem;
+}
+
+.space-y-2 > * + * {
+  margin-top: 0.5rem;
+}
+
+.space-y-3 > * + * {
+  margin-top: 0.75rem;
+}
+
+.space-y-4 > * + * {
+  margin-top: 1rem;
+}
+
+.space-y-6 > * + * {
+  margin-top: 1.5rem;
+}
+
+/* ============ GENERIC INPUT/SELECT STYLING ============ */
+/* Ensure input/select in filter panel also inherit proper styles */
+.alerts-page input[type="text"],
+.alerts-page input[type="search"],
+.alerts-page select {
+  font-family: var(--font-family);
+  font-size: 0.875rem;
+  background-color: var(--surface-card);
+  border: 1px solid #E5E7EB;
+  border-radius: var(--radius-btn);
+  color: var(--text-primary);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.alerts-page input[type="text"]:focus,
+.alerts-page input[type="search"]:focus,
+.alerts-page select:focus {
+  outline: none;
+  border-color: var(--kfh-primary);
+  box-shadow: 0 0 0 3px rgba(18, 135, 84, 0.1);
+}
+
+.alerts-page input[type="text"]::placeholder,
+.alerts-page input[type="search"]::placeholder {
+  color: var(--text-muted);
+}
+
+/* Checkbox styling */
+.alerts-page input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--kfh-primary);
+  cursor: pointer;
+}
+
+/* ============ RESPONSIVE FIX ============ */
+@media (max-width: 1024px) {
+  .drawer {
+    width: 75%;
+  }
+}
+
+@media (max-width: 768px) {
+  .drawer {
+    width: 100%;
+  }
+}

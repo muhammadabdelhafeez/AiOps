@@ -1,0 +1,426 @@
+/**
+ * KFH AIOps Command Center - Dashboard Styles
+ * Page-specific styles for the Dashboard
+ */
+
+/* ============================================
+   KPI Cards
+   ============================================ */
+.kpi-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.kpi-bg-icon {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 16px;
+  opacity: 0.05;
+  transition: opacity 0.2s;
+}
+
+.kpi-card:hover .kpi-bg-icon {
+  opacity: 0.1;
+}
+
+.kpi-bg-icon svg {
+  width: 80px;
+  height: 80px;
+}
+
+.kpi-label {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.kpi-value {
+  font-size: 36px;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.025em;
+  margin-bottom: 4px;
+}
+
+.kpi-value-critical {
+  color: var(--color-critical);
+}
+
+.kpi-subtext {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.kpi-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.kpi-badge-red {
+  background: var(--color-critical-bg);
+  color: var(--color-critical);
+  border: 1px solid var(--color-critical-border);
+}
+
+.critical-pulse {
+  width: 20px;
+  height: 20px;
+  color: var(--color-critical);
+  animation: pulse 2s infinite;
+}
+
+/* ============================================
+   Trend Chart
+   ============================================ */
+.trend-chart {
+  height: 256px;
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 0 8px;
+}
+
+.trend-bar-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 4px;
+  height: 100%;
+  cursor: pointer;
+}
+
+.trend-bar {
+  width: 100%;
+  border-radius: 2px 2px 0 0;
+  transition: all 0.3s ease;
+}
+
+.trend-bar-green {
+  background: var(--kfh-primary);
+}
+
+.trend-bar-group:hover .trend-bar-green {
+  background: var(--kfh-primary-dark);
+}
+
+.trend-bar-gold {
+  background: var(--kfh-gold);
+}
+
+.trend-bar-group:hover .trend-bar-gold {
+  background: var(--kfh-gold-dark);
+}
+
+.chart-legend {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+}
+
+.legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.legend-dot-green {
+  background: var(--kfh-primary);
+}
+
+.legend-dot-gold {
+  background: var(--kfh-gold);
+}
+
+.chart-footer {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #F3F4F6;
+}
+
+/* ============================================
+   Source Breakdown
+   ============================================ */
+.source-list {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.source-item {
+  cursor: pointer;
+}
+
+.source-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.source-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.source-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.source-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.source-percent {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.source-bar-bg {
+  height: 8px;
+  background: #F3F4F6;
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.source-bar {
+  height: 100%;
+  border-radius: 9999px;
+  transition: all 0.3s ease;
+}
+
+/* ============================================
+   Top Impacted Apps
+   ============================================ */
+.apps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.app-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  background: var(--surface-off-white);
+  border: 1px solid #F3F4F6;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.app-item:hover {
+  border-color: #D1D5DB;
+}
+
+.app-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.app-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: var(--text-secondary);
+  border: 1px solid #E5E7EB;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  transition: all 0.2s;
+}
+
+.app-item:hover .app-icon {
+  border-color: var(--kfh-primary);
+  color: var(--kfh-primary);
+}
+
+.app-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.app-domain {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.app-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ============================================
+   Last Hour Summary
+   ============================================ */
+.summary-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.summary-gradient {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 192px;
+  height: 192px;
+  background: linear-gradient(135deg, rgba(226, 247, 221, 0.5) 0%, transparent 70%);
+  border-bottom-left-radius: 9999px;
+  pointer-events: none;
+}
+
+.summary-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  background: var(--surface-off-white);
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid #F3F4F6;
+  margin-bottom: 24px;
+  position: relative;
+  z-index: 10;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.summary-accent {
+  min-width: 4px;
+  width: 4px;
+  height: 48px;
+  background: linear-gradient(180deg, var(--kfh-primary) 0%, transparent 100%);
+  border-radius: 9999px;
+  margin-top: 4px;
+}
+
+.summary-text {
+  font-size: 14px;
+  color: #374151;
+  line-height: 1.6;
+}
+
+.summary-footer {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  padding-top: 8px;
+  border-top: 1px solid #F3F4F6;
+}
+
+.confidence {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--kfh-primary);
+}
+
+.confidence-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.footer-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #D1D5DB;
+}
+
+/* ============================================
+   AI Badge
+   ============================================ */
+.ai-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--kfh-primary);
+  background: var(--kfh-primary-light);
+  padding: 4px 12px;
+  border-radius: 9999px;
+  border: 1px solid #c0eacb;
+}
+
+.ai-badge svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* ============================================
+   Page Header Actions
+   ============================================ */
+.time-select {
+  background: white;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-family: var(--font-family);
+  color: var(--text-primary);
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.time-select:focus {
+  border-color: var(--kfh-primary);
+}
+
+.refresh-btn {
+  padding: 8px;
+  background: white;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.refresh-btn:hover {
+  background: #F9FAFB;
+}
+
+.refresh-btn svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+}

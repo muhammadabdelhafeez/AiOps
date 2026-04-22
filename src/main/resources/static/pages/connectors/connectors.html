@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connectors - KFH AIOps Command Center</title>
+
+  <!-- Local Fonts -->
+  <link rel="stylesheet" href="../../vendor/css/outfit-font.css">
+
+  <!-- Shared Styles (Beyond Horizons KFH Identity) -->
+  <link rel="stylesheet" href="../../shared/css/base.css">
+  <link rel="stylesheet" href="../../shared/css/kfh-theme.css">
+
+  <!-- Page Styles -->
+  <link rel="stylesheet" href="connectors.css">
+</head>
+<body class="h-full overflow-hidden" style="font-family: 'Outfit', sans-serif; background: var(--surface-bg);">
+  <div id="app" class="kfh-app-layout h-full">
+
+    <!-- Sidebar -->
+    <nav id="sidebar" class="kfh-sidebar">
+      <!-- Logo Area -->
+      <div class="kfh-sidebar-logo">
+        <div class="kfh-sidebar-logo-icon">
+          <span>K</span>
+        </div>
+        <div class="kfh-sidebar-logo-text">
+          <div class="kfh-sidebar-logo-title">KFH AIOps</div>
+          <div class="kfh-sidebar-logo-subtitle">COMMAND CENTER</div>
+        </div>
+      </div>
+
+      <!-- Navigation -->
+      <div class="kfh-sidebar-nav">
+        <!-- Operations -->
+        <div class="kfh-sidebar-group">
+          <div class="kfh-sidebar-group-title">Operations</div>
+          <div class="kfh-sidebar-group-items">
+            <a href="/index.html" class="kfh-sidebar-nav-item">
+              <span class="kfh-sidebar-nav-icon">📊</span>
+              <span class="kfh-sidebar-nav-label">Dashboard</span>
+            </a>
+            <a href="/pages/incidents/incidents.html" class="kfh-sidebar-nav-item">
+              <span class="kfh-sidebar-nav-icon">🔴</span>
+              <span class="kfh-sidebar-nav-label">Incidents</span>
+            </a>
+            <a href="/pages/alerts/alerts.html" class="kfh-sidebar-nav-item">
+              <span class="kfh-sidebar-nav-icon">⚠️</span>
+              <span class="kfh-sidebar-nav-label">Alerts</span>
+            </a>
+            <a href="/pages/inventory/inventory.html" class="kfh-sidebar-nav-item">
+              <span class="kfh-sidebar-nav-icon">💾</span>
+              <span class="kfh-sidebar-nav-label">Inventory</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Intelligence -->
+        <div class="kfh-sidebar-group">
+          <div class="kfh-sidebar-group-title">Intelligence</div>
+          <div class="kfh-sidebar-group-items">
+            <a href="/pages/applications/applications.html" class="kfh-sidebar-nav-item">
+              <span class="kfh-sidebar-nav-icon">📱</span>
+              <span class="kfh-sidebar-nav-label">Applications</span>
+            </a>
+            <a href="/pages/reports/reports.html" class="kfh-sidebar-nav-item">
+              <span class="kfh-sidebar-nav-icon">📄</span>
+              <span class="kfh-sidebar-nav-label">Reports</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Configuration -->
+        <div class="kfh-sidebar-group">
+          <div class="kfh-sidebar-group-title">Configuration</div>
+          <div class="kfh-sidebar-group-items">
+            <a href="/pages/connectors/connectors.html" class="kfh-sidebar-nav-item active">
+              <span class="kfh-sidebar-nav-icon">🔌</span>
+              <span class="kfh-sidebar-nav-label">Connectors</span>
+            </a>
+            <a href="/pages/schedules/schedules.html" class="kfh-sidebar-nav-item">
+              <span class="kfh-sidebar-nav-icon">⏰</span>
+              <span class="kfh-sidebar-nav-label">Schedules</span>
+            </a>
+            <a href="/pages/users/users.html" class="kfh-sidebar-nav-item">
+              <span class="kfh-sidebar-nav-icon">👥</span>
+              <span class="kfh-sidebar-nav-label">Users & RBAC</span>
+            </a>
+            <a href="/pages/settings/settings.html" class="kfh-sidebar-nav-item">
+              <span class="kfh-sidebar-nav-icon">⚙️</span>
+              <span class="kfh-sidebar-nav-label">Settings</span>
+            </a>
+            <a href="/pages/audit/audit.html" class="kfh-sidebar-nav-item">
+              <span class="kfh-sidebar-nav-icon">📋</span>
+              <span class="kfh-sidebar-nav-label">Audit Logs</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- User Profile -->
+      <div class="kfh-sidebar-user">
+        <div class="kfh-sidebar-user-content">
+          <div class="kfh-sidebar-user-avatar">AR</div>
+          <div class="kfh-sidebar-user-info">
+            <div class="kfh-sidebar-user-name">Ahmed Al-Rashid</div>
+            <div class="kfh-sidebar-user-role">Platform Admin</div>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="kfh-main-content">
+      <!-- Top Accent Gradient -->
+      <div class="kfh-top-accent"></div>
+
+      <!-- Header -->
+      <header class="kfh-header" style="border-bottom: 1px solid var(--surface-border-subtle); background: white;">
+        <div class="kfh-header-content">
+          <div class="kfh-header-left" style="max-width: none;">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+              <svg style="width: 1.5rem; height: 1.5rem; color: var(--kfh-primary);" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 22v-5M9 8V2M15 8V2M18 8v5a4 4 0 01-4 4h-4a4 4 0 01-4-4V8z"/>
+              </svg>
+              <div>
+                <h2 class="kfh-header-title">Connectors</h2>
+                <p style="font-size: 0.875rem; color: var(--text-secondary); margin-top: 0.25rem;">Manage integrations and monitor data ingestion</p>
+              </div>
+            </div>
+          </div>
+          <div class="kfh-header-right">
+            <button onclick="Connectors.openModal()" class="kfh-btn kfh-btn-primary">
+              <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.5v15m7.5-7.5h-15"/>
+              </svg>
+              Add Connector
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Content Area -->
+      <div id="connectors-content" class="kfh-content-area">
+        <!-- Rendered by JS -->
+      </div>
+    </main>
+  </div>
+
+  <!-- Connector Drawer Overlay -->
+  <div id="connector-drawer-overlay" class="connector-drawer-overlay"></div>
+
+  <!-- Connector Drawer -->
+  <div id="connector-drawer" class="connector-drawer">
+    <div id="drawer-content" class="h-full flex flex-col">
+      <!-- Rendered by JS -->
+    </div>
+  </div>
+
+  <!-- Add Connector Modal -->
+  <div id="connector-modal-overlay" class="modal-overlay">
+    <!-- Rendered by JS -->
+  </div>
+
+  <!-- Page Script -->
+  <script src="connectors.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      Connectors.init();
+    });
+  </script>
+</body>
+</html>

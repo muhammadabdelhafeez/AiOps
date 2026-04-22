@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Audit Logs - KFH AIOps Command Center</title>
+
+  <!-- Local Fonts -->
+  <link rel="stylesheet" href="../../vendor/css/outfit-font.css">
+
+  <!-- Shared Styles (Beyond Horizons KFH Identity) -->
+  <link rel="stylesheet" href="../../shared/css/base.css">
+  <link rel="stylesheet" href="../../shared/css/kfh-theme.css">
+
+  <!-- Page Styles -->
+  <link rel="stylesheet" href="audit.css">
+</head>
+<body class="h-full overflow-hidden" style="font-family: 'Outfit', sans-serif; background: var(--surface-bg);">
+  <div id="app" class="kfh-app-layout h-full">
+
+    <!-- Sidebar -->
+    <nav id="sidebar" class="kfh-sidebar">
+      <!-- Logo Area -->
+      <div class="kfh-sidebar-logo">
+        <div class="kfh-sidebar-logo-icon">
+          <span>K</span>
+        </div>
+        <div class="kfh-sidebar-logo-text">
+          <div class="kfh-sidebar-logo-title">KFH AIOps</div>
+          <div class="kfh-sidebar-logo-subtitle">COMMAND CENTER</div>
+        </div>
+      </div>
+
+      <!-- Navigation -->
+      <div class="kfh-sidebar-nav">
+        <!-- Operations -->
+        <div class="kfh-sidebar-group">
+          <div class="kfh-sidebar-group-title">Operations</div>
+          <div class="kfh-sidebar-group-items">
+            <a href="/index.html" class="kfh-sidebar-nav-item">
+              <span class="kfh-sidebar-nav-icon">📊</span>
+              <span class="kfh-sidebar-nav-label">Dashboard</span>
+            </a>
+            <a href="/pages/incidents/incidents.html" class="kfh-sidebar-nav-item">
+              <span class="kfh-sidebar-nav-icon">🔴</span>
+              <span class="kfh-sidebar-nav-label">Incidents</span>
+            </a>
+            <a href="/pages/alerts/alerts.html" class="kfh-sidebar-nav-item">
+              <span class="kfh-sidebar-nav-icon">⚠️</span>
+              <span class="kfh-sidebar-nav-label">Alerts</span>
+            </a>
+            <a href="/pages/inventory/inventory.html" class="kfh-sidebar-nav-item">
+              <span class="kfh-sidebar-nav-icon">💾</span>
+              <span class="kfh-sidebar-nav-label">Inventory</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Intelligence -->
+        <div class="kfh-sidebar-group">
+          <div class="kfh-sidebar-group-title">Intelligence</div>
+          <div class="kfh-sidebar-group-items">
+            <a href="/pages/applications/applications.html" class="kfh-sidebar-nav-item">
+              <span class="kfh-sidebar-nav-icon">📱</span>
+              <span class="kfh-sidebar-nav-label">Applications</span>
+            </a>
+            <a href="/pages/reports/reports.html" class="kfh-sidebar-nav-item">
+              <span class="kfh-sidebar-nav-icon">📄</span>
+              <span class="kfh-sidebar-nav-label">Reports</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Configuration -->
+        <div class="kfh-sidebar-group">
+          <div class="kfh-sidebar-group-title">Configuration</div>
+          <div class="kfh-sidebar-group-items">
+            <a href="/pages/connectors/connectors.html" class="kfh-sidebar-nav-item">
+              <span class="kfh-sidebar-nav-icon">🔌</span>
+              <span class="kfh-sidebar-nav-label">Connectors</span>
+            </a>
+            <a href="/pages/schedules/schedules.html" class="kfh-sidebar-nav-item">
+              <span class="kfh-sidebar-nav-icon">⏰</span>
+              <span class="kfh-sidebar-nav-label">Schedules</span>
+            </a>
+            <a href="/pages/users/users.html" class="kfh-sidebar-nav-item">
+              <span class="kfh-sidebar-nav-icon">👥</span>
+              <span class="kfh-sidebar-nav-label">Users & RBAC</span>
+            </a>
+            <a href="/pages/settings/settings.html" class="kfh-sidebar-nav-item">
+              <span class="kfh-sidebar-nav-icon">⚙️</span>
+              <span class="kfh-sidebar-nav-label">Settings</span>
+            </a>
+            <a href="/pages/audit/audit.html" class="kfh-sidebar-nav-item active">
+              <span class="kfh-sidebar-nav-icon">📋</span>
+              <span class="kfh-sidebar-nav-label">Audit Logs</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- User Profile -->
+      <div class="kfh-sidebar-user">
+        <div class="kfh-sidebar-user-content">
+          <div class="kfh-sidebar-user-avatar">AR</div>
+          <div class="kfh-sidebar-user-info">
+            <div class="kfh-sidebar-user-name">Ahmed Al-Rashid</div>
+            <div class="kfh-sidebar-user-role">Platform Admin</div>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="kfh-main-content">
+      <!-- Header -->
+      <header class="kfh-header" style="border-bottom: 1px solid var(--surface-border-subtle); background: white;">
+        <div class="kfh-header-content">
+          <div class="kfh-header-left" style="max-width: none;">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+              <svg style="width: 1.5rem; height: 1.5rem; color: var(--kfh-primary);" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <rect width="8" height="4" x="8" y="2" rx="1" ry="1"/>
+                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+                <path d="M12 11h4"/>
+                <path d="M12 16h4"/>
+                <path d="M8 11h.01"/>
+                <path d="M8 16h.01"/>
+              </svg>
+              <div>
+                <h2 class="kfh-header-title">Audit Logs & Activity</h2>
+                <p style="font-size: 0.875rem; color: var(--text-secondary); margin-top: 0.25rem;">Complete audit trail of all system activities</p>
+              </div>
+            </div>
+          </div>
+          <div class="kfh-header-right">
+            <button onclick="Audit.exportCSV()" class="kfh-btn kfh-btn-outline">
+              <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+              </svg>
+              Export CSV
+            </button>
+            <button onclick="Audit.exportJSON()" class="kfh-btn kfh-btn-outline">
+              <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+              </svg>
+              Export JSON
+            </button>
+            <button onclick="Audit.clearAllFilters()" class="kfh-btn kfh-btn-danger">
+              <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+              </svg>
+              Clear Filters
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Content Area -->
+      <div id="audit-content" class="kfh-content-area">
+        <!-- Rendered by JS -->
+      </div>
+    </main>
+  </div>
+
+  <!-- Drawer Overlay -->
+  <div id="audit-drawer-overlay" class="audit-drawer-overlay"></div>
+
+  <!-- Drawer -->
+  <div id="audit-drawer" class="audit-drawer">
+    <div id="drawer-content" class="h-full flex flex-col">
+      <!-- Rendered by JS -->
+    </div>
+  </div>
+
+  <!-- Modal Overlay -->
+  <div id="audit-modal-overlay" class="audit-modal-overlay">
+    <!-- Rendered by JS -->
+  </div>
+
+  <!-- Page Script -->
+  <script src="audit.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      Audit.init();
+    });
+  </script>
+</body>
+</html>

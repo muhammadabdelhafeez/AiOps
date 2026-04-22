@@ -1,0 +1,67 @@
+/* Applications page: keep layout consistent with Dashboard, only minimal additions */
+
+/* Page content area baseline */
+#root {
+  min-height: 400px;
+}
+
+/* Drawer animation (matches existing pages' feel) */
+@keyframes kfhSlideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes kfhFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.kfh-drawer-overlay {
+  animation: kfhFadeIn 0.2s ease;
+}
+
+.kfh-drawer {
+  animation: kfhSlideIn 0.22s ease;
+}
+
+/* Unified header layout: title left, search centered, actions right */
+.kfh-apps-header {
+  display: grid;
+  grid-template-columns: auto minmax(320px, 560px) auto;
+  align-items: center;
+  gap: 16px;
+}
+
+.kfh-apps-header-left {
+  min-width: 180px;
+}
+
+.kfh-apps-header-search {
+  width: 100%;
+  max-width: 560px;
+  justify-self: center;
+}
+
+.kfh-apps-header-right {
+  justify-self: end;
+}
+
+@media (max-width: 1024px) {
+  .kfh-apps-header {
+    grid-template-columns: 1fr;
+    justify-items: stretch;
+  }
+
+  .kfh-apps-header-search {
+    justify-self: stretch;
+    max-width: none;
+  }
+
+  .kfh-apps-header-right {
+    justify-self: stretch;
+    display: flex;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+}

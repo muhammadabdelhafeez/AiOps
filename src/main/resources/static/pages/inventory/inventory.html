@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inventory & Infrastructure - KFH AIOps Command Center</title>
+
+  <!-- Local Fonts -->
+  <link rel="stylesheet" href="../../vendor/css/outfit-font.css">
+
+  <!-- Shared Styles (Beyond Horizons KFH Identity) -->
+  <link rel="stylesheet" href="../../shared/css/base.css">
+  <link rel="stylesheet" href="../../shared/css/kfh-theme.css">
+
+  <!-- React Libraries -->
+  <script src="../../vendor/js/react.production.min.js"></script>
+  <script src="../../vendor/js/react-dom18.production.min.js"></script>
+  <script>
+    window.ReactDOM = window.ReactDOM || window.ReactDOMClient;
+  </script>
+
+  <!-- Recharts UMD deps -->
+  <script src="../../vendor/js/prop-types.min.js"></script>
+  <script>
+    window['prop-types'] = window['prop-types'] || window.PropTypes;
+  </script>
+
+  <!-- Charts -->
+  <script src="../../vendor/js/Recharts.js"></script>
+
+  <!-- In-browser JSX transform -->
+  <script src="../../vendor/js/babel-standalone.min.js"></script>
+
+  <!-- Lucide Icons -->
+  <script src="../../vendor/js/lucide.min.js"></script>
+
+  <!-- Page Styles -->
+  <link rel="stylesheet" href="inventory.css">
+</head>
+<body class="h-full overflow-hidden" style="font-family: 'Outfit', sans-serif; background: var(--surface-bg);">
+  <div id="app" class="kfh-app-layout h-full">
+
+    <!-- Sidebar -->
+    <nav id="sidebar" class="kfh-sidebar">
+      <!-- Logo Area -->
+      <div class="kfh-sidebar-logo">
+        <div class="kfh-sidebar-logo-icon">
+          <span>K</span>
+        </div>
+        <div class="kfh-sidebar-logo-text">
+          <div class="kfh-sidebar-logo-title">KFH AIOps</div>
+          <div class="kfh-sidebar-logo-subtitle">COMMAND CENTER</div>
+        </div>
+      </div>
+
+      <!-- Navigation -->
+      <div class="kfh-sidebar-nav">
+        <!-- Operations -->
+        <div class="kfh-sidebar-group">
+          <div class="kfh-sidebar-group-title">Operations</div>
+          <div class="kfh-sidebar-group-items">
+            <a href="/index.html" class="kfh-sidebar-nav-item">
+              <span class="kfh-sidebar-nav-icon">📊</span>
+              <span class="kfh-sidebar-nav-label">Dashboard</span>
+            </a>
+            <a href="/pages/incidents/incidents.html" class="kfh-sidebar-nav-item">
+              <span class="kfh-sidebar-nav-icon">🔴</span>
+              <span class="kfh-sidebar-nav-label">Incidents</span>
+            </a>
+            <a href="/pages/alerts/alerts.html" class="kfh-sidebar-nav-item">
+              <span class="kfh-sidebar-nav-icon">⚠️</span>
+              <span class="kfh-sidebar-nav-label">Alerts</span>
+            </a>
+            <a href="/pages/inventory/inventory.html" class="kfh-sidebar-nav-item active">
+              <span class="kfh-sidebar-nav-icon">💾</span>
+              <span class="kfh-sidebar-nav-label">Inventory</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Intelligence -->
+        <div class="kfh-sidebar-group">
+          <div class="kfh-sidebar-group-title">Intelligence</div>
+          <div class="kfh-sidebar-group-items">
+            <a href="/pages/applications/applications.html" class="kfh-sidebar-nav-item">
+              <span class="kfh-sidebar-nav-icon">📱</span>
+              <span class="kfh-sidebar-nav-label">Applications</span>
+            </a>
+            <a href="/pages/reports/reports.html" class="kfh-sidebar-nav-item">
+              <span class="kfh-sidebar-nav-icon">📄</span>
+              <span class="kfh-sidebar-nav-label">Reports</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Configuration -->
+        <div class="kfh-sidebar-group">
+          <div class="kfh-sidebar-group-title">Configuration</div>
+          <div class="kfh-sidebar-group-items">
+            <a href="/pages/connectors/connectors.html" class="kfh-sidebar-nav-item">
+              <span class="kfh-sidebar-nav-icon">🔌</span>
+              <span class="kfh-sidebar-nav-label">Connectors</span>
+            </a>
+            <a href="/pages/schedules/schedules.html" class="kfh-sidebar-nav-item">
+              <span class="kfh-sidebar-nav-icon">⏰</span>
+              <span class="kfh-sidebar-nav-label">Schedules</span>
+            </a>
+            <a href="/pages/users/users.html" class="kfh-sidebar-nav-item">
+              <span class="kfh-sidebar-nav-icon">👥</span>
+              <span class="kfh-sidebar-nav-label">Users & RBAC</span>
+            </a>
+            <a href="/pages/settings/settings.html" class="kfh-sidebar-nav-item">
+              <span class="kfh-sidebar-nav-icon">⚙️</span>
+              <span class="kfh-sidebar-nav-label">Settings</span>
+            </a>
+            <a href="/pages/audit/audit.html" class="kfh-sidebar-nav-item">
+              <span class="kfh-sidebar-nav-icon">📋</span>
+              <span class="kfh-sidebar-nav-label">Audit Logs</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- User Profile -->
+      <div class="kfh-sidebar-user">
+        <div class="kfh-sidebar-user-content">
+          <div class="kfh-sidebar-user-avatar">AR</div>
+          <div class="kfh-sidebar-user-info">
+            <div class="kfh-sidebar-user-name">Ahmed Al-Rashid</div>
+            <div class="kfh-sidebar-user-role">Platform Admin</div>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="kfh-main-content">
+      <!-- React App Container -->
+      <div id="inventory-app" class="kfh-content-area" style="padding-top: 0;"></div>
+    </main>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- React App Script -->
+  <script type="text/babel" src="inventory.js"></script>
+</body>
+</html>

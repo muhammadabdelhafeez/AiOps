@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KFH AIOps Command Center - Application Configuration</title>
+
+  <!-- Local Fonts -->
+  <link rel="stylesheet" href="../../vendor/css/outfit-font.css">
+
+  <!-- Tailwind CSS (local vendor; no internet/CDN) -->
+  <script src="../../vendor/js/tailwindcss.cdn.js"></script>
+
+  <!-- Shared Styles -->
+  <link rel="stylesheet" href="../../shared/css/kfh-theme.css">
+
+  <!-- React (local vendor) -->
+  <script src="../../vendor/js/react.production.min.js"></script>
+  <script src="../../vendor/js/react-dom18.production.min.js"></script>
+  <script>
+    window.ReactDOM = window.ReactDOM || window.ReactDOMClient;
+  </script>
+
+  <!-- Recharts deps (local vendor) -->
+  <script src="../../vendor/js/prop-types.min.js"></script>
+  <script>
+    window['prop-types'] = window['prop-types'] || window.PropTypes;
+  </script>
+  <script src="../../vendor/js/Recharts.js"></script>
+
+  <!-- Lucide Icons (local vendor) -->
+  <script src="../../vendor/js/lucide.min.js"></script>
+
+  <!-- Page Styles -->
+  <link rel="stylesheet" href="applicationconfig.css">
+
+  <!-- Tailwind config: KFH tokens -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'kfh-primary': 'var(--kfh-primary)',
+            'kfh-primary-dark': 'var(--kfh-primary-dark)',
+            'kfh-primary-darker': 'var(--kfh-primary-darker)',
+            'kfh-primary-light': 'var(--kfh-primary-light)',
+            'kfh-primary-lighter': 'var(--kfh-primary-lighter)',
+            'kfh-gold': 'var(--kfh-gold)',
+            'kfh-gold-light': 'var(--kfh-gold-light)',
+            'kfh-gold-dark': 'var(--kfh-gold-dark)',
+            'kfh-bg': 'var(--surface-bg)',
+            'kfh-text': 'var(--text-primary)',
+            'kfh-muted': 'var(--text-secondary)'
+          },
+          fontFamily: {
+            sans: ['Outfit', 'Segoe UI', 'sans-serif']
+          }
+        }
+      }
+    };
+  </script>
+</head>
+<body class="h-full overflow-hidden bg-[#F3F4F7]" style="font-family: 'Outfit', sans-serif;">
+  <div id="app" class="h-full flex w-full">
+
+    <!-- Sidebar (same shell as dashboard/applications) -->
+    <nav id="sidebar" class="w-[260px] bg-[#24604f] flex flex-col h-full shrink-0 shadow-2xl z-20">
+      <div class="p-6 border-b border-white/10">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center backdrop-blur-sm border border-white/10 shadow-inner">
+            <span class="text-white font-bold text-xl">K</span>
+          </div>
+          <div>
+            <div class="font-bold text-lg tracking-tight text-white leading-tight">KFH AIOps</div>
+            <div class="text-xs text-[#A79F91] font-medium tracking-wide">COMMAND CENTER</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex-1 overflow-y-auto py-6 px-3 space-y-8">
+        <div>
+          <div class="px-4 mb-3 text-xs font-bold text-[#A79F91] uppercase tracking-wider">Operations</div>
+          <div class="space-y-1">
+            <a href="/index.html" class="sidebar-nav-item flex items-center gap-3 px-4 py-3 rounded-lg text-sm">
+              <span class="text-lg opacity-80">📊</span> Dashboard
+            </a>
+            <a href="/pages/incidents/incidents.html" class="sidebar-nav-item flex items-center gap-3 px-4 py-3 rounded-lg text-sm">
+              <span class="text-lg opacity-80">🔴</span> Incidents
+            </a>
+            <a href="/pages/alerts/alerts.html" class="sidebar-nav-item flex items-center gap-3 px-4 py-3 rounded-lg text-sm">
+              <span class="text-lg opacity-80">⚠️</span> Alerts
+            </a>
+            <a href="/pages/inventory/inventory.html" class="sidebar-nav-item flex items-center gap-3 px-4 py-3 rounded-lg text-sm">
+              <span class="text-lg opacity-80">💾</span> Inventory
+            </a>
+          </div>
+        </div>
+
+        <div>
+          <div class="px-4 mb-3 text-xs font-bold text-[#A79F91] uppercase tracking-wider">Intelligence</div>
+          <div class="space-y-1">
+            <a href="/pages/applications/applications.html" class="sidebar-nav-item active flex items-center gap-3 px-4 py-3 rounded-lg text-sm">
+              <span class="text-lg opacity-80">📱</span> Applications
+            </a>
+            <a href="/pages/reports/reports.html" class="sidebar-nav-item flex items-center gap-3 px-4 py-3 rounded-lg text-sm">
+              <span class="text-lg opacity-80">📄</span> Reports
+            </a>
+          </div>
+        </div>
+
+        <div>
+          <div class="px-4 mb-3 text-xs font-bold text-[#A79F91] uppercase tracking-wider">Configuration</div>
+          <div class="space-y-1">
+            <a href="/pages/connectors/connectors.html" class="sidebar-nav-item flex items-center gap-3 px-4 py-3 rounded-lg text-sm">
+              <span class="text-lg opacity-80">🔌</span> Connectors
+            </a>
+            <a href="/pages/schedules/schedules.html" class="sidebar-nav-item flex items-center gap-3 px-4 py-3 rounded-lg text-sm">
+              <span class="text-lg opacity-80">⏰</span> Schedules
+            </a>
+            <a href="/pages/users/users.html" class="sidebar-nav-item flex items-center gap-3 px-4 py-3 rounded-lg text-sm">
+              <span class="text-lg opacity-80">👥</span> Users & RBAC
+            </a>
+            <a href="/pages/settings/settings.html" class="sidebar-nav-item flex items-center gap-3 px-4 py-3 rounded-lg text-sm">
+              <span class="text-lg opacity-80">⚙️</span> Settings
+            </a>
+            <a href="/pages/audit/audit.html" class="sidebar-nav-item flex items-center gap-3 px-4 py-3 rounded-lg text-sm">
+              <span class="text-lg opacity-80">📋</span> Audit Logs
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div class="p-4 border-t border-white/10">
+        <div class="flex items-center gap-3 px-3 py-2 rounded-lg bg-black/20 border border-white/5 backdrop-blur-sm">
+          <div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#A79F91] to-[#8B8578] flex items-center justify-center text-xs font-bold text-white shadow-sm">AR</div>
+          <div class="overflow-hidden">
+            <div class="text-sm font-bold text-white truncate">Ahmed Al-Rashid</div>
+            <div class="text-[10px] text-white/60 truncate uppercase tracking-wide">Platform Admin</div>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+      <!-- Top Accent -->
+      <div class="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-[#e2f7dd]/60 to-transparent pointer-events-none z-0"></div>
+
+      <!-- Header -->
+      <header class="h-20 flex items-center justify-between px-8 z-10 relative">
+        <div class="flex items-center gap-4">
+          <a href="applications.html" class="kfh-btn kfh-btn-outline">← Back</a>
+          <div>
+            <div id="pageTitle" class="text-2xl font-extrabold text-[#1D1D1D] tracking-tight">Application Configuration</div>
+            <div id="pageSubtitle" class="text-xs text-[var(--text-secondary)] font-semibold">Edit configuration</div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <button id="btnReset" class="kfh-btn kfh-btn-outline" type="button">Reset</button>
+          <button id="btnSave" class="kfh-btn kfh-btn-primary" type="button">Save</button>
+        </div>
+      </header>
+
+      <!-- Content -->
+      <section class="flex-1 overflow-y-auto px-8 pb-8 relative z-10">
+        <div id="root"></div>
+      </section>
+    </main>
+  </div>
+
+  <script src="applicationconfig.js"></script>
+</body>
+</html>

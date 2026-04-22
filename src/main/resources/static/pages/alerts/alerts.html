@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alerts Explorer - KFH AIOps Command Center</title>
+
+  <!-- Local Fonts -->
+  <link rel="stylesheet" href="../../vendor/css/outfit-font.css">
+
+  <!-- Shared Styles (Beyond Horizons KFH Identity) -->
+  <link rel="stylesheet" href="../../shared/css/base.css">
+  <link rel="stylesheet" href="../../shared/css/kfh-theme.css">
+
+  <!-- Page Styles -->
+  <link rel="stylesheet" href="alerts.css">
+</head>
+<body class="h-full overflow-hidden" style="font-family: 'Outfit', sans-serif; background: var(--surface-bg);">
+  <div id="root" class="h-full">
+    <div class="h-full w-full flex items-center justify-center">
+      <div style="text-align:center">
+        <div style="font-size:24px;font-weight:700;color:var(--text-primary);">Loading Alerts Explorer…</div>
+        <div style="margin-top:6px;font-size:14px;color:var(--text-secondary);">Please wait while the application initializes</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Vendor Libraries -->
+  <script src="../../vendor/js/react.production.min.js"></script>
+  <script src="../../vendor/js/react-dom18.production.min.js"></script>
+  <script src="../../vendor/js/prop-types.min.js"></script>
+  <script src="../../vendor/js/Recharts.js"></script>
+
+  <!-- Page Script -->
+  <script src="alerts.js"></script>
+</body>
+</html>

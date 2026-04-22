@@ -1,0 +1,75 @@
+/*
+ * KFH AIOps Command Center - Schedules page
+ * Uses repo-wide Beyond Horizons (kfh-theme.css) tokens.
+ */
+
+/* Rendered inside index.html (SPA). Keep styles scoped to the page root. */
+#page-root, #root {
+  height: 100%;
+  min-height: 100%;
+  width: 100%;
+}
+
+/* Prevent accidental horizontal overflow inside the SPA content area */
+#page-root {
+  overflow-x: hidden;
+}
+
+/* Layout tuning for SPA container
+   IMPORTANT: do NOT center the whole page-root; it breaks full-width layouts in the main content area. */
+#page-root {
+  display: block;
+  justify-content: initial;
+}
+
+/* Ensure the first-level container uses the available width */
+#page-root > * {
+  width: 100%;
+}
+
+/* The schedules page uses Tailwind classes; we only override a few extremes */
+#page-root .max-w-7xl {
+  width: 100%;
+  max-width: 80rem; /* keep Tailwind's intent but avoid accidental shrink */
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Reduce the oversized hero icon on wide screens (scope to the hero block only) */
+#page-root .w-32.h-32,
+#page-root .w-36.h-36,
+#page-root .w-40.h-40 {
+  width: 5.5rem !important;
+  height: 5.5rem !important;
+}
+
+/* Avoid globally affecting all SVG sizing on the page */
+#page-root svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Improve table area spacing inside the SPA */
+#page-root .shadow-sm {
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+}
+
+/* Tailwind page-specific helpers */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes progress-fill {
+  from { width: 0; }
+}
+
+.run-progress {
+  animation: progress-fill 2s ease-out forwards;
+}
+
+/* NOTE: Do not globally override scrollbars here; the app theme controls them. */

@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KFH AIOps Command Center</title>
+
+  <!-- Local Fonts -->
+  <link rel="stylesheet" href="vendor/css/outfit-font.css">
+
+  <!-- Shared Styles (Beyond Horizons KFH Identity) -->
+  <link rel="stylesheet" href="shared/css/base.css">
+  <link rel="stylesheet" href="shared/css/kfh-theme.css">
+</head>
+<body class="h-full overflow-hidden" style="font-family: 'Outfit', sans-serif; background: var(--surface-bg);">
+  <div id="app" class="kfh-app-layout h-full">
+
+    <!-- Sidebar -->
+    <nav id="sidebar-container" class="kfh-sidebar">
+      <!-- Logo Area -->
+      <div class="kfh-sidebar-logo">
+        <div class="kfh-sidebar-logo-icon">
+          <svg viewBox="0 0 32 32" fill="none">
+            <rect width="32" height="32" rx="8" fill="white"/>
+            <path d="M8 8h4v16H8V8zm6 6h4v10h-4V14zm6-3h4v13h-4V11z" fill="#128754"/>
+          </svg>
+        </div>
+        <div class="kfh-sidebar-logo-text">
+          <div class="kfh-sidebar-logo-title">KFH AIOps</div>
+          <div class="kfh-sidebar-logo-subtitle">COMMAND CENTER</div>
+        </div>
+      </div>
+
+      <!-- Navigation -->
+      <div class="kfh-sidebar-nav">
+        <!-- Operations -->
+        <div class="kfh-sidebar-group">
+          <div class="kfh-sidebar-group-title">Operations</div>
+          <div class="kfh-sidebar-group-items">
+            <a href="#dashboard" class="kfh-sidebar-nav-item active" data-page="dashboard">
+              <span class="kfh-sidebar-nav-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="3" width="7" height="9" rx="1"/>
+                  <rect x="14" y="3" width="7" height="5" rx="1"/>
+                  <rect x="14" y="12" width="7" height="9" rx="1"/>
+                  <rect x="3" y="16" width="7" height="5" rx="1"/>
+                </svg>
+              </span>
+              <span class="kfh-sidebar-nav-label">Dashboard</span>
+            </a>
+            <a href="#incidents" class="kfh-sidebar-nav-item" data-page="incidents">
+              <span class="kfh-sidebar-nav-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 9v4m0 4h.01"/>
+                  <circle cx="12" cy="12" r="9"/>
+                </svg>
+              </span>
+              <span class="kfh-sidebar-nav-label">Incidents</span>
+              <span class="kfh-sidebar-badge">3</span>
+            </a>
+            <a href="#alerts" class="kfh-sidebar-nav-item" data-page="alerts">
+              <span class="kfh-sidebar-nav-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                </svg>
+              </span>
+              <span class="kfh-sidebar-nav-label">Alerts</span>
+            </a>
+            <a href="#inventory" class="kfh-sidebar-nav-item" data-page="inventory">
+              <span class="kfh-sidebar-nav-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="2" y="3" width="20" height="14" rx="2"/>
+                  <path d="M8 21h8m-4-4v4"/>
+                </svg>
+              </span>
+              <span class="kfh-sidebar-nav-label">Inventory</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Intelligence -->
+        <div class="kfh-sidebar-group">
+          <div class="kfh-sidebar-group-title">Intelligence</div>
+          <div class="kfh-sidebar-group-items">
+            <a href="#applications" class="kfh-sidebar-nav-item" data-page="applications">
+              <span class="kfh-sidebar-nav-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2"/>
+                  <path d="M3 9h18M9 21V9"/>
+                </svg>
+              </span>
+              <span class="kfh-sidebar-nav-label">Applications</span>
+            </a>
+            <a href="#reports" class="kfh-sidebar-nav-item" data-page="reports">
+              <span class="kfh-sidebar-nav-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <path d="M14 2v6h6"/>
+                  <path d="M16 13H8m8 4H8m2-8H8"/>
+                </svg>
+              </span>
+              <span class="kfh-sidebar-nav-label">Reports</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Configuration -->
+        <div class="kfh-sidebar-group">
+          <div class="kfh-sidebar-group-title">Configuration</div>
+          <div class="kfh-sidebar-group-items">
+            <a href="#connectors" class="kfh-sidebar-nav-item" data-page="connectors">
+              <span class="kfh-sidebar-nav-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
+                  <circle cx="12" cy="12" r="4"/>
+                </svg>
+              </span>
+              <span class="kfh-sidebar-nav-label">Connectors</span>
+            </a>
+            <a href="#schedules" class="kfh-sidebar-nav-item" data-page="schedules">
+              <span class="kfh-sidebar-nav-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"/>
+                  <path d="M12 6v6l4 2"/>
+                </svg>
+              </span>
+              <span class="kfh-sidebar-nav-label">Schedules</span>
+            </a>
+            <a href="#users" class="kfh-sidebar-nav-item" data-page="users">
+              <span class="kfh-sidebar-nav-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <path d="M22 21v-2a4 4 0 0 0-3-3.87m-3-12a4 4 0 0 1 0 7.75"/>
+                </svg>
+              </span>
+              <span class="kfh-sidebar-nav-label">Users & RBAC</span>
+            </a>
+            <a href="#settings" class="kfh-sidebar-nav-item" data-page="settings">
+              <span class="kfh-sidebar-nav-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              </span>
+              <span class="kfh-sidebar-nav-label">Settings</span>
+            </a>
+            <a href="#audit" class="kfh-sidebar-nav-item" data-page="audit">
+              <span class="kfh-sidebar-nav-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 20h9"/>
+                  <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z"/>
+                </svg>
+              </span>
+              <span class="kfh-sidebar-nav-label">Audit Logs</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- User Profile -->
+      <div class="kfh-sidebar-user">
+        <div class="kfh-sidebar-user-content">
+          <div class="kfh-sidebar-user-avatar">
+            <span>AR</span>
+            <span class="kfh-sidebar-user-status"></span>
+          </div>
+          <div class="kfh-sidebar-user-info">
+            <div class="kfh-sidebar-user-name">Ahmed Al-Rashid</div>
+            <div class="kfh-sidebar-user-role">Platform Admin</div>
+          </div>
+          <button class="kfh-sidebar-user-menu" title="Account menu">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M6 9l6 6 6-6"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="kfh-main-content">
+      <!-- Top Accent Gradient -->
+      <div class="kfh-top-accent"></div>
+
+      <!-- Header -->
+      <header id="header-container" class="kfh-header">
+        <div class="kfh-header-content">
+          <div class="kfh-header-left">
+            <h2 id="page-title" class="kfh-header-title">Dashboard</h2>
+            <div class="kfh-header-divider"></div>
+            <div class="kfh-header-search">
+              <svg class="kfh-header-search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+              </svg>
+              <input type="text" placeholder="Search (Ctrl+K)" class="kfh-header-search-input" id="global-search">
+            </div>
+          </div>
+          <div class="kfh-header-right">
+            <!-- System Status -->
+            <div class="kfh-status-indicator stable">
+              <span class="kfh-status-dot">
+                <span class="kfh-status-dot-ping"></span>
+                <span class="kfh-status-dot-core"></span>
+              </span>
+              <span class="kfh-status-label">SYSTEM STABLE</span>
+            </div>
+            <!-- Refresh Button -->
+            <button class="kfh-icon-btn" id="refresh-btn" title="Refresh Data">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+              </svg>
+            </button>
+            <!-- Notifications -->
+            <button class="kfh-icon-btn" title="Notifications" aria-label="Notifications">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+              </svg>
+              <span class="kfh-icon-btn-badge"></span>
+            </button>
+            <!-- Add Application -->
+            <button id="header-add-application" type="button" class="flex items-center gap-2 px-4 py-2 bg-[var(--kfh-primary)] text-white text-sm font-semibold rounded-lg hover:bg-[var(--kfh-primary-dark)] transition-colors shadow-sm" onclick="window.location.hash = '#applications?create=1'">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+              </svg>
+              Add Application
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Content Area - Dynamic Page Content Loads Here -->
+      <div id="content-area" class="kfh-content-area">
+        <!-- Loading state shown initially -->
+        <div class="flex items-center justify-center h-full">
+          <div style="text-align: center;">
+            <div style="width: 48px; height: 48px; border: 4px solid var(--surface-border); border-top-color: var(--kfh-primary); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
+            <p style="font-size: 1.125rem; font-weight: 600; color: var(--text-primary);">Loading KFH AIOps Command Center...</p>
+            <p style="font-size: 0.875rem; color: var(--text-secondary); margin-top: 8px;">Beyond Horizons</p>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Vendor Libraries -->
+  <script src="vendor/js/react.production.min.js"></script>
+  <script src="vendor/js/react-dom18.production.min.js"></script>
+  <script src="vendor/js/prop-types.min.js"></script>
+  <script src="vendor/js/Recharts.js"></script>
+  <script src="vendor/js/lucide.min.js"></script>
+  <script>
+    // Alias for React 18 compatibility
+    window.ReactDOM = window.ReactDOM || window.ReactDOMClient;
+    window['prop-types'] = window['prop-types'] || window.PropTypes;
+    // Lucide icons global alias
+    window.lucide = window.lucide || window.Lucide;
+  </script>
+
+  <!-- Shared Scripts -->
+  <script src="shared/js/config.js"></script>
+  <script src="shared/js/utils.js"></script>
+  <script src="shared/js/api-client.js"></script>
+  <script src="shared/js/router.js"></script>
+
+  <!-- Initialize Application -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Initialize the router - this will load the correct page based on URL hash
+      Router.init();
+
+      // Setup global search shortcut (Ctrl+K)
+      document.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+          e.preventDefault();
+          var searchInput = document.getElementById('global-search');
+          if (searchInput) searchInput.focus();
+        }
+      });
+
+      // Refresh button handler
+      var refreshBtn = document.getElementById('refresh-btn');
+      if (refreshBtn) {
+        refreshBtn.addEventListener('click', function() {
+          var icon = this.querySelector('svg');
+          if (icon) {
+            icon.style.animation = 'spin 1s linear';
+            setTimeout(function() {
+              icon.style.animation = '';
+            }, 1000);
+          }
+          // Trigger page refresh if the current page has a refresh method
+          var currentPage = Router.getCurrentPage();
+          var moduleName = currentPage ? currentPage.charAt(0).toUpperCase() + currentPage.slice(1) + 'Page' : null;
+          if (moduleName && window[moduleName] && typeof window[moduleName].refresh === 'function') {
+            window[moduleName].refresh();
+          }
+        });
+      }
+    });
+  </script>
+
+  <style>
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</body>
+</html>

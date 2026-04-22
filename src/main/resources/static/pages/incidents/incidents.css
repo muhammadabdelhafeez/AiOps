@@ -1,0 +1,563 @@
+/**
+ * KFH AIOps Command Center - Incidents Styles
+ * Page-specific styles for the Incidents module
+ * (Production mode: no Tailwind CDN)
+ */
+
+/* --- Layout helpers used by incidents.bundle.js --- */
+.incidents-container {
+  max-width: 1800px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.incidents-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 6px 0 18px;
+}
+
+.incidents-header-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.incidents-search {
+  position: relative;
+}
+
+.incidents-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* ============================================
+   KPI Strip Cards
+   ============================================ */
+.kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+@media (min-width: 768px) {
+  .kpi-strip {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (min-width: 1280px) {
+  .kpi-strip {
+    grid-template-columns: repeat(7, 1fr);
+  }
+}
+
+.kpi-mini {
+  padding: 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+.kpi-mini-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+
+.kpi-mini-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.kpi-mini-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--kfh-primary-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--kfh-primary);
+  transition: transform 0.2s;
+}
+
+.kpi-mini:hover .kpi-mini-icon {
+  transform: scale(1.1);
+}
+
+.kpi-mini-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.025em;
+}
+
+/* Pulse animation for critical */
+@keyframes pulse-critical {
+  0%, 100% {
+    border-color: rgba(220, 38, 38, 0.3);
+    box-shadow: 0 0 0 rgba(220, 38, 38, 0);
+  }
+  50% {
+    border-color: rgba(220, 38, 38, 0.8);
+    box-shadow: 0 0 10px rgba(220, 38, 38, 0.2);
+  }
+}
+
+.pulse-critical {
+  animation: pulse-critical 2s infinite;
+}
+
+/* ============================================
+   Charts Section
+   ============================================ */
+.chart-card {
+  padding: 24px;
+}
+
+.chart-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.chart-title svg {
+  color: var(--kfh-primary);
+}
+
+.chart-container {
+  height: 256px;
+}
+
+/* ============================================
+   Incidents Table
+   ============================================ */
+.incidents-table-wrap {
+  overflow: hidden;
+  border-radius: var(--radius-card);
+}
+
+.table-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid #E5E7EB;
+  background: var(--surface-off-white);
+}
+
+.table-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.table-tab {
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.table-tab:hover {
+  background: #E5E7EB;
+}
+
+.table-tab.active {
+  background: white;
+  color: var(--kfh-primary);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.table-count {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.incidents-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.incidents-table th {
+  padding: 16px 24px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: white;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.incidents-table th.text-center {
+  text-align: center;
+}
+
+.incidents-table td {
+  padding: 16px 24px;
+  font-size: 14px;
+  color: var(--text-primary);
+  border-bottom: 1px solid #F3F4F6;
+}
+
+.incidents-table tr {
+  transition: background 0.15s;
+  cursor: pointer;
+}
+
+.incidents-table tr:hover {
+  background: #F9FAFB;
+}
+
+.incidents-table tr:hover .incident-title {
+  color: var(--kfh-primary);
+}
+
+.incident-title {
+  font-weight: 600;
+  color: var(--text-primary);
+  transition: color 0.15s;
+  max-width: 300px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.incident-id {
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.incident-service {
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.incident-domain {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* ============================================
+   Badges - Extended for Incidents
+   ============================================ */
+.badge-glow {
+  box-shadow: 0 0 6px currentColor;
+}
+
+/* Classification badges */
+.badge-new {
+  background: #E0F7FA;
+  color: #006064;
+  border: 1px solid #B2EBF2;
+}
+
+.badge-recurring-sure {
+  background: #FFF8F8;
+  color: #D32F2F;
+  border: 1px solid #FECACA;
+}
+
+.badge-recurring-likely {
+  background: #FEF3C7;
+  color: #D97706;
+  border: 1px solid #FDE68A;
+}
+
+.badge-possible {
+  background: #F3E8FF;
+  color: #7E22CE;
+  border: 1px solid #E9D5FF;
+}
+
+/* Source badges */
+.source-badge {
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 4px;
+  background: #F8F9FA;
+  color: #64748B;
+  border: 1px solid #E5E7EB;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+/* ============================================
+   Incident Details Page
+   ============================================ */
+.incident-header-card {
+  padding: 32px;
+  border-left: 4px solid var(--kfh-primary);
+  position: relative;
+}
+
+.incident-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.incident-main-title {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.025em;
+  margin-bottom: 8px;
+}
+
+.incident-meta {
+  font-size: 14px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.incident-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.incident-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  min-width: 300px;
+}
+
+.incident-stat-box {
+  background: var(--surface-off-white);
+  border-radius: 8px;
+  padding: 12px;
+  border: 1px solid #E5E7EB;
+}
+
+.incident-stat-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.incident-stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.incident-stat-value-sm {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+/* Tabs */
+.incident-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 24px 32px 0;
+  border-bottom: 1px solid #E5E7EB;
+  background: white;
+  border-radius: 12px 12px 0 0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.incident-tab {
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.incident-tab:hover {
+  color: var(--text-primary);
+}
+
+.incident-tab.active {
+  border-bottom-color: var(--kfh-primary);
+  color: var(--kfh-primary);
+}
+
+/* Evidence items */
+.evidence-item {
+  padding: 16px;
+  background: #F8F9FA;
+  border-radius: 12px;
+  border: 1px solid #F3F4F6;
+}
+
+.evidence-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.evidence-snippet {
+  font-size: 14px;
+  font-family: var(--font-mono);
+  color: #374151;
+  background: white;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #E5E7EB;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* RCA Card */
+.rca-card {
+  padding: 24px;
+}
+
+.rca-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.rca-alert {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 8px;
+  margin-top: 16px;
+}
+
+.rca-alert-new {
+  background: #EFF6FF;
+  border: 1px solid #BFDBFE;
+}
+
+.rca-alert-new .rca-alert-title {
+  color: #1D4ED8;
+}
+
+.rca-alert-new .rca-alert-text {
+  color: #2563EB;
+}
+
+.rca-alert-recurring {
+  background: #FFFBEB;
+  border: 1px solid #FDE68A;
+}
+
+.rca-alert-recurring .rca-alert-title {
+  color: #D97706;
+}
+
+.rca-alert-recurring .rca-alert-text {
+  color: #B45309;
+}
+
+.rca-alert-icon {
+  flex-shrink: 0;
+}
+
+.rca-alert-title {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.rca-alert-text {
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+/* Topology SVG */
+.topology-container {
+  height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #F8F9FA;
+  border-radius: 12px;
+  border: 1px solid #F3F4F6;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ============================================
+   Search & Filters Bar
+   ============================================ */
+.search-filters-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.search-input-wrap {
+  position: relative;
+  width: 256px;
+}
+
+.search-input-wrap svg {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #9CA3AF;
+}
+
+.search-input {
+  width: 100%;
+  padding: 8px 12px 8px 40px;
+  background: white;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--text-primary);
+  outline: none;
+  transition: all 0.2s;
+}
+
+.search-input:focus {
+  border-color: var(--kfh-primary);
+  box-shadow: 0 0 0 3px rgba(18, 135, 84, 0.1);
+}
+
+.search-input::placeholder {
+  color: #9CA3AF;
+}

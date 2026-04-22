@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Incidents - KFH AIOps Command Center</title>
+
+  <!-- Local Fonts -->
+  <link rel="stylesheet" href="../../vendor/css/outfit-font.css">
+
+  <!-- Shared Styles (Beyond Horizons KFH Identity) -->
+  <link rel="stylesheet" href="../../shared/css/base.css">
+  <link rel="stylesheet" href="../../shared/css/kfh-theme.css">
+
+  <!-- Page Styles -->
+  <link rel="stylesheet" href="incidents.css">
+</head>
+<body class="h-full overflow-hidden" style="font-family: 'Outfit', sans-serif; background: var(--surface-bg);">
+  <div id="app" class="kfh-app-layout h-full">
+
+    <!-- Sidebar -->
+    <nav id="sidebar" class="kfh-sidebar">
+      <!-- Logo Area -->
+      <div class="kfh-sidebar-logo">
+        <div class="kfh-sidebar-logo-icon">
+          <span>K</span>
+        </div>
+        <div class="kfh-sidebar-logo-text">
+          <div class="kfh-sidebar-logo-title">KFH AIOps</div>
+          <div class="kfh-sidebar-logo-subtitle">COMMAND CENTER</div>
+        </div>
+      </div>
+
+      <!-- Navigation -->
+      <div class="kfh-sidebar-nav">
+        <!-- Operations -->
+        <div class="kfh-sidebar-group">
+          <div class="kfh-sidebar-group-title">Operations</div>
+          <div class="kfh-sidebar-group-items">
+            <a href="/index.html" class="kfh-sidebar-nav-item">
+              <span class="kfh-sidebar-nav-icon">📊</span>
+              <span class="kfh-sidebar-nav-label">Dashboard</span>
+            </a>
+            <a href="/pages/incidents/incidents.html" class="kfh-sidebar-nav-item active">
+              <span class="kfh-sidebar-nav-icon">🔴</span>
+              <span class="kfh-sidebar-nav-label">Incidents</span>
+            </a>
+            <a href="/pages/alerts/alerts.html" class="kfh-sidebar-nav-item">
+              <span class="kfh-sidebar-nav-icon">⚠️</span>
+              <span class="kfh-sidebar-nav-label">Alerts</span>
+            </a>
+            <a href="/pages/inventory/inventory.html" class="kfh-sidebar-nav-item">
+              <span class="kfh-sidebar-nav-icon">💾</span>
+              <span class="kfh-sidebar-nav-label">Inventory</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Intelligence -->
+        <div class="kfh-sidebar-group">
+          <div class="kfh-sidebar-group-title">Intelligence</div>
+          <div class="kfh-sidebar-group-items">
+            <a href="/pages/applications/applications.html" class="kfh-sidebar-nav-item">
+              <span class="kfh-sidebar-nav-icon">📱</span>
+              <span class="kfh-sidebar-nav-label">Applications</span>
+            </a>
+            <a href="/pages/reports/reports.html" class="kfh-sidebar-nav-item">
+              <span class="kfh-sidebar-nav-icon">📄</span>
+              <span class="kfh-sidebar-nav-label">Reports</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Configuration -->
+        <div class="kfh-sidebar-group">
+          <div class="kfh-sidebar-group-title">Configuration</div>
+          <div class="kfh-sidebar-group-items">
+            <a href="/pages/connectors/connectors.html" class="kfh-sidebar-nav-item">
+              <span class="kfh-sidebar-nav-icon">🔌</span>
+              <span class="kfh-sidebar-nav-label">Connectors</span>
+            </a>
+            <a href="/pages/schedules/schedules.html" class="kfh-sidebar-nav-item">
+              <span class="kfh-sidebar-nav-icon">⏰</span>
+              <span class="kfh-sidebar-nav-label">Schedules</span>
+            </a>
+            <a href="/pages/users/users.html" class="kfh-sidebar-nav-item">
+              <span class="kfh-sidebar-nav-icon">👥</span>
+              <span class="kfh-sidebar-nav-label">Users & RBAC</span>
+            </a>
+            <a href="/pages/settings/settings.html" class="kfh-sidebar-nav-item">
+              <span class="kfh-sidebar-nav-icon">⚙️</span>
+              <span class="kfh-sidebar-nav-label">Settings</span>
+            </a>
+            <a href="/pages/audit/audit.html" class="kfh-sidebar-nav-item">
+              <span class="kfh-sidebar-nav-icon">📋</span>
+              <span class="kfh-sidebar-nav-label">Audit Logs</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- User Profile -->
+      <div class="kfh-sidebar-user">
+        <div class="kfh-sidebar-user-content">
+          <div class="kfh-sidebar-user-avatar">AR</div>
+          <div class="kfh-sidebar-user-info">
+            <div class="kfh-sidebar-user-name">Ahmed Al-Rashid</div>
+            <div class="kfh-sidebar-user-role">Platform Admin</div>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="kfh-main-content">
+      <!-- Top Accent Gradient -->
+      <div class="kfh-top-accent"></div>
+
+      <!-- Header -->
+      <header class="kfh-header">
+        <div class="kfh-header-content">
+          <div class="kfh-header-left">
+            <h2 class="kfh-header-title">Incidents</h2>
+            <div class="kfh-header-divider"></div>
+            <div class="kfh-header-search">
+              <svg class="kfh-header-search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+              </svg>
+              <input type="text" id="global-search" placeholder="Search incidents..." class="kfh-header-search-input">
+            </div>
+          </div>
+          <div class="kfh-header-right">
+            <select aria-label="Time range" id="time-range" class="kfh-input" style="width: auto; cursor: pointer;">
+              <option value="1h">Last 1 Hour</option>
+              <option value="24h" selected>Last 24 Hours</option>
+              <option value="7d">Last 7 Days</option>
+              <option value="15d">Last 15 Days</option>
+            </select>
+            <button id="export-btn" class="kfh-btn kfh-btn-outline">
+              <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+              </svg>
+              Export
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Content Area -->
+      <div id="content-area" class="kfh-content-area">
+        <div class="h-full w-full flex items-center justify-center" style="color: var(--kfh-primary)">
+          <div style="text-align:center">
+            <div style="font-size:24px;font-weight:700;color:var(--text-primary);">Loading Incidents…</div>
+            <div style="margin-top:6px;font-size:14px;color:var(--text-secondary);">Please wait while the application initializes</div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Vendor Libraries -->
+  <script src="../../vendor/js/react.production.min.js"></script>
+  <script src="../../vendor/js/react-dom18.production.min.js"></script>
+  <script src="../../vendor/js/prop-types.min.js"></script>
+  <script src="../../vendor/js/Recharts.js"></script>
+
+  <!-- Page Script -->
+  <script src="incidents.js"></script>
+</body>
+</html>
