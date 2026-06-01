@@ -112,6 +112,13 @@
 - check schedule_run status
 - check report pack index generation
 
+### Dependency security validation
+- Before releasing backend builds, run Maven tests and dependency resolution after dependency upgrades.
+- Automated context tests use an embedded H2 datasource in PostgreSQL compatibility mode; local PostgreSQL is not required for `mvn test`.
+- PostgreSQL JDBC must remain at `42.7.11` or newer to remediate the SCRAM PBKDF2 CPU exhaustion DoS advisory.
+- Azure Identity must remain at `1.12.2` or newer to remediate the Azure Identity/MSAL elevation-of-privilege advisory.
+- If PostgreSQL endpoints or JDBC URLs become tenant/user configurable in the future, require trusted endpoints, TLS server identity verification, SSRF controls, and tenant-scoped audit logs for any configuration writes.
+
 ### Connector management operations
 - Use UI Connectors page to configure BMC and other monitoring source integrations
 - All connector operations require tenant/user headers and proper RBAC permissions:

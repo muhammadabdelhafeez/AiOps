@@ -8,6 +8,12 @@
 - Secrets encrypted at rest; never logged
 - Input validation on all APIs (DTO validation)
 
+## Dependency security maintenance
+- Keep Maven dependencies on CVE-remediated versions before release and before production deployment.
+- PostgreSQL JDBC is pinned to `42.7.11` or newer to cap SCRAM PBKDF2 iterations and reduce client-side CPU exhaustion risk during authentication.
+- Azure Identity is pinned to `1.12.2` or newer to remediate the Azure Identity/MSAL elevation-of-privilege advisory.
+- Prefer minimal compatible security upgrades, then run dependency resolution and backend tests before promoting a build.
+
 ## OWASP guidance mapping (practical)
 ### Access Control (Broken Access Control / IDOR)
 - Never trust client-provided IDs alone.

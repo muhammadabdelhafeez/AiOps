@@ -74,11 +74,11 @@ AiOpsAnalysis is designed to help IT operations teams manage and analyze alerts 
 | **Framework** | Spring Boot | 3.4.1 |
 | **Language** | Java | 21 |
 | **Build Tool** | Maven | 3.x |
-| **Relational DB** | PostgreSQL | 42.7.3 |
+| **Relational DB** | PostgreSQL JDBC | 42.7.11 |
 | **Graph DB** | Neo4j | 5.15.0 |
 | **AI/ML** | Azure OpenAI SDK | 1.0.0-beta.12 |
 | **Cloud Integration** | Microsoft Graph SDK | 6.4.0 |
-| **Identity** | Azure Identity | 1.11.2 |
+| **Identity** | Azure Identity | 1.12.2 |
 | **Resilience** | Resilience4j | 2.2.0 |
 | **Caching** | Caffeine | (managed by Spring Boot) |
 | **Scheduling** | Quartz | (managed by Spring Boot) |
