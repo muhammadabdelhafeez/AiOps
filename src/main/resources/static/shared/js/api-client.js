@@ -14,7 +14,10 @@ window.APIClient = (function() {
       'Content-Type': 'application/json',
       'X-Tenant-Id': session.tenantId,
       'X-User-Id': session.userId,
-      'X-Correlation-Id': KFHUtils.generateUUID()
+      'X-Correlation-Id': KFHUtils.generateUUID(),
+      'X-Country-Code': session.countryCode || 'KW',
+      'X-Environment': session.environment || 'PROD',
+      'X-Permissions': Array.isArray(session.permissions) ? session.permissions.join(',') : ''
     };
   }
 
@@ -61,6 +64,30 @@ window.APIClient = (function() {
     });
 
     return handleResponse(response);
+  }
+
+  async function getBlob(endpoint, params = {}) {
+    const url = new URL(`${BASE_URL}${endpoint}`, window.location.origin);
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        url.searchParams.append(key, value);
+      }
+    });
+
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers: getHeaders()
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({
+        message: response.statusText,
+        status: response.status
+      }));
+      throw new APIError(error.message || 'Request failed', response.status, error);
+    }
+
+    return response.blob();
   }
 
   // POST request
@@ -148,7 +175,8 @@ window.APIClient = (function() {
     update: (id, data) => put(`/inventory/${id}`, data),
     delete: (id) => del(`/inventory/${id}`),
     getDependencies: (id) => get(`/inventory/${id}/dependencies`),
-    getAlerts: (id) => get(`/inventory/${id}/alerts`)
+    getAlerts: (id) => get(`/inventory/${id}/alerts`),
+    topology: (params) => get('/inventory/topology', params)
   };
 
   // Connectors
@@ -180,9 +208,13 @@ window.APIClient = (function() {
     list: (params) => get('/reports', params),
     get: (id) => get(`/reports/${id}`),
     getRuns: (params) => get('/reports/runs', params),
+    listRuns: (params) => get('/reports/runs', params),
     getArtifacts: (runId) => get(`/reports/runs/${runId}/artifacts`),
+    listArtifacts: (params) => get('/reports/artifacts', params),
     download: (artifactId) => `${BASE_URL}/reports/artifacts/${artifactId}/download`,
-    generate: (params) => post('/reports/generate', params)
+    downloadArtifact: (artifactId) => getBlob(`/reports/artifacts/${artifactId}/download`),
+    generate: (params) => post('/reports/generate', params),
+    generatePack: (runId) => post(`/reports/runs/${runId}/pack`)
   };
 
   // Users
@@ -191,10 +223,12 @@ window.APIClient = (function() {
     get: (id) => get(`/users/${id}`),
     create: (data) => post('/users', data),
     update: (id, data) => put(`/users/${id}`, data),
+    resetPassword: (id, data) => patch(`/users/${id}/password`, data),
     delete: (id) => del(`/users/${id}`),
     toggleStatus: (id) => patch(`/users/${id}/toggle`),
     getRoles: () => get('/users/roles'),
-    getPermissions: (userId) => get(`/users/${userId}/permissions`)
+    getPermissions: (userId) => get(`/users/${userId}/permissions`),
+    storageStatus: () => get('/users/storage-status')
   };
 
   // Roles
@@ -236,6 +270,7 @@ window.APIClient = (function() {
     post,
     put,
     patch,
+    getBlob,
     delete: del,
 
     // Error class

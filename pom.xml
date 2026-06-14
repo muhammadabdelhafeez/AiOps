@@ -8,12 +8,12 @@
         <version>3.4.1</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
-    <groupId>org.AiOpsAnalysis</groupId>
-    <artifactId>AiOpsAnalysis</artifactId>
+    <groupId>org.kfh.aiops</groupId>
+    <artifactId>kfh-aiops-platform</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <packaging>war</packaging>
-    <name>AiOpsAnalysis</name>
-    <description>AiOpsAnalysis</description>
+    <name>KFH Causal AIOps Platform</name>
+    <description>KFH banking-flow-aware causal AIOps platform (modular monolith)</description>
     <url/>
     <licenses>
         <license/>
@@ -129,6 +129,32 @@
             <artifactId>caffeine</artifactId>
         </dependency>
 
+        <!-- Redis (hot state / dedup / locks / dashboard cache — see copilot-instructions §12) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+
+        <!-- Flyway DB migrations -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+
+        <!-- Observability -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
+
         <!-- PostgreSQL for UI Query Store -->
         <dependency>
             <groupId>org.postgresql</groupId>
@@ -191,6 +217,14 @@
     </dependencies>
 
     <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <excludes>
+                    <exclude>certs/**</exclude>
+                </excludes>
+            </resource>
+        </resources>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -206,6 +240,7 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
+                    <mainClass>org.kfh.aiops.AiOpsApplication</mainClass>
                     <excludes>
                         <exclude>
                             <groupId>org.projectlombok</groupId>

@@ -208,13 +208,13 @@ OPTIONS {indexConfig: {`vector.dimensions`: 1536, `vector.similarity_function`: 
 
 ### 5. Configure Application
 
-Copy and customize the configuration file:
+Configure the datasource and integration settings through environment variables or `application.properties`:
 
-```bash
-cp src/main/resources/application.properties src/main/resources/application-local.properties
-```
+- `DB_URL`
+- `DB_USERNAME`
+- `DB_PASSWORD`
 
-Update with your environment settings (see [Configuration](#configuration) section).
+User Management is database-backed; PostgreSQL must be available so created users are inserted into `identity.users` and can sign in later.
 
 ### 6. Build and Run
 
@@ -222,14 +222,20 @@ Update with your environment settings (see [Configuration](#configuration) secti
 # Build the project
 mvn clean install
 
-# Run the application
+# Run the database-backed application
 mvn spring-boot:run
-
-# Or run with specific profile
-mvn spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
-The application will start on port **8443** by default.
+The application starts on port **8443** by default and serves **HTTPS** on that port, so open `https://localhost:8443/`.
+
+For browser testing with an externally supplied PFX password, use the local HTTPS runbook/script:
+
+```powershell
+Set-Location -Path "E:\NetBeansProjects\AiOpsAnalysis"
+.\scripts\run-local-https.ps1
+```
+
+Then open `https://localhost:8443/` or the host IP URL printed by the script. If `https://...:8443/` shows `ERR_SSL_PROTOCOL_ERROR`, stop the existing process on port `8443`; it is likely an older HTTP-only run or an explicit `SERVER_SSL_ENABLED=false` diagnostic run.
 
 ---
 
@@ -721,20 +727,19 @@ The project uses Lombok to reduce boilerplate code. Configure your IDE:
 - Add Javadoc for public APIs
 - Keep methods focused and under 30 lines when possible
 
-### Local Development Profile
+### Local Development Configuration
 
-Create `application-local.properties` for local development:
+Use PostgreSQL-backed configuration for local development:
 
 ```properties
-# Override for local development
 spring.datasource.url=jdbc:postgresql://localhost:5432/aiopsanalysis_dev
 logging.level.org.aiopsanalysis=DEBUG
 logging.level.org.neo4j.driver=DEBUG
 ```
 
-Run with local profile:
+Run the application:
 ```bash
-mvn spring-boot:run -Dspring-boot.run.profiles=local
+mvn spring-boot:run
 ```
 
 ---

@@ -11,8 +11,12 @@
   <!-- Shared Styles (Beyond Horizons KFH Identity) -->
   <link rel="stylesheet" href="shared/css/base.css">
   <link rel="stylesheet" href="shared/css/kfh-theme.css">
+  <link rel="stylesheet" href="shared/css/login.css">
+  <link id="kfh-aiops-parity-css" rel="stylesheet" href="shared/css/kfh-aiops-parity.css">
 </head>
 <body class="h-full overflow-hidden" style="font-family: 'Outfit', sans-serif; background: var(--surface-bg);">
+  <div id="auth-root" hidden></div>
+
   <div id="app" class="kfh-app-layout h-full">
 
     <!-- Sidebar -->
@@ -28,6 +32,21 @@
         <div class="kfh-sidebar-logo-text">
           <div class="kfh-sidebar-logo-title">KFH AIOps</div>
           <div class="kfh-sidebar-logo-subtitle">COMMAND CENTER</div>
+        </div>
+      </div>
+
+      <!-- Country Group Scope -->
+      <div class="kfh-sidebar-scope">
+        <div class="kfh-sidebar-group-title">Country Group</div>
+        <div class="kfh-scope-switcher">
+          <button id="country-scope-button" class="kfh-scope-button" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="Switch country group">
+            <span id="session-country-badge" class="kfh-session-badge">🇰🇼 KW / PROD</span>
+            <span id="session-country-name" class="kfh-scope-name">KFH Kuwait</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M6 9l6 6 6-6"/>
+            </svg>
+          </button>
+          <div id="country-scope-menu" class="kfh-scope-menu" role="listbox" hidden></div>
         </div>
       </div>
 
@@ -135,7 +154,7 @@
                   <path d="M22 21v-2a4 4 0 0 0-3-3.87m-3-12a4 4 0 0 1 0 7.75"/>
                 </svg>
               </span>
-              <span class="kfh-sidebar-nav-label">Users & RBAC</span>
+              <span class="kfh-sidebar-nav-label">User Management</span>
             </a>
             <a href="#settings" class="kfh-sidebar-nav-item" data-page="settings">
               <span class="kfh-sidebar-nav-icon">
@@ -163,16 +182,18 @@
       <div class="kfh-sidebar-user">
         <div class="kfh-sidebar-user-content">
           <div class="kfh-sidebar-user-avatar">
-            <span>AR</span>
+            <span id="sidebar-user-initials">AR</span>
             <span class="kfh-sidebar-user-status"></span>
           </div>
           <div class="kfh-sidebar-user-info">
-            <div class="kfh-sidebar-user-name">Ahmed Al-Rashid</div>
-            <div class="kfh-sidebar-user-role">Platform Admin</div>
+            <div id="sidebar-user-name" class="kfh-sidebar-user-name">Ahmed Al-Rashid</div>
+            <div id="sidebar-user-role" class="kfh-sidebar-user-role">KW • Platform Admin</div>
           </div>
-          <button class="kfh-sidebar-user-menu" title="Account menu">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M6 9l6 6 6-6"/>
+          <button id="logout-btn" class="kfh-logout-btn" title="Sign out" aria-label="Sign out">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+              <path d="M16 17l5-5-5-5"/>
+              <path d="M21 12H9"/>
             </svg>
           </button>
         </div>
@@ -184,51 +205,6 @@
       <!-- Top Accent Gradient -->
       <div class="kfh-top-accent"></div>
 
-      <!-- Header -->
-      <header id="header-container" class="kfh-header">
-        <div class="kfh-header-content">
-          <div class="kfh-header-left">
-            <h2 id="page-title" class="kfh-header-title">Dashboard</h2>
-            <div class="kfh-header-divider"></div>
-            <div class="kfh-header-search">
-              <svg class="kfh-header-search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-              </svg>
-              <input type="text" placeholder="Search (Ctrl+K)" class="kfh-header-search-input" id="global-search">
-            </div>
-          </div>
-          <div class="kfh-header-right">
-            <!-- System Status -->
-            <div class="kfh-status-indicator stable">
-              <span class="kfh-status-dot">
-                <span class="kfh-status-dot-ping"></span>
-                <span class="kfh-status-dot-core"></span>
-              </span>
-              <span class="kfh-status-label">SYSTEM STABLE</span>
-            </div>
-            <!-- Refresh Button -->
-            <button class="kfh-icon-btn" id="refresh-btn" title="Refresh Data">
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-              </svg>
-            </button>
-            <!-- Notifications -->
-            <button class="kfh-icon-btn" title="Notifications" aria-label="Notifications">
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
-              </svg>
-              <span class="kfh-icon-btn-badge"></span>
-            </button>
-            <!-- Add Application -->
-            <button id="header-add-application" type="button" class="flex items-center gap-2 px-4 py-2 bg-[var(--kfh-primary)] text-white text-sm font-semibold rounded-lg hover:bg-[var(--kfh-primary-dark)] transition-colors shadow-sm" onclick="window.location.hash = '#applications?create=1'">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-              </svg>
-              Add Application
-            </button>
-          </div>
-        </div>
-      </header>
 
       <!-- Content Area - Dynamic Page Content Loads Here -->
       <div id="content-area" class="kfh-content-area">
@@ -265,41 +241,26 @@
   <script src="shared/js/config.js"></script>
   <script src="shared/js/utils.js"></script>
   <script src="shared/js/api-client.js"></script>
+  <script src="shared/js/auth.js"></script>
   <script src="shared/js/router.js"></script>
 
   <!-- Initialize Application -->
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-      // Initialize the router - this will load the correct page based on URL hash
-      Router.init();
-
-      // Setup global search shortcut (Ctrl+K)
-      document.addEventListener('keydown', function(e) {
-        if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-          e.preventDefault();
-          var searchInput = document.getElementById('global-search');
-          if (searchInput) searchInput.focus();
+      var routerStarted = false;
+      function startRouter() {
+        if (routerStarted) {
+          if (Router.getCurrentPage()) {
+            Router.navigate((window.location.hash || '#dashboard').slice(1), false);
+          }
+          return;
         }
-      });
+        routerStarted = true;
+        Router.init();
+      }
 
-      // Refresh button handler
-      var refreshBtn = document.getElementById('refresh-btn');
-      if (refreshBtn) {
-        refreshBtn.addEventListener('click', function() {
-          var icon = this.querySelector('svg');
-          if (icon) {
-            icon.style.animation = 'spin 1s linear';
-            setTimeout(function() {
-              icon.style.animation = '';
-            }, 1000);
-          }
-          // Trigger page refresh if the current page has a refresh method
-          var currentPage = Router.getCurrentPage();
-          var moduleName = currentPage ? currentPage.charAt(0).toUpperCase() + currentPage.slice(1) + 'Page' : null;
-          if (moduleName && window[moduleName] && typeof window[moduleName].refresh === 'function') {
-            window[moduleName].refresh();
-          }
-        });
+      if (KFHAuth.init({ onLogin: startRouter })) {
+        startRouter();
       }
     });
   </script>

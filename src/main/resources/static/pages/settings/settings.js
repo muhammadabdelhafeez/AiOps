@@ -2,8 +2,21 @@
  * KFH AIOps Command Center - Settings Module
  * Configure integrations and system preferences
  */
-const Settings = (function() {
+var Settings = (function() {
   'use strict';
+
+  function emptySettings() {
+    return {
+      azureOpenAI: {
+        embeddings: { roundRobin: false, endpoint: '', apiKey: '', deploymentA: '', deploymentB: '', circuitBreakerA: 'unknown', circuitBreakerB: 'unknown', lastTest: null },
+        gpt: { roundRobin: false, endpoint: '', apiKey: '', deploymentA: '', deploymentB: '', circuitBreakerA: 'unknown', circuitBreakerB: 'unknown', lastTest: null }
+      },
+      neo4j: { boltUrl: '', user: '', password: '', lastTest: null },
+      postgresql: { jdbcUrl: '', user: '', password: '', lastTest: null },
+      sharepoint: { tenant: '', site: '', clientId: '', clientSecret: '', lastTest: null },
+      teams: { mappings: [] }
+    };
+  }
 
   // State
   const state = {
@@ -13,56 +26,7 @@ const Settings = (function() {
     revealedSecrets: new Set(),
     selectedTeamMapping: null,
     modalOpen: false,
-    settings: {
-      azureOpenAI: {
-        embeddings: {
-          roundRobin: true,
-          endpoint: 'https://kfh-aiops.openai.azure.com/',
-          apiKey: 'sk-abc123def456ghi789jkl012mno345pqr',
-          deploymentA: 'text-embedding-ada-002-a',
-          deploymentB: 'text-embedding-ada-002-b',
-          circuitBreakerA: 'healthy',
-          circuitBreakerB: 'healthy',
-          lastTest: null
-        },
-        gpt: {
-          roundRobin: true,
-          endpoint: 'https://kfh-aiops.openai.azure.com/',
-          apiKey: 'sk-xyz789abc456def123ghi789jkl012mno',
-          deploymentA: 'gpt-52-pro-a',
-          deploymentB: 'gpt-52-pro-b',
-          circuitBreakerA: 'healthy',
-          circuitBreakerB: 'tripped',
-          lastTest: null
-        }
-      },
-      neo4j: {
-        boltUrl: 'bolt://neo4j.kfh-internal.com:7687',
-        user: 'neo4j_admin',
-        password: 'N30j_S3cur3_P@ss!',
-        lastTest: null
-      },
-      postgresql: {
-        jdbcUrl: 'jdbc:postgresql://pg.kfh-internal.com:5432/aiops_db',
-        user: 'pg_aiops_user',
-        password: 'P0stgr3s_S3cur3!',
-        lastTest: null
-      },
-      sharepoint: {
-        tenant: 'kfh.onmicrosoft.com',
-        site: 'AIOps-Documentation',
-        clientId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-        clientSecret: 'SP_Cl13nt_S3cr3t_V@lu3!',
-        lastTest: null
-      },
-      teams: {
-        mappings: [
-          { id: 1, domain: 'Infrastructure', team: 'Infra-Ops', channelName: 'alerts-critical', webhookUrl: 'https://kfh.webhook.office.com/webhookb2/abc123', enabled: true },
-          { id: 2, domain: 'Security', team: 'SecOps', channelName: 'security-alerts', webhookUrl: 'https://kfh.webhook.office.com/webhookb2/def456', enabled: true },
-          { id: 3, domain: 'Application', team: 'AppDev', channelName: 'app-incidents', webhookUrl: 'https://kfh.webhook.office.com/webhookb2/ghi789', enabled: false }
-        ]
-      }
-    }
+    settings: emptySettings()
   };
 
   // Utilities
@@ -110,11 +74,16 @@ const Settings = (function() {
   }
 
   // Run test
-  function runTest(path) {
-    const latency = Math.floor(Math.random() * 200) + 20;
-    const success = Math.random() > 0.2;
-    handleSettingChange(`${path}.lastTest`, { status: success ? 'Pass' : 'Fail', latency });
-    toast(success ? `Test Passed (${latency}ms)` : 'Test Failed', success ? 'success' : 'error');
+  async function runTest(path) {
+    try {
+      const result = await APIClient.settings.test(path, state.settings);
+      const status = result?.status || (result?.pass === false ? 'Fail' : 'Pass');
+      handleSettingChange(`${path}.lastTest`, { status, latency: result?.latencyMs || result?.latency || null });
+      toast(status === 'Pass' ? 'Test Passed' : 'Test Failed', status === 'Pass' ? 'success' : 'error');
+    } catch (error) {
+      handleSettingChange(`${path}.lastTest`, { status: 'Fail', latency: null });
+      toast('Test Failed', 'error');
+    }
   }
 
   // Toggle circuit breaker
@@ -123,17 +92,35 @@ const Settings = (function() {
   }
 
   // Save settings
-  function saveSettings() {
-    state.hasUnsavedChanges = false;
-    render();
-    toast('Settings saved successfully', 'success');
+  async function saveSettings() {
+    try {
+      const saved = await APIClient.settings.update(state.settings);
+      state.settings = Object.assign(emptySettings(), saved || state.settings);
+      state.hasUnsavedChanges = false;
+      render();
+      toast('Settings saved successfully', 'success');
+    } catch (error) {
+      toast('Unable to save settings', 'error');
+    }
   }
 
   // Reset settings
-  function resetSettings() {
+  async function resetSettings() {
     state.hasUnsavedChanges = false;
+    await loadSettings();
     render();
-    toast('Settings reset to defaults', 'info');
+    toast('Settings reloaded', 'info');
+  }
+
+  async function loadSettings() {
+    state.settings = emptySettings();
+    if (!window.APIClient || !APIClient.settings) return;
+    try {
+      const loaded = await APIClient.settings.get();
+      state.settings = Object.assign(emptySettings(), loaded || {});
+    } catch (error) {
+      console.warn('[Settings] Unable to load production settings; rendering blank configuration.', error);
+    }
   }
 
   // Toast
@@ -689,7 +676,8 @@ const Settings = (function() {
     render();
   }
 
-  function init() {
+  async function init() {
+    await loadSettings();
     render();
     console.log('Settings module initialized');
   }

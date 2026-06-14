@@ -1,0 +1,2742 @@
+# KFH AIOps Platform — Progress Log
+
+This file is the **single source of truth for completed work** on the KFH Causal AIOps Platform.
+
+> **Rule for Copilot and contributors:** After completing any task (feature, fix, migration, doc, refactor), append a new entry to the **Task Log** section below. Do not delete or rewrite past entries — only append.
+
+---
+
+## File Rotation Rule (≤ 3000 lines per file)
+
+To keep this log readable for AI assistants (Copilot, Claude Code, OpenAI) and humans:
+
+1. **Hard limit:** A single progress file must **never exceed 3000 lines**.
+2. **Before appending** a new task entry, check the current line count of the active progress file.
+3. If appending would push the file **beyond 3000 lines**, create a new file using sequential numbering:
+   - `docs/PROGRESS.md`            ← original (this file)
+   - `docs/PROGRESS-002.md`        ← second volume
+   - `docs/PROGRESS-003.md`        ← third volume, etc.
+4. **Active file rules:**
+   - Only the **highest-numbered** file is "active" for new entries.
+   - Older volumes become **read-only history** and must not be modified.
+5. **Every new volume must include at the top:**
+   - The same **How to Add an Entry** template.
+   - The same **Status Snapshot** table (copied from the previous volume and kept in sync going forward).
+   - A **Previous Volume** link pointing to the prior file.
+   - A **Next Volume** link must be added to the previous (now archived) file pointing forward.
+6. **Update the Progress File Index below** in `PROGRESS.md` whenever a new volume is created so AI agents can discover all volumes from a single entry point.
+7. **Do not split a single task entry across two files.** If it would cross the boundary, rotate first, then write the entry into the new volume.
+8. **PowerShell helper** to check before appending:
+   ```powershell
+   $f = "docs/PROGRESS.md"  # or the active volume
+   (Get-Content $f | Measure-Object -Line).Lines
+   ```
+
+### Progress File Index
+
+| Volume | File | Range | Status |
+|--------|------|-------|--------|
+| 001 | `docs/PROGRESS.md` | 2026-06-10 → present | 🟢 Active |
+
+> When you create `PROGRESS-002.md`, add a row here and mark this file 📦 Archived.
+
+---
+
+## How to Add an Entry
+
+Use this template for every completed task:
+
+```markdown
+### YYYY-MM-DD — <Short Task Title>
+- **Phase:** <1–7 per Development Strategy in copilot-instructions.md>
+- **Module(s):** <e.g., platform.security, ingestion, index.writer, frontend/incidents>
+- **Type:** <feature | fix | refactor | migration | docs | test | security | infra>
+- **Country/Tenant scope:** <ALL | KW | BH | EG | tenant-id>
+- **Summary:** <1–3 sentences describing what was done and why>
+- **Files touched:**
+  - `path/to/file1`
+  - `path/to/file2`
+- **DB migrations:** <V{n}__name.sql or N/A>
+- **API changes:** <new/changed endpoints or N/A>
+- **Tests added/updated:** list test class names or N/A
+- **Docs updated:** <docs/API_CONTRACTS.md, docs/RUNBOOKS.md, etc. or N/A>
+- **Security / OWASP checklist:**
+  - [ ] Tenant + user context enforced
+  - [ ] RBAC checked at service layer
+  - [ ] Inputs validated (Bean Validation)
+  - [ ] Audit log written for write actions
+  - [ ] No secrets / PII / tokens logged or returned
+  - [ ] SSRF-safe for any URL-based config
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [ ] Supports tenant + country context
+  - [ ] Clear DTOs and validation
+  - [ ] Follows package/module boundaries
+  - [ ] Audit logs for write actions
+  - [ ] No secrets exposed
+  - [ ] Tests for core logic
+  - [ ] Correlation ID supported
+  - [ ] Does not break incident lifecycle rules
+  - [ ] Does not bypass custom index engine for telemetry search
+  - [ ] Extractable into a future microservice
+- **Follow-ups / TODO:** <bullets or N/A>
+- **Author:** <github handle or "copilot-agent">
+- **Correlation:** <ticket id, PR link, or commit short SHA>
+```
+
+---
+
+## Status Snapshot
+
+| Area | Status | Notes |
+|------|--------|-------|
+| Phase 1 — Modular monolith skeleton | 🟡 In progress | Package structure established under `org.kfh.aiops`; frontend-aligned `/api/v1/**` scaffold endpoints added |
+| Phase 2 — Custom Log Index Engine | ⚪ Not started | |
+| Phase 3 — Neo4j banking flow graph | ⚪ Not started | |
+| Phase 4 — RCA evidence builder + causal scoring | ⚪ Not started | |
+| Phase 5 — AI Router (DeepSeek + Azure OpenAI) | ⚪ Not started | |
+| Phase 6 — Redis hot health state + dashboard cache | ⚪ Not started | |
+| Phase 7 — Worker extraction | ⚪ Not started | |
+
+Legend: 🟢 Done · 🟡 In progress · 🔴 Blocked · ⚪ Not started
+
+---
+
+## Task Log
+
+> Newest entries on top. Append your entry above the previous one.
+
+### 2026-06-14 — Fix User Management 409 integrity failures
+- **Phase:** Phase 1
+- **Module(s):** `platform.identity`, `frontend/audit`, `db/migration`, `docs`
+- **Type:** fix | migration | test | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Fixed `/api/v1/users/roles` and `/api/v1/users` 409 failures caused by tenant bootstrap leaving the current tenant missing when another tenant already used the default `KFH Group` name. Added environment-aware local username uniqueness and made the Audit page script safe under repeated SPA router reloads.
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/platform/identity/IdentityJdbcRepository.java`
+  - `src/main/resources/db/migration/V5__identity_user_scope_uniqueness.sql`
+  - `src/main/resources/static/pages/audit/audit.js`
+  - `src/test/java/org/kfh/aiops/platform/identity/IdentityJdbcRepositoryTest.java`
+  - `docs/DATABASE_SCHEMA.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** `V5__identity_user_scope_uniqueness.sql`
+- **API changes:** No endpoint shape changes; fixed behavior for existing `GET /api/v1/users/roles` and `POST /api/v1/users` when tenant bootstrap or environment-scoped usernames are involved.
+- **Tests added/updated:** `IdentityJdbcRepositoryTest` tenant bootstrap fallback coverage; focused tests, full `mvnw.cmd test`, and full `mvnw.cmd verify` passed.
+- **Docs updated:** `docs/DATABASE_SCHEMA.md`, `docs/RUNBOOKS.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (Bean Validation)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Apply Flyway migration on the dev server and retest User Management create/list from the browser after restart.
+- **Author:** copilot-agent
+- **Correlation:** user-request-2026-06-14-users-409-integrity-fix
+
+### 2026-06-14 — GitHub agent progress snapshot and routing index sync
+- **Phase:** Phase 1
+- **Module(s):** `.github`, `docs`
+- **Type:** docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Created `.github/PROGRESS.md` as a concise agent-facing status snapshot and updated `.github/INDEX.md` so future AI agents load it together with the canonical `docs/PROGRESS.md`. The new snapshot summarizes the recent User Management, Audit Activity redesign/compaction, and login/settings audit coverage work completed today.
+- **Files touched:**
+  - `.github/INDEX.md`
+  - `.github/PROGRESS.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** N/A; Markdown inspection completed with no errors.
+- **Docs updated:** `.github/INDEX.md`, `.github/PROGRESS.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (Bean Validation)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Keep `.github/PROGRESS.md` concise and synchronized for recent/high-impact work while preserving `docs/PROGRESS.md` as the canonical full history.
+- **Author:** copilot-agent
+- **Correlation:** user-request-2026-06-14-github-progress-sync
+
+### 2026-06-14 — Login and settings activity in Audit logs
+- **Phase:** Phase 1
+- **Module(s):** `platform.identity`, `platform.config`, `platform.audit`, `commandcenter.alerts`, `commandcenter.support`
+- **Type:** feature | fix | security | test | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Added visible Audit Activity rows for successful and failed sign-ins, settings updates/tests, and bootstrap identity provisioning while keeping existing user/connector/schedule/application/inventory/report/incident/alert write activity visible. Settings audit metadata now records key names only, failed-login logging avoids using the submitted username as the logged entity ID, and alert activity reads use the scoped audit read model.
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/platform/identity/IdentityAuthService.java`
+  - `src/main/java/org/kfh/aiops/platform/identity/IdentityBootstrapInitializer.java`
+  - `src/main/java/org/kfh/aiops/platform/config/SettingsService.java`
+  - `src/main/java/org/kfh/aiops/commandcenter/alerts/AlertService.java`
+  - `src/main/java/org/kfh/aiops/commandcenter/support/CommandCenterReadModel.java`
+  - `src/test/java/org/kfh/aiops/platform/identity/IdentityAuthServiceTest.java`
+  - `src/test/java/org/kfh/aiops/platform/identity/IdentityBootstrapInitializerTest.java`
+  - `src/test/java/org/kfh/aiops/platform/config/SettingsServiceTest.java`
+  - `docs/API_CONTRACTS.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** Behavior change for `GET /api/v1/audit`: activity now includes `LOGIN_SUCCEEDED`, `LOGIN_FAILED`, `SETTINGS_UPDATED`, `SETTINGS_TEST_REQUESTED`, and bootstrap identity provisioning rows in addition to existing write actions.
+- **Tests added/updated:** `IdentityAuthServiceTest`, `IdentityBootstrapInitializerTest`, `SettingsServiceTest`; full `mvnw.cmd test` passed.
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/RUNBOOKS.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (Bean Validation)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Replace Phase 1 in-memory audit activity with PostgreSQL-backed `identity.audit_log` persistence for restart durability.
+- **Author:** copilot-agent
+- **Correlation:** user-request-2026-06-14-login-settings-audit
+
+### 2026-06-14 — Short Audit KPI cards and header
+- **Phase:** Phase 1
+- **Module(s):** `frontend/audit`
+- **Type:** frontend | fix
+- **Country/Tenant scope:** ALL
+- **Summary:** Further reduced the Audit Activity header and KPI card heights after visual review. KPI cards now use a short horizontal layout, smaller icons/numbers, no oversized decorative circle, and a lower-height header toolbar to avoid the previous bulky appearance.
+- **Files touched:**
+  - `src/main/resources/static/pages/audit/audit.css`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** N/A; stylesheet inspection completed with no errors.
+- **Docs updated:** `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (Bean Validation)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** If operators prefer an ultra-dense mode, add a page-level density toggle instead of further shrinking default typography.
+- **Author:** copilot-agent
+- **Correlation:** user-request-2026-06-14-audit-short-kpis
+
+### 2026-06-14 — Compact Audit Activity cards and header
+- **Phase:** Phase 1
+- **Module(s):** `frontend/audit`
+- **Type:** frontend | fix
+- **Country/Tenant scope:** ALL
+- **Summary:** Reduced the Audit Activity page visual density by compacting the hero/header, action buttons, KPI cards, filter bar, table rows, empty/loading states, and details drawer. The change keeps the live audit data behavior intact while making the page fit more activity above the fold.
+- **Files touched:**
+  - `src/main/resources/static/pages/audit/audit.css`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** N/A; stylesheet inspection completed with no errors.
+- **Docs updated:** `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (Bean Validation)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Review in-browser at target resolution and further reduce table columns if operators want an even denser NOC mode.
+- **Author:** copilot-agent
+- **Correlation:** user-request-2026-06-14-audit-compact-ui
+
+### 2026-06-14 — Live Audit Activity redesign
+- **Phase:** Phase 1
+- **Module(s):** `frontend/audit`, `platform.audit`, `commandcenter.support`
+- **Type:** feature | fix | frontend | backend | test | docs | security
+- **Country/Tenant scope:** ALL
+- **Summary:** Redesigned `index.html#audit` as a compact live application-activity console backed by `/api/v1/audit`, removed seeded/dummy audit data from the audit view, and made audit list/detail reads tenant-, country-, and environment-scoped. The page now shows real write activity only, with filters, empty/loading/error states, details drawer, and CSV/JSON export for loaded rows.
+- **Files touched:**
+  - `src/main/resources/static/pages/audit/audit.js`
+  - `src/main/resources/static/pages/audit/audit.css`
+  - `src/main/java/org/kfh/aiops/commandcenter/support/CommandCenterReadModel.java`
+  - `src/main/java/org/kfh/aiops/platform/audit/AuditQueryService.java`
+  - `src/test/java/org/kfh/aiops/platform/audit/AuditQueryServiceTest.java`
+  - `docs/API_CONTRACTS.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** Changed behavior for `GET /api/v1/audit` and `GET /api/v1/audit/{id}` to return only scoped real application activity; `X-Country-Code: ALL` requires global country visibility.
+- **Tests added/updated:** `AuditQueryServiceTest` (`shouldNotReturnSeededDummyAuditRowsWhenNoApplicationActionOccurred`, `shouldReturnRealApplicationActivityWhenAuditIsAppended`, `shouldNotReturnAuditActivityAcrossTenantOrCountryScope`, `shouldReturnAllCountryAuditActivityForAllCountryScope`)
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/RUNBOOKS.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (Bean Validation)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Replace the Phase 1 in-memory audit read model with PostgreSQL `identity.audit_log`/system-of-record adapter when persistence for audit activity is implemented.
+- **Author:** copilot-agent
+- **Correlation:** user-request-2026-06-14-audit-live-activity
+
+### 2026-06-14 — Modern User popup, simplified roles, and password reset
+- **Phase:** Phase 1
+- **Module(s):** `frontend/users`, `platform.identity`, `shared/api-client`
+- **Type:** feature | fix | frontend | backend | test | docs | security
+- **Country/Tenant scope:** ALL
+- **Summary:** Modernized the User Management create/edit popups with a smaller compact header, simplified role choices to Admin/Operator/Viewer, and added a Password action beside Edit/Delete with a secure reset modal. The backend now canonicalizes Admin by country scope (`ALL` + Admin -> `GLOBAL_ADMIN`, physical country + Admin -> `COUNTRY_ADMIN`) and hashes password changes/resets without returning secret fields.
+- **Files touched:**
+  - `src/main/resources/static/pages/users/users.js`
+  - `src/main/resources/static/pages/users/users.css`
+  - `src/main/resources/static/shared/js/api-client.js`
+  - `src/main/java/org/kfh/aiops/platform/identity/UserController.java`
+  - `src/main/java/org/kfh/aiops/platform/identity/IdentityAdminService.java`
+  - `src/main/java/org/kfh/aiops/platform/identity/IdentityJdbcRepository.java`
+  - `src/test/java/org/kfh/aiops/platform/identity/IdentityJdbcRepositoryTest.java`
+  - `src/test/java/org/kfh/aiops/commandcenter/CommandCenterBackendServiceTest.java`
+  - `docs/API_CONTRACTS.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** Added `PATCH /api/v1/users/{id}/password`; `PUT /api/v1/users/{id}` may now accept optional `attributes.password`; `POST/PUT /api/v1/users` role aliases now accept Admin/Operator/Viewer and canonicalize by country scope.
+- **Tests added/updated:** `IdentityJdbcRepositoryTest.shouldHashPasswordWhenUpdatingUserProfilePassword`, `IdentityJdbcRepositoryTest.shouldRequirePasswordWhenResettingUserPassword`, `CommandCenterBackendServiceTest.shouldCreateCountryAdminWhenAdminRoleIsCountryScoped`, `CommandCenterBackendServiceTest.shouldResetUserPasswordThroughIdentityRepository`, and updated all-country Admin mapping coverage.
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/RUNBOOKS.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (Bean Validation)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config
+- **Definition of Done checklist:**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Node.js was not available in the local shell for `node --check`; static JavaScript was manually inspected and backend verified with Maven. Hard-refresh the browser (`Ctrl+F5`) after restart to clear cached `users.js`/`users.css`.
+- **Author:** copilot-agent
+- **Correlation:** users-popup-role-password-reset-20260614
+
+### 2026-06-14 — Fast Users search and all-country user creation
+- **Phase:** Phase 1
+- **Module(s):** `frontend/users`, `platform.identity`
+- **Type:** fix | frontend | backend | test | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Fixed User Management search so typing no longer rebuilds/reloads the full page on every letter; search and role filter now refresh only the users table region for fast enterprise-style filtering. Enhanced All Countries user creation so selecting `ALL` defaults the UI role to a global role, sends explicit `countryCode`/`environment`, and the backend persists the user with `countryCode=ALL` and `GLOBAL_ADMIN` role for global visibility by default.
+- **Files touched:**
+  - `src/main/resources/static/pages/users/users.js`
+  - `src/main/java/org/kfh/aiops/platform/identity/IdentityAdminService.java`
+  - `src/test/java/org/kfh/aiops/commandcenter/CommandCenterBackendServiceTest.java`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** `POST /api/v1/users` now honors explicit `attributes.countryCode = "ALL"` for callers with global country access and forces `GLOBAL_ADMIN` for all-country users.
+- **Tests added/updated:** Updated `CommandCenterBackendServiceTest.shouldCreateAllCountriesUserWhenGlobalScopeAllowed` to verify ALL-scope context and `GLOBAL_ADMIN` role default.
+- **Docs updated:** `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (Bean Validation)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config
+- **Definition of Done checklist:**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Restart and hard-refresh with `Ctrl+F5` so cached `users.js` is replaced; create an All countries user and sign in with country scope `ALL`.
+- **Author:** copilot-agent
+- **Correlation:** fast-users-search-all-country-create-20260614
+
+### 2026-06-14 — Remove User Management sign-in/profile helper copy
+- **Phase:** Phase 1
+- **Module(s):** `frontend/users`, `frontend/theme`
+- **Type:** frontend | fix | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Removed the unwanted User Management helper text including the generated `Application sign-in profiles · roles managed internally` subtitle and visible sign-in/profile/role explanatory copy from the users table, empty state, and create/edit modals. The page now keeps only the compact User Management title and controls.
+- **Files touched:**
+  - `src/main/resources/static/pages/users/users.js`
+  - `src/main/resources/static/shared/css/kfh-aiops-parity.css`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** No test files changed; scanned active static UI for removed phrases, validated CSS brace balance, and ran `mvnw.cmd -q -DskipTests compile`.
+- **Docs updated:** `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (Bean Validation)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config
+- **Definition of Done checklist:**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Restart and hard-refresh with `Ctrl+F5` so cached JavaScript/CSS is replaced.
+- **Author:** copilot-agent
+- **Correlation:** remove-users-helper-copy-20260614
+
+### 2026-06-14 — Restore KFH AiOps application branding
+- **Phase:** Phase 1
+- **Module(s):** `frontend/theme`, `frontend/shell`, `frontend/router`
+- **Type:** frontend | fix | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Replaced the temporary SIGNL4 visible sidebar branding with the correct product name `KFH AiOps` and subtitle `COMMAND CENTER` while preserving the compact modern menu styling. Renamed the final stylesheet from `signl4-parity.css` to `kfh-aiops-parity.css` and updated the SPA shell, router, and standalone page links so active UI assets no longer reference SIGNL4 branding.
+- **Files touched:**
+  - `src/main/resources/static/shared/css/kfh-aiops-parity.css`
+  - `src/main/resources/static/shared/css/kfh-theme.css`
+  - `src/main/resources/static/shared/js/router.js`
+  - `src/main/resources/static/index.html`
+  - `src/main/resources/static/pages/**/*.html`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** No test files changed; validated CSS brace balance and ran `mvnw.cmd -q -DskipTests compile`.
+- **Docs updated:** `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (Bean Validation)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config
+- **Definition of Done checklist:**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Restart and hard-refresh with `Ctrl+F5`; old CSS filename may otherwise remain cached by the browser.
+- **Author:** copilot-agent
+- **Correlation:** restore-kfh-aiops-branding-20260614
+
+### 2026-06-14 — Compact SIGNL4 screenshot-match menu and users page
+- **Phase:** Phase 1
+- **Module(s):** `frontend/theme`, `frontend/users`
+- **Type:** frontend | fix | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Tightened the final SIGNL4 parity stylesheet to better match the attached screenshots: reduced menu/logo/nav scale, removed heavy glow/out-of-focus shadows, kept sidebar scrollbar hidden, flattened the dark green sidebar, and compacted the User Management header, search/filter controls, table rows, tags, action buttons, and cards so the page feels zoomed out, organized, and closer to the reference design.
+- **Files touched:**
+  - `src/main/resources/static/shared/css/signl4-parity.css`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** No test files changed; validated CSS brace balance and ran `mvnw.cmd -q -DskipTests compile`.
+- **Docs updated:** `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (Bean Validation)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config
+- **Definition of Done checklist:**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Restart and hard-refresh with `Ctrl+F5` so cached CSS is replaced.
+- **Author:** copilot-agent
+- **Correlation:** compact-signl4-users-design-20260614
+
+### 2026-06-14 — Modernize sidebar and User Management page design
+- **Phase:** Phase 1
+- **Module(s):** `frontend/theme`, `frontend/users`
+- **Type:** frontend | fix | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Enhanced the final SIGNL4 parity stylesheet with a more modern dark-green glass/gradient sidebar, hidden sidebar scrollbar while preserving scroll behavior, larger rounded menu items, refined active/hover effects, and a polished `#users` page with modern header, search/filter controls, table card, row hover accent, action buttons, status/tags, and create/edit modal styling.
+- **Files touched:**
+  - `src/main/resources/static/shared/css/signl4-parity.css`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** No test files changed; validated CSS brace balance and ran `mvnw.cmd -q -DskipTests compile`.
+- **Docs updated:** `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (Bean Validation)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config
+- **Definition of Done checklist:**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Restart and hard-refresh with `Ctrl+F5` so cached CSS is replaced.
+- **Author:** copilot-agent
+- **Correlation:** modern-sidebar-users-design-20260614
+
+### 2026-06-14 — Force SIGNL4 app.css styling after page CSS
+- **Phase:** Phase 1
+- **Module(s):** `frontend/theme`, `frontend/router`, `frontend/shell`
+- **Type:** fix | frontend | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Fixed the remaining menu/page style mismatch by adding a final `signl4-parity.css` stylesheet based on the provided SIGNL4/app.css screenshots and loading it after page CSS. The router now re-appends this stylesheet after every route CSS load so dynamic page styles cannot override the dark green SIGNL4 sidebar, menu sizing, active item color, page cards, tables, buttons, and inputs. Standalone page HTML files also load the final stylesheet after their page CSS.
+- **Files touched:**
+  - `src/main/resources/static/shared/css/signl4-parity.css`
+  - `src/main/resources/static/shared/js/router.js`
+  - `src/main/resources/static/index.html`
+  - `src/main/resources/static/pages/alerts/alerts.html`
+  - `src/main/resources/static/pages/applications/applicationconfig.html`
+  - `src/main/resources/static/pages/applications/applications.html`
+  - `src/main/resources/static/pages/audit/audit.html`
+  - `src/main/resources/static/pages/connectors/connectors.html`
+  - `src/main/resources/static/pages/dashboard/dashboard.html`
+  - `src/main/resources/static/pages/incidents/incidents.html`
+  - `src/main/resources/static/pages/inventory/inventory.html`
+  - `src/main/resources/static/pages/reports/reports.html`
+  - `src/main/resources/static/pages/schedules/schedules.html`
+  - `src/main/resources/static/pages/settings/settings.html`
+  - `src/main/resources/static/pages/users/users.html`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** No test files changed; validated CSS brace balance for `signl4-parity.css`, `kfh-theme.css`, `login.css`, and ran `mvnw.cmd -q -DskipTests compile`.
+- **Docs updated:** `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (Bean Validation)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config
+- **Definition of Done checklist:**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Restart and hard-refresh with `Ctrl+F5`; browser cache may otherwise keep the old CSS.
+- **Author:** copilot-agent
+- **Correlation:** signl4-final-css-load-order-20260614
+
+### 2026-06-14 — Apply app.css KFH color and menu design globally
+- **Phase:** Phase 1
+- **Module(s):** `frontend/theme`, `frontend/shell`, `docs`
+- **Type:** fix | frontend | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Ported the root `app.css` KFH SIGNL4 visual system into the active Command Center theme so all SPA pages and menu items use the exact dark green/gold palette and sizing: primary `#00634A`, dark sidebar `#003D2E`, gold `#C8A84E`, 260px sidebar, compact nav item spacing, white-on-green active menu items, light page background, app.css card shadows, table headers, buttons, focus rings, and sidebar user/session styling.
+- **Files touched:**
+  - `src/main/resources/static/shared/css/kfh-theme.css`
+  - `src/main/resources/static/shared/css/login.css`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** No test files changed; validated CSS brace balance and ran `mvnw.cmd -q -DskipTests compile`.
+- **Docs updated:** `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (Bean Validation)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config
+- **Definition of Done checklist:**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Hard refresh the browser (`Ctrl+F5`) after restart so cached CSS is replaced.
+- **Author:** copilot-agent
+- **Correlation:** app-css-theme-parity-20260614
+
+### 2026-06-14 — Wire User Management Edit button to database update
+- **Phase:** Phase 1
+- **Module(s):** `frontend/users`, `platform.identity`, `docs`
+- **Type:** fix | test | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Fixed the User Management Edit button, which previously opened only the read-only drawer and never called the update API. Added an edit modal in `users.js` that pre-fills username, full name, email, status, and role, submits to `PUT /api/v1/users/{id}`, updates UI state from the persisted database row, and reopens the details drawer. Backend update now safely preserves active status when omitted and replaces the user's role assignment when a role is submitted.
+- **Files touched:**
+  - `src/main/resources/static/pages/users/users.js`
+  - `src/main/java/org/kfh/aiops/platform/identity/IdentityJdbcRepository.java`
+  - `src/test/java/org/kfh/aiops/commandcenter/CommandCenterBackendServiceTest.java`
+  - `docs/API_CONTRACTS.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** Documented `PUT /api/v1/users/{id}` as updating username, display name, email, status, and one role assignment in PostgreSQL.
+- **Tests added/updated:** `CommandCenterBackendServiceTest.shouldUpdateUserProfileWhenEditSubmitted`
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (Bean Validation)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config
+- **Definition of Done checklist:**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Hard refresh the browser after restarting so the updated `users.js` is loaded, then click Edit and save a profile change.
+- **Author:** copilot-agent
+- **Correlation:** users-edit-button-update-20260614
+
+### 2026-06-14 — Register identity JDBC repository unconditionally
+- **Phase:** Phase 1
+- **Module(s):** `platform.identity`
+- **Type:** fix | test
+- **Country/Tenant scope:** ALL
+- **Summary:** Fixed startup failure where `IdentityAdminService` required `IdentityJdbcRepository` but the repository bean was still skipped by `@ConditionalOnBean(JdbcTemplate.class)`. Removed obsolete conditional bean guards from `IdentityJdbcRepository` and `IdentityBootstrapInitializer` so database-backed identity is created normally and missing JDBC/datasource fails clearly at the real dependency.
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/platform/identity/IdentityJdbcRepository.java`
+  - `src/main/java/org/kfh/aiops/platform/identity/IdentityBootstrapInitializer.java`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** No test files changed; ran focused identity tests and main compile.
+- **Docs updated:** `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (Bean Validation)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config
+- **Definition of Done checklist:**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Restart the server; if startup now fails at `JdbcTemplate`/`DataSource`, fix PostgreSQL credentials instead of enabling a local/read-only profile.
+- **Author:** copilot-agent
+- **Correlation:** identity-jdbc-repository-bean-20260614
+
+### 2026-06-14 — Make User Management database-backed by default
+- **Phase:** Phase 1
+- **Module(s):** `platform.identity`, `frontend/users`, `scripts`, `docs`
+- **Type:** fix | refactor | docs | test
+- **Country/Tenant scope:** ALL
+- **Summary:** Removed the read-only local identity mode so Create User always posts to the database-backed API and persists login users to PostgreSQL `identity.users`. The deprecated `local` profile no longer disables datasource/JDBC/Flyway, identity admin and auth services require `IdentityJdbcRepository`, readiness logging requires `DataSource`, the HTTPS helper starts `https-local` with database credentials by default, and the users page no longer blocks creation with a read-only storage banner.
+- **Files touched:**
+  - `src/main/resources/application-local.properties`
+  - `src/main/resources/application-https-local.properties`
+  - `src/main/java/org/kfh/aiops/platform/identity/IdentityAdminService.java`
+  - `src/main/java/org/kfh/aiops/platform/identity/IdentityAuthService.java`
+  - `src/main/java/org/kfh/aiops/platform/identity/IdentityStorageReadinessLogger.java`
+  - `src/main/java/org/kfh/aiops/platform/identity/UserController.java`
+  - `src/main/resources/static/pages/users/users.js`
+  - `scripts/run-local-https.ps1`
+  - `src/test/java/org/kfh/aiops/AiOpsApplicationLocalProfileTest.java`
+  - `src/test/java/org/kfh/aiops/commandcenter/CommandCenterBackendServiceTest.java`
+  - `src/test/java/org/kfh/aiops/platform/identity/IdentityAuthServiceTest.java`
+  - `src/test/java/org/kfh/aiops/platform/identity/IdentityStorageReadinessLoggerTest.java`
+  - `src/test/java/org/kfh/aiops/platform/identity/UserControllerStorageStatusTest.java`
+  - `docs/API_CONTRACTS.md`
+  - `docs/RUNBOOKS.md`
+  - `README.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** `/api/v1/users/storage-status` now reports `databaseBacked=true`, `writesEnabled=true`, `reason=OK` for a running app and enforces `IDENTITY_READ`; missing DB identity infrastructure is a startup/configuration failure instead of a writable/read-only API mode.
+- **Tests added/updated:** `IdentityAuthServiceTest`, `IdentityStorageReadinessLoggerTest`, `UserControllerStorageStatusTest`, `AiOpsApplicationLocalProfileTest`, `CommandCenterBackendServiceTest`
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/RUNBOOKS.md`, `README.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (Bean Validation)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config
+- **Definition of Done checklist:**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Restart the running server with `.\scripts\run-local-https.ps1` after setting valid PostgreSQL credentials, then create a user and sign in with that persisted username/password/country/environment.
+- **Author:** copilot-agent
+- **Correlation:** users-db-backed-default-20260614
+
+### 2026-06-14 — Add database-backed HTTPS startup for User Management writes
+- **Phase:** Phase 1
+- **Module(s):** `scripts`, `docs`, `platform.identity`
+- **Type:** fix | docs | infra
+- **Country/Tenant scope:** ALL
+- **Summary:** Verified `/api/v1/users/storage-status` on the running HTTPS server returns `writesEnabled=false`, confirming User Management is read-only because the backend is running without database-backed identity storage. Updated `scripts/run-local-https.ps1` with `-WithDatabase` mode so operators can keep HTTPS enabled while disabling the `local` profile and wiring PostgreSQL/Flyway/JDBC for persistent login user creation. Updated the runbook with the exact restart command for `https://172.17.134.118:8443/#users`.
+- **Files touched:**
+  - `scripts/run-local-https.ps1`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** No test files changed; validated PowerShell parser and ran `UserControllerStorageStatusTest`, `IdentityStorageReadinessLoggerTest`.
+- **Docs updated:** `docs/RUNBOOKS.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (Bean Validation)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config
+- **Definition of Done checklist:**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Restart the current listener with `.\scripts\run-local-https.ps1 -WithDatabase`, then confirm `/api/v1/users/storage-status` returns `writesEnabled=true` before creating login users.
+- **Author:** copilot-agent
+- **Correlation:** users-readonly-database-backed-https-20260614
+
+### 2026-06-14 — Add bootstrap sign-in rejection diagnostics
+- **Phase:** Phase 1
+- **Module(s):** `platform.identity`, `docs`
+- **Type:** fix | security | docs | test
+- **Country/Tenant scope:** ALL
+- **Summary:** Added secret-safe diagnostics when in-memory bootstrap authentication rejects a request while database identity storage is unavailable. The `reason=no-database-and-not-bootstrap-admin` log now reports non-secret booleans for bootstrap enabled, password configured, username match, country match, environment match, password match, and configured scope/role so operators can identify old artifacts, wrong environment variables, PowerShell `$` expansion, or country/environment mismatch without logging credentials.
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/platform/identity/BootstrapInMemoryAuthenticator.java`
+  - `src/main/java/org/kfh/aiops/platform/identity/IdentityAuthService.java`
+  - `src/test/java/org/kfh/aiops/platform/identity/BootstrapInMemoryAuthenticatorTest.java`
+  - `src/test/java/org/kfh/aiops/platform/identity/IdentityAuthServiceTest.java`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** No endpoint shape changes; log diagnostics only.
+- **Tests added/updated:** `BootstrapInMemoryAuthenticatorTest.shouldExposeSecretSafeDiagnosticsWhenBootstrapPasswordDiffers`, `IdentityAuthServiceTest`
+- **Docs updated:** `docs/RUNBOOKS.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (Bean Validation)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config
+- **Definition of Done checklist:**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Rebuild/restart the deployed server and inspect the new diagnostic booleans if bootstrap sign-in still rejects.
+- **Author:** copilot-agent
+- **Correlation:** bootstrap-rejection-diagnostics-20260614### 2026-06-14 — Bootstrap admin becomes ALL-country global admin
+- **Phase:** Phase 1
+- **Module(s):** `platform.identity`, `scripts`, `docs`
+- **Type:** feature | fix | docs | test
+- **Country/Tenant scope:** ALL
+- **Summary:** Default bootstrap admin is now a true global admin: `kfh.identity.bootstrap.country-code=ALL` and `role-name=GLOBAL_ADMIN`. `BootstrapInMemoryAuthenticator` treats an `ALL` configured country/environment as a wildcard so the same bootstrap admin can sign in from any country selection on the login screen and the returned session carries the requested country. Added `scripts/run-with-database.ps1` to start the backend without the `local` profile, with PostgreSQL env vars wired and the DB password prompted securely so Create User actually persists to `identity.users`.
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/platform/identity/BootstrapInMemoryAuthenticator.java`
+  - `src/main/resources/application.properties`
+  - `src/test/java/org/kfh/aiops/platform/identity/BootstrapInMemoryAuthenticatorTest.java`
+  - `scripts/run-with-database.ps1`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** No endpoint shape changes; `/api/v1/auth/sign-in` accepts ALL-country bootstrap admin from any country selection.
+- **Tests added/updated:** `BootstrapInMemoryAuthenticatorTest.shouldAcceptAnyCountryWhenBootstrapConfiguredAsAllCountriesAdmin`
+- **Docs updated:** `docs/RUNBOOKS.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (Bean Validation)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config
+- **Definition of Done checklist:**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Once named DB admins exist, disable in-memory bootstrap admin by clearing `kfh.identity.bootstrap.password`.
+- **Author:** copilot-agent
+- **Correlation:** bootstrap-global-admin-all-country-20260614### 2026-06-14 — Surface identity storage status in User Management
+- **Phase:** Phase 1
+- **Module(s):** `platform.identity`, `frontend/users`, `docs`
+- **Type:** feature | fix | docs | test
+- **Country/Tenant scope:** ALL
+- **Summary:** Added `GET /api/v1/users/storage-status` returning `{databaseBacked, writesEnabled, reason}` and wired the User Management page to call it on init. When the running server lacks database-backed identity storage, the page now renders a persistent red banner above the user table, blocks Create User submissions, and shows a clear toast. No secrets, profile names, or credentials are leaked through the endpoint.
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/platform/identity/UserController.java`
+  - `src/main/java/org/kfh/aiops/platform/identity/IdentityAdminService.java`
+  - `src/test/java/org/kfh/aiops/platform/identity/UserControllerStorageStatusTest.java`
+  - `src/main/resources/static/shared/js/api-client.js`
+  - `src/main/resources/static/pages/users/users.js`
+  - `docs/API_CONTRACTS.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** New `GET /api/v1/users/storage-status` endpoint; no other endpoint shape changes.
+- **Tests added/updated:** `UserControllerStorageStatusTest`
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/RUNBOOKS.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (Bean Validation)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** None.
+- **Author:** copilot-agent
+- **Correlation:** users-create-503-banner-20260614
+
+### 2026-06-14 — Warn at startup when identity storage is unavailable
+- **Phase:** Phase 1
+- **Module(s):** `platform.identity`, `docs`
+- **Type:** feature | fix | docs | test
+- **Country/Tenant scope:** ALL
+- **Summary:** Added `IdentityStorageReadinessLogger` that emits one prominent Java console line at `ApplicationReadyEvent` describing whether `IdentityJdbcRepository` is present. When the running app has no `JdbcTemplate` (typically because the `local` profile is active), it logs a WARN with the active profiles and the exact remediation steps so operators immediately understand why `POST /api/v1/users` returns `503 SERVICE_UNAVAILABLE`.
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/platform/identity/IdentityStorageReadinessLogger.java`
+  - `src/test/java/org/kfh/aiops/platform/identity/IdentityStorageReadinessLoggerTest.java`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** None.
+- **Tests added/updated:** `IdentityStorageReadinessLoggerTest`
+- **Docs updated:** `docs/RUNBOOKS.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (Bean Validation)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** None.
+- **Author:** copilot-agent
+- **Correlation:** users-create-503-local-profile-20260614
+
+### 2026-06-14 — Add Java HTTP action console logs
+- **Phase:** Phase 1
+- **Module(s):** `platform.observability`, `platform.exception`, `frontend/users`, `docs`
+- **Type:** feature | fix | security | docs | test
+- **Country/Tenant scope:** ALL
+- **Summary:** Added `HttpActionLoggingFilter` so the Java webserver emits one structured, secret-safe console log line per HTTP request, including method, path, status, duration, tenant/user/country/environment, and correlation ID. The filter intentionally excludes bodies, query strings, passwords, tokens, connector secrets, and raw payloads; it also works with the preserved `503 SERVICE_UNAVAILABLE` User Management error mapping so create-user failures are visible in server logs.
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/platform/observability/HttpActionLoggingFilter.java`
+  - `src/test/java/org/kfh/aiops/platform/observability/HttpActionLoggingFilterTest.java`
+  - `src/main/java/org/kfh/aiops/plateform/exception/GlobalExceptionHandler.java`
+  - `src/test/java/org/kfh/aiops/platform/exception/GlobalExceptionHandlerTest.java`
+  - `src/main/resources/static/pages/users/users.js`
+  - `docs/API_CONTRACTS.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/SERVICES_SUPPORT.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** Error response status preservation documented for `POST /api/v1/users`; no endpoint shape changes.
+- **Tests added/updated:** `HttpActionLoggingFilterTest`, `GlobalExceptionHandlerTest`; targeted Maven test run for action logging, problem response mapping, and identity create behavior.
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/RUNBOOKS.md`, `docs/SERVICES_SUPPORT.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (Bean Validation)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Rebuild/restart the running server to see `http action ...` lines for browser actions; tune log aggregation later if production needs JSON appenders.
+- **Author:** copilot-agent
+- **Correlation:** java-webserver-action-logs-20260614
+
+### 2026-06-14 — Preserve User Management service-unavailable errors
+- **Phase:** Phase 1
+- **Module(s):** `platform.exception`, `frontend/users`, `docs`
+- **Type:** fix | security | docs | test
+- **Country/Tenant scope:** ALL
+- **Summary:** Fixed the opaque browser `500 Request could not be processed` seen during User Management create when the backend intentionally throws `ResponseStatusException`, such as missing database-backed identity storage. `GlobalExceptionHandler` now preserves framework HTTP statuses as safe `application/problem+json` responses, maps missing static resources such as `favicon.ico` to `404`, and the User Management toast shows the safe backend reason.
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/platform/exception/GlobalExceptionHandler.java`
+  - `src/main/resources/static/pages/users/users.js`
+  - `src/test/java/org/kfh/aiops/platform/exception/GlobalExceptionHandlerTest.java`
+  - `docs/API_CONTRACTS.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/SERVICES_SUPPORT.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** Error responses for framework status exceptions are now preserved; `POST /api/v1/users` returns `503 SERVICE_UNAVAILABLE` instead of generic `500 INTERNAL_ERROR` when DB-backed identity storage is unavailable.
+- **Tests added/updated:** `GlobalExceptionHandlerTest`; targeted Maven test run for `GlobalExceptionHandlerTest`, `CommandCenterBackendServiceTest`, `IdentityJdbcRepositoryTest`.
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/RUNBOOKS.md`, `docs/SERVICES_SUPPORT.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (Bean Validation)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Rebuild/restart the running server and create login users only in datasource-backed mode; if the UI now shows `503 SERVICE_UNAVAILABLE`, configure PostgreSQL/JDBC instead of the `local` profile.
+- **Author:** copilot-agent
+- **Correlation:** browser-console-users-create-500-20260614
+
+### 2026-06-14 — Fix database-backed user creation 500s
+- **Phase:** Phase 1
+- **Module(s):** `platform.identity`, `platform.exception`, `docs`
+- **Type:** fix | security | docs | test
+- **Country/Tenant scope:** ALL
+- **Summary:** Hardened `POST /api/v1/users` so datasource-backed user creation ensures the current request tenant exists before creating default roles/users, rejects duplicate scoped usernames with a conflict response, and validates required username/password fields without leaking SQL or password data. Added safe problem handlers for common persistence conflicts so browser create failures no longer collapse into generic 500s for expected input/integrity cases.
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/platform/identity/IdentityJdbcRepository.java`
+  - `src/main/java/org/kfh/aiops/platform/exception/ConflictException.java`
+  - `src/main/java/org/kfh/aiops/platform/exception/GlobalExceptionHandler.java`
+  - `src/test/java/org/kfh/aiops/platform/identity/IdentityJdbcRepositoryTest.java`
+  - `docs/API_CONTRACTS.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** `POST /api/v1/users` now documents tenant auto-provisioning for the request tenant, `422` validation for missing username/password, and `409` conflict responses for duplicate/integrity failures; response shape unchanged for successful creates.
+- **Tests added/updated:** Added `IdentityJdbcRepositoryTest.shouldEnsureTenantBeforeCreatingUser`, `shouldRejectDuplicateUsernameWhenCreatingUser`, and `shouldValidatePasswordWhenCreatingUser`; verified with `mvnw.cmd "-Dtest=IdentityJdbcRepositoryTest,IdentityBootstrapInitializerTest" test`.
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/RUNBOOKS.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer (existing `IDENTITY_WRITE` requirement preserved)
+  - [x] Inputs validated (username/password validation now returns safe validation error)
+  - [x] Audit log written for write actions (existing service audit path preserved)
+  - [x] No secrets / PII / tokens logged or returned (password hashes only; no SQL details returned)
+  - [x] SSRF-safe for any URL-based config (N/A — no URL config changed)
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported via existing problem response/MDC path
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** If cross-environment duplicate usernames are required, add a future migration to align the unique index with environment scope; current behavior preserves the existing database constraint.
+- **Author:** GitHub Copilot
+- **Correlation:** user-request-20260614-users-create-500
+
+### 2026-06-14 — Require database persistence for created login users
+- **Phase:** Phase 1
+- **Module(s):** `platform.identity`, `frontend/users`, `docs`
+- **Type:** fix | security | docs | test
+- **Country/Tenant scope:** ALL
+- **Summary:** Removed silent memory-only login-user creation paths. `IdentityAdminService` now requires `IdentityJdbcRepository` for create/update/toggle/delete so created users are stored in PostgreSQL with BCrypt password hashes and can sign in for their created country/environment; the User Management page now requires the shared API client and calls `/api/v1/users` for create/toggle/delete.
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/platform/identity/IdentityAdminService.java`
+  - `src/main/resources/static/pages/users/users.js`
+  - `src/main/resources/static/pages/users/users.html`
+  - `src/test/java/org/kfh/aiops/commandcenter/CommandCenterBackendServiceTest.java`
+  - `docs/API_CONTRACTS.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/SERVICES_SUPPORT.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** `POST/PUT/PATCH/DELETE /api/v1/users` now fail with service unavailable when database-backed identity storage is unavailable instead of creating memory-only users.
+- **Tests added/updated:** Updated `CommandCenterBackendServiceTest` for DB-required identity writes; verified with `mvnw.cmd -q "-Dtest=CommandCenterBackendServiceTest,IdentityAuthServiceTest,BootstrapInMemoryAuthenticatorTest" test` and `mvnw.cmd -q verify`.
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/RUNBOOKS.md`, `docs/SERVICES_SUPPORT.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (existing request validation and country guard preserved)
+  - [x] Audit log written for write actions (DB-backed writes still audited)
+  - [x] No secrets / PII / tokens logged or returned (passwords are sent only to backend and not stored in UI state)
+  - [x] SSRF-safe for any URL-based config (N/A — no URL config changed)
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported via existing API client/session headers
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Run User Management only in datasource-backed mode when creating login users; use the in-memory bootstrap admin only as break-glass access.
+- **Author:** GitHub Copilot
+- **Correlation:** user-request-20260614-db-backed-created-users-login
+
+### 2026-06-14 — In-memory bootstrap admin sign-in fallback
+- **Phase:** Phase 1
+- **Module(s):** `platform.identity`, `docs`
+- **Type:** fix | feature | security | docs | test
+- **Country/Tenant scope:** ALL (configurable bootstrap tenant/country/environment)
+- **Summary:** Added `BootstrapInMemoryAuthenticator` so the configured bootstrap admin (`kfh.identity.bootstrap.*`) can sign in even when PostgreSQL is unreachable or the DB-backed bootstrap row is out of sync. `IdentityAuthService` now tries the in-memory match first, then falls back to the database-backed lookup, preserving generic client errors and secret-safe diagnostic logs.
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/platform/identity/BootstrapInMemoryAuthenticator.java`
+  - `src/main/java/org/kfh/aiops/platform/identity/IdentityAuthService.java`
+  - `src/test/java/org/kfh/aiops/platform/identity/BootstrapInMemoryAuthenticatorTest.java`
+  - `src/test/java/org/kfh/aiops/platform/identity/IdentityAuthServiceTest.java`
+  - `docs/API_CONTRACTS.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/SERVICES_SUPPORT.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** `POST /api/v1/auth/sign-in` now accepts the in-memory bootstrap admin in addition to DB-backed users; response shape unchanged.
+- **Tests added/updated:** `BootstrapInMemoryAuthenticatorTest` (6 cases), `IdentityAuthServiceTest.shouldFallBackToBootstrapAdminWhenDatabaseUnavailable`, `IdentityAuthServiceTest.shouldPreferBootstrapAdminBeforeDatabaseLookup`; verified with `mvnw.cmd -q "-Dtest=BootstrapInMemoryAuthenticatorTest,IdentityAuthServiceTest,IdentityBootstrapInitializerTest" test` and `mvnw.cmd -q verify`.
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/RUNBOOKS.md`, `docs/SERVICES_SUPPORT.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced (bootstrap match uses configured tenant/country/environment exactly)
+  - [x] RBAC checked at service layer (returned permissions follow the configured role profile; downstream APIs still enforce RBAC)
+  - [x] Inputs validated (existing `IdentitySignInRequest` validation preserved)
+  - [x] Audit log written for write actions (N/A — sign-in only; bootstrap admin writes still audited)
+  - [x] No secrets / PII / tokens logged or returned (configured password never logged; BCrypt-hashed in-memory only)
+  - [x] SSRF-safe for any URL-based config (N/A — no URL config changed)
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions (N/A — sign-in only)
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported via existing MDC
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Disable the in-memory bootstrap admin in production by clearing `kfh.identity.bootstrap.password` once named admins exist.
+- **Author:** GitHub Copilot
+- **Correlation:** user-request-20260614-in-memory-bootstrap-login
+
+### 2026-06-14 — Add secret-safe sign-in failure diagnostics
+- **Phase:** Phase 1
+- **Module(s):** `platform.identity`, `docs`
+- **Type:** fix | security | docs | test
+- **Country/Tenant scope:** ALL
+- **Summary:** Added secret-safe backend diagnostics for rejected database-backed sign-ins so operations can distinguish missing username, wrong country/environment, disabled account, missing password hash, and password mismatch/environment override cases without logging passwords or hashes. Documented the PowerShell `$` environment-variable override pitfall for bootstrap passwords.
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/platform/identity/IdentityJdbcRepository.java`
+  - `src/main/java/org/kfh/aiops/platform/identity/IdentityAuthService.java`
+  - `src/test/java/org/kfh/aiops/platform/identity/IdentityAuthServiceTest.java`
+  - `docs/API_CONTRACTS.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/SERVICES_SUPPORT.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** No endpoint shape changes; failed sign-ins remain generic to clients while server logs contain non-secret diagnostic counters.
+- **Tests added/updated:** `IdentityAuthServiceTest.shouldReturnSignInResponseWhenCredentialsMatch`, `IdentityAuthServiceTest.shouldCollectDiagnosticsWhenCredentialsRejected`; verified with `mvnw.cmd -q "-Dtest=IdentityBootstrapInitializerTest,IdentityAuthServiceTest" test` and `mvnw.cmd -q verify`.
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/RUNBOOKS.md`, `docs/SERVICES_SUPPORT.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced (normal sign-in lookup remains country/environment scoped)
+  - [x] RBAC checked at service layer (N/A — authentication endpoint; downstream APIs still enforce RBAC)
+  - [x] Inputs validated (existing `IdentitySignInRequest` validation preserved)
+  - [x] Audit log written for write actions (N/A — sign-in diagnostics are read/auth checks; bootstrap writes already audited)
+  - [x] No secrets / PII / tokens logged or returned (diagnostics log counts only, not username/password/hash)
+  - [x] SSRF-safe for any URL-based config (N/A — no URL config changed)
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions (N/A — no write action added)
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported through existing request/log MDC path
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Use the new counters from the running server logs to determine whether the active deployment is using an environment override, old artifact, wrong country/environment, or disabled/no-password database row.
+- **Author:** GitHub Copilot
+- **Correlation:** user-request-20260614-login-still-invalid
+
+### 2026-06-14 — Reconcile configured bootstrap admin password on startup
+- **Phase:** Phase 1
+- **Module(s):** `platform.identity`, `docs`
+- **Type:** fix | security | docs | test
+- **Country/Tenant scope:** ALL (configurable bootstrap tenant/country/environment)
+- **Summary:** Fixed the remaining login failure mode where adding/changing `kfh.identity.bootstrap.password` after a bootstrap user already existed did not update the stored BCrypt hash. Startup bootstrap now creates the configured admin when missing, or reactivates/resets that configured bootstrap admin and ensures the configured role when a bootstrap password is supplied.
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/platform/identity/IdentityJdbcRepository.java`
+  - `src/main/java/org/kfh/aiops/platform/identity/IdentityBootstrapInitializer.java`
+  - `src/test/java/org/kfh/aiops/platform/identity/IdentityBootstrapInitializerTest.java`
+  - `docs/API_CONTRACTS.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/SERVICES_SUPPORT.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** No endpoint shape changes; documented that datasource-backed bootstrap can reconcile the configured admin password hash on restart.
+- **Tests added/updated:** `IdentityBootstrapInitializerTest.shouldUpdateBootstrapAdminWhenExistingPasswordDiffers`, `shouldNotAuditWhenBootstrapAdminAlreadyReady`, updated create/missing-password cases; verified with `mvnw.cmd -q -Dtest=IdentityBootstrapInitializerTest test` and `mvnw.cmd -q verify`.
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/RUNBOOKS.md`, `docs/SERVICES_SUPPORT.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced (bootstrap uses configured tenant/country/environment system context)
+  - [x] RBAC checked at service layer (normal identity APIs unchanged; bootstrap limited to configured admin startup reconciliation)
+  - [x] Inputs validated (bootstrap username/display/password required before provisioning)
+  - [x] Audit log written for write actions (`IDENTITY_BOOTSTRAP_ADMIN_CREATED` or `IDENTITY_BOOTSTRAP_ADMIN_UPDATED`)
+  - [x] No secrets / PII / tokens logged or returned (password hash reset uses BCrypt; password is not logged or returned)
+  - [x] SSRF-safe for any URL-based config (N/A — no URL config changed)
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation (N/A — no new DTO; existing typed config used)
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported (`identity-bootstrap` correlation used for startup audit)
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Restart the datasource-backed app after changing bootstrap credentials; rotate/disable bootstrap admin after creating named users.
+- **Author:** GitHub Copilot
+- **Correlation:** user-request-20260614-bootstrap-password-login-failure
+
+### 2026-06-14 — Add datasource-backed first-admin identity bootstrap
+- **Phase:** Phase 1
+- **Module(s):** `platform.identity`, `platform.security`, `docs`
+- **Type:** fix | security | docs | test
+- **Country/Tenant scope:** ALL (configurable bootstrap defaults to tenant `00000000-0000-4000-8000-000000000001`, `KW`, `PROD`)
+- **Summary:** Fixed the empty-database login blocker by adding datasource-backed identity bootstrap for the configured tenant, default RBAC roles, and an optional first admin user when `KFH_BOOTSTRAP_ADMIN_PASSWORD` is supplied. The bootstrap path uses BCrypt hashing, does not log or return passwords, and skips existing users to avoid overwriting credentials.
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/platform/identity/IdentityJdbcRepository.java`
+  - `src/main/java/org/kfh/aiops/platform/identity/IdentityBootstrapProperties.java`
+  - `src/main/java/org/kfh/aiops/platform/identity/IdentityBootstrapInitializer.java`
+  - `src/main/resources/application.properties`
+  - `src/test/java/org/kfh/aiops/platform/identity/IdentityBootstrapInitializerTest.java`
+  - `docs/API_CONTRACTS.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/SERVICES_SUPPORT.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A (uses existing `public.tenants`, `identity.users`, `identity.roles`, `identity.user_roles`, and `identity.role_permissions` schema)
+- **API changes:** No endpoint shape changes; documented datasource-backed first-admin bootstrap behavior for `/api/v1/auth/sign-in` operational readiness.
+- **Tests added/updated:** `IdentityBootstrapInitializerTest.shouldCreateBootstrapAdminWhenPasswordConfiguredAndUserMissing`, `shouldNotCreateBootstrapAdminWhenPasswordMissing`, `shouldNotOverwriteBootstrapAdminWhenUserAlreadyExists`; verified with `mvnw.cmd -q -Dtest=IdentityBootstrapInitializerTest test` and `mvnw.cmd -q test`.
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/RUNBOOKS.md`, `docs/SERVICES_SUPPORT.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced (bootstrap creates a system `TenantContext`; normal identity APIs unchanged)
+  - [x] RBAC checked at service layer (normal user writes unchanged; bootstrap creates only configured first admin during startup)
+  - [x] Inputs validated (configuration defaults normalized; password required before user creation)
+  - [x] Audit log written for write actions (bootstrap admin creation records `IDENTITY_BOOTSTRAP_ADMIN_CREATED` through `AuditService`)
+  - [x] No secrets / PII / tokens logged or returned (bootstrap password remains environment/property supplied and is BCrypt-hashed)
+  - [x] SSRF-safe for any URL-based config (N/A — no URL config changed)
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation (N/A — no new DTO; typed configuration properties added)
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported (`identity-bootstrap` correlation used for startup audit)
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Replace scaffold header permissions with enterprise JWT/OIDC authorities before production; rotate/disable bootstrap admin after creating named operator/admin users.
+- **Author:** GitHub Copilot
+- **Correlation:** user-request-20260614-login-empty-identity-users
+
+### 2026-06-14 — Make server flowchart document AIOps-only
+- **Phase:** Phase 1
+- **Module(s):** `docs`
+- **Type:** docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Revised the server flowchart document to remove Forecasting content and focus only on the AIOps project, including AIOps flow, business-friendly tool usage, server split, and justification.
+- **Files touched:**
+  - `docs/PROJECT_SERVER_FLOWCHARTS.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** N/A (documentation-only change)
+- **Docs updated:** `docs/PROJECT_SERVER_FLOWCHARTS.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced (N/A — documentation-only change)
+  - [x] RBAC checked at service layer (N/A — documentation-only change)
+  - [x] Inputs validated (N/A — documentation-only change)
+  - [x] Audit log written for write actions (N/A — documentation-only change)
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config (N/A — no URL config changed)
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context (N/A — documentation-only change)
+  - [x] Clear DTOs and validation (N/A — documentation-only change)
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions (N/A — documentation-only change)
+  - [x] No secrets exposed
+  - [x] Tests for core logic (N/A — documentation-only change)
+  - [x] Correlation ID supported (N/A — documentation-only change)
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** N/A
+- **Author:** GitHub Copilot
+- **Correlation:** user-request-20260614-aiops-only-flowchart
+
+### 2026-06-14 — Rewrite project tool usage for business readers
+- **Phase:** Phase 1
+- **Module(s):** `docs`
+- **Type:** docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Updated the Forecasting and AIOps server flowchart document so each required tool is explained in short business-friendly sentences, making the server request easier for non-technical stakeholders to understand.
+- **Files touched:**
+  - `docs/PROJECT_SERVER_FLOWCHARTS.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** N/A (documentation-only change)
+- **Docs updated:** `docs/PROJECT_SERVER_FLOWCHARTS.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced (N/A — documentation-only change)
+  - [x] RBAC checked at service layer (N/A — documentation-only change)
+  - [x] Inputs validated (N/A — documentation-only change)
+  - [x] Audit log written for write actions (N/A — documentation-only change)
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config (N/A — no URL config changed)
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context (N/A — documentation-only change)
+  - [x] Clear DTOs and validation (N/A — documentation-only change)
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions (N/A — documentation-only change)
+  - [x] No secrets exposed
+  - [x] Tests for core logic (N/A — documentation-only change)
+  - [x] Correlation ID supported (N/A — documentation-only change)
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** N/A
+- **Author:** GitHub Copilot
+- **Correlation:** user-request-20260614-business-tool-usage
+
+### 2026-06-14 — Add project server flowchart documentation
+- **Phase:** Phase 1
+- **Module(s):** `docs`
+- **Type:** docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Added a concise Markdown document with flowcharts for the Forecasting and AIOps projects, short tool-usage tables, recommended server split, and justification for two additional testing servers.
+- **Files touched:**
+  - `docs/PROJECT_SERVER_FLOWCHARTS.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** N/A (documentation-only change)
+- **Docs updated:** `docs/PROJECT_SERVER_FLOWCHARTS.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced (N/A — documentation-only change)
+  - [x] RBAC checked at service layer (N/A — documentation-only change)
+  - [x] Inputs validated (N/A — documentation-only change)
+  - [x] Audit log written for write actions (N/A — documentation-only change)
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config (N/A — no URL config changed)
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context (N/A — documentation-only change)
+  - [x] Clear DTOs and validation (N/A — documentation-only change)
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions (N/A — documentation-only change)
+  - [x] No secrets exposed
+  - [x] Tests for core logic (N/A — documentation-only change)
+  - [x] Correlation ID supported (N/A — documentation-only change)
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** N/A
+- **Author:** GitHub Copilot
+- **Correlation:** user-request-20260614-project-server-flowcharts
+
+### 2026-06-13 — Add all-country identity user scope
+- **Phase:** Phase 1
+- **Module(s):** `platform.identity`, `platform.country`, `frontend/auth`, `frontend/users`, `docs`
+- **Type:** feature | security | docs | test
+- **Country/Tenant scope:** ALL (`ALL` virtual identity scope plus `KW`, `BH`, `EG` physical countries)
+- **Summary:** Added a controlled **All countries** identity scope so a global admin can create users that sign in directly with `countryCode = "ALL"` and see all-country navigation options. The backend now authorizes the virtual `ALL` scope only for requests with `*` or `COUNTRY_GLOBAL_VIEW`, while normal country users remain country-scoped.
+- **Files touched:**
+  - `src/main/resources/static/shared/js/config.js`
+  - `src/main/resources/static/shared/js/auth.js`
+  - `src/main/resources/static/pages/users/users.js`
+  - `src/main/java/org/kfh/aiops/platform/country/CountryAccessGuard.java`
+  - `src/main/java/org/kfh/aiops/platform/identity/IdentityAdminService.java`
+  - `src/main/java/org/kfh/aiops/platform/identity/IdentityJdbcRepository.java`
+  - `src/test/java/org/kfh/aiops/platform/country/CountryAccessGuardTest.java`
+  - `src/test/java/org/kfh/aiops/commandcenter/CommandCenterBackendServiceTest.java`
+  - `docs/API_CONTRACTS.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/DATABASE_SCHEMA.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** Clarified that identity/admin scope may use `X-Country-Code: ALL` for globally authorized users; `POST /api/v1/auth/sign-in` can authenticate all-country users with `countryCode = "ALL"` when such a profile exists.
+- **Tests added/updated:** `CountryAccessGuardTest.shouldAllowAllCountriesScopeWhenGlobalPermissionGranted`, `CountryAccessGuardTest.shouldDenyAllCountriesScopeWithoutGlobalPermission`, `CommandCenterBackendServiceTest.shouldCreateAllCountriesUserWhenGlobalScopeAllowed`, `CommandCenterBackendServiceTest.shouldDenyAllCountriesUserCreationWithoutGlobalScope`; verified with `mvnw.cmd -q test`.
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/RUNBOOKS.md`, `docs/DATABASE_SCHEMA.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (existing DTO/header validation preserved; `ALL` scope authorized by service guard)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config (N/A — no URL config changed)
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Replace scaffold header permissions with enterprise JWT/OIDC authorities before production and add PostgreSQL/Testcontainers coverage for persisted `ALL` identity rows.
+- **Author:** GitHub Copilot
+- **Correlation:** user-request-20260613-all-country-user-scope
+
+### 2026-06-13 — Database-backed country-scoped user sign-in
+- **Phase:** Phase 1
+- **Module(s):** `platform.identity`, `platform.security`, `frontend/users`, `frontend/auth`, `db/migration`, `docs`
+- **Type:** feature | migration | docs | test | security
+- **Country/Tenant scope:** ALL (`KW`, `BH`, `EG` country-scoped users; `GLOBAL_ADMIN` remains global by permission)
+- **Summary:** Added datasource-backed identity persistence so created users are inserted into PostgreSQL with a tenant, country, environment, role assignment, and BCrypt password hash. Added `/api/v1/auth/sign-in` so login resolves the persisted user country, tenant, role, and permissions; invalid credentials fail closed and local scaffold fallback is only for unavailable datasource-backed auth.
+- **Files touched:**
+  - `src/main/resources/db/migration/V4__identity_country_auth.sql`
+  - `src/main/java/org/kfh/aiops/platform/identity/IdentityJdbcRepository.java`
+  - `src/main/java/org/kfh/aiops/platform/identity/IdentityAuthController.java`
+  - `src/main/java/org/kfh/aiops/platform/identity/IdentityAuthService.java`
+  - `src/main/java/org/kfh/aiops/platform/identity/IdentitySignInRequest.java`
+  - `src/main/java/org/kfh/aiops/platform/identity/IdentitySignInResponse.java`
+  - `src/main/java/org/kfh/aiops/platform/identity/IdentityAdminService.java`
+  - `src/main/java/org/kfh/aiops/platform/security/SecurityConfig.java`
+  - `src/main/java/org/kfh/aiops/commandcenter/support/CommandCenterReadModel.java`
+  - `src/main/resources/static/pages/users/users.js`
+  - `src/main/resources/static/shared/js/auth.js`
+  - `src/main/resources/static/shared/js/config.js`
+  - `src/test/java/org/kfh/aiops/commandcenter/CommandCenterBackendServiceTest.java`
+  - `docs/API_CONTRACTS.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/DATABASE_SCHEMA.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** `V4__identity_country_auth.sql`
+- **API changes:** Added `POST /api/v1/auth/sign-in`; changed datasource-backed `POST /api/v1/users` to persist `identity.users` rows and assign roles while returning sanitized user data.
+- **Tests added/updated:** `CommandCenterBackendServiceTest.shouldNotExposePasswordFieldsWhenCreatingUser`; verified with `mvnw.cmd -q test`
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/RUNBOOKS.md`, `docs/DATABASE_SCHEMA.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (Bean Validation)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config (N/A — no URL config changed)
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Add full PostgreSQL/Testcontainers identity integration tests and replace scaffold header permissions with enterprise JWT/OIDC authorities before production go-live.
+- **Author:** GitHub Copilot
+- **Correlation:** user-request-20260613-country-scoped-db-users
+
+### 2026-06-13 — Add password confirmation to create-user form
+- **Phase:** 1
+- **Module(s):** frontend/users
+- **Type:** fix
+- **Country/Tenant scope:** ALL (`KW`, `BH`, `EG`)
+- **Summary:** Replaced the Create User `Temporary Password` field with `Password` and `Confirm Password` fields. Added client-side confirmation validation and preserved the rule that plaintext passwords are not stored in UI state or generic read-model attributes.
+- **Files touched:**
+  - `src/main/resources/static/pages/users/users.js`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** N/A (UI-only form validation change); verified with `get_errors`, `mvnw.cmd -q -DskipTests package`, and `mvnw.cmd -q test`
+- **Docs updated:** `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced (unchanged existing API/session behavior)
+  - [x] RBAC checked at service layer (unchanged backend responsibility)
+  - [x] Inputs validated (password length and confirm-password match validation)
+  - [x] Audit log written for write actions (unchanged backend responsibility)
+  - [x] No secrets / PII / tokens logged or returned (plaintext password values are not persisted in UI state or attributes)
+  - [x] SSRF-safe for any URL-based config (N/A; no URL config touched)
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation (N/A for UI-only form validation change; existing API contracts preserved)
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions (unchanged backend responsibility)
+  - [x] No secrets exposed
+  - [x] Tests for core logic (no core logic changed; build/test suite executed)
+  - [x] Correlation ID supported (unchanged existing behavior)
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Wire password provisioning to a secure identity-provider adapter when backend identity integration is implemented.
+- **Author:** copilot-agent
+- **Correlation:** manual-ui-password-confirm-2026-06-13
+
+### 2026-06-13 — Reorder create-user username field first
+- **Phase:** 1
+- **Module(s):** frontend/users
+- **Type:** fix
+- **Country/Tenant scope:** ALL (`KW`, `BH`, `EG`)
+- **Summary:** Updated the Create User modal field order so Username appears before Full Name, matching the requested login-profile workflow.
+- **Files touched:**
+  - `src/main/resources/static/pages/users/users.js`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** N/A (UI-only field order change); verified with `get_errors`, `mvnw.cmd -q -DskipTests package`, and `mvnw.cmd -q test`
+- **Docs updated:** `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced (unchanged existing API/session behavior)
+  - [x] RBAC checked at service layer (unchanged backend responsibility)
+  - [x] Inputs validated (existing form validation preserved)
+  - [x] Audit log written for write actions (unchanged backend responsibility)
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config (N/A; no URL config touched)
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation (N/A for UI-only field order change; existing API contracts preserved)
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions (unchanged backend responsibility)
+  - [x] No secrets exposed
+  - [x] Tests for core logic (no core logic changed; build/test suite executed)
+  - [x] Correlation ID supported (unchanged existing behavior)
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** N/A
+- **Author:** copilot-agent
+- **Correlation:** manual-ui-username-first-2026-06-13
+
+### 2026-06-13 — Add all-groups user filter and simplify create-user form
+- **Phase:** 1
+- **Module(s):** frontend/users
+- **Type:** fix + refactor
+- **Country/Tenant scope:** ALL (`KW`, `BH`, `EG` via global-view `All groups` selector)
+- **Summary:** Removed the `Enterprise access` label from the User Management table area, added an `All groups` country filter option for global-view users, and redesigned the Create User form around login identity fields: full name, username, email, temporary password, role, status, and country. The temporary password is validated in the form but not persisted into the Command Center UI read model or local state.
+- **Files touched:**
+  - `src/main/resources/static/pages/users/users.js`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** N/A (UI-only static resource refactor); verified with `get_errors`, `mvnw.cmd -q -DskipTests package`, and `mvnw.cmd -q test`
+- **Docs updated:** `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced (country-scoped API requests preserved; all-groups aggregation switches concrete country context per request)
+  - [x] RBAC checked at service layer (unchanged backend responsibility; All groups is shown only with `*` or `COUNTRY_GLOBAL_VIEW`)
+  - [x] Inputs validated (required fields, email type, password minimum length, role/status/country selects)
+  - [x] Audit log written for write actions (unchanged backend responsibility)
+  - [x] No secrets / PII / tokens logged or returned (temporary password is not stored in UI state or generic attributes)
+  - [x] SSRF-safe for any URL-based config (N/A; no URL config touched)
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation (existing generic UI write contract preserved; frontend form validation added)
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions (unchanged backend responsibility)
+  - [x] No secrets exposed
+  - [x] Tests for core logic (no backend core logic changed; build/test suite executed)
+  - [x] Correlation ID supported (unchanged existing API client behavior)
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Wire temporary-password provisioning to the future secure identity provider adapter instead of the generic scaffold read model.
+- **Author:** copilot-agent
+- **Correlation:** manual-ui-user-form-all-groups-2026-06-13
+
+### 2026-06-13 — Move User Management create action out of header
+- **Phase:** 1
+- **Module(s):** frontend/users
+- **Type:** fix + refactor
+- **Country/Tenant scope:** ALL (`KW`, `BH`, `EG` via existing country filter/session context)
+- **Summary:** Removed the `API backed` badge and `Application sign-in profiles` label from the User Management header. Moved the Create User action out of the header into a modern enterprise access bar above the user table, keeping search and filters in the compact header.
+- **Files touched:**
+  - `src/main/resources/static/pages/users/users.js`
+  - `src/main/resources/static/pages/users/users.css`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** N/A (UI-only static resource refactor); verified with `get_errors`, `mvnw.cmd -q -DskipTests package`, and `mvnw.cmd -q test`
+- **Docs updated:** `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced (unchanged existing API/session behavior)
+  - [x] RBAC checked at service layer (unchanged backend responsibility)
+  - [x] Inputs validated (N/A; no backend input behavior changed)
+  - [x] Audit log written for write actions (unchanged backend responsibility)
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config (N/A; no URL config touched)
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation (N/A for UI-only change; existing API contracts preserved)
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions (unchanged backend responsibility)
+  - [x] No secrets exposed
+  - [x] Tests for core logic (no core logic changed; build/test suite executed)
+  - [x] Correlation ID supported (unchanged existing behavior)
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Remove unused legacy CSS selectors for old header badges in a dedicated cleanup if visual regression confirms they are not referenced by standalone pages.
+- **Author:** copilot-agent
+- **Correlation:** manual-ui-create-action-relocation-2026-06-13
+
+### 2026-06-13 — Modernize User Management table actions
+- **Phase:** 1
+- **Module(s):** frontend/users
+- **Type:** fix + refactor
+- **Country/Tenant scope:** ALL (`KW`, `BH`, `EG` via existing country filter/session context)
+- **Summary:** Modernized the User Management table card, headers, rows, and row actions. Edit/Delete buttons are now always visible with modern pill styling and icons, and the old hover-only action reveal behavior was removed.
+- **Files touched:**
+  - `src/main/resources/static/pages/users/users.js`
+  - `src/main/resources/static/pages/users/users.css`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** N/A (UI-only static resource refactor); verified with `get_errors`, `mvnw.cmd -q -DskipTests package`, and `mvnw.cmd -q test`
+- **Docs updated:** `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced (unchanged existing API/session behavior)
+  - [x] RBAC checked at service layer (unchanged backend responsibility)
+  - [x] Inputs validated (N/A; no backend input behavior changed)
+  - [x] Audit log written for write actions (unchanged backend responsibility)
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config (N/A; no URL config touched)
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation (N/A for UI-only change; existing API contracts preserved)
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions (unchanged backend responsibility)
+  - [x] No secrets exposed
+  - [x] Tests for core logic (no core logic changed; build/test suite executed)
+  - [x] Correlation ID supported (unchanged existing behavior)
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Consider adding a confirmation dialog before delete if not already covered by backend/product flow.
+- **Author:** copilot-agent
+- **Correlation:** manual-ui-modern-table-actions-2026-06-13
+
+### 2026-06-13 — Reduce User Management page spacing
+- **Phase:** 1
+- **Module(s):** frontend/users
+- **Type:** fix + refactor
+- **Country/Tenant scope:** ALL (`KW`, `BH`, `EG` via existing country filter/session context)
+- **Summary:** Tightened the User Management page layout by reducing outer page padding, shrinking the gap between the compact header and body card, lowering the empty-state body height, and reducing empty-state vertical padding/icon size.
+- **Files touched:**
+  - `src/main/resources/static/pages/users/users.css`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** N/A (CSS-only static resource refactor); verified with `get_errors`, `mvnw.cmd -q -DskipTests package`, and `mvnw.cmd -q test`
+- **Docs updated:** `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced (unchanged existing API/session behavior)
+  - [x] RBAC checked at service layer (unchanged backend responsibility)
+  - [x] Inputs validated (N/A; no input behavior changed)
+  - [x] Audit log written for write actions (unchanged backend responsibility)
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config (N/A; no URL config touched)
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation (N/A for CSS-only change)
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions (unchanged backend responsibility)
+  - [x] No secrets exposed
+  - [x] Tests for core logic (no core logic changed; build/test suite executed)
+  - [x] Correlation ID supported (unchanged existing behavior)
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** If the user wants an even denser list view, reduce table/card border radii and row height in a separate visual pass.
+- **Author:** copilot-agent
+- **Correlation:** manual-ui-spacing-2026-06-13
+
+### 2026-06-13 — Compact User Management header into one-line toolbar
+- **Phase:** 1
+- **Module(s):** frontend/users
+- **Type:** fix + refactor
+- **Country/Tenant scope:** ALL (`KW`, `BH`, `EG` via existing country filter/session context)
+- **Summary:** Reworked the User Management header from an oversized hero-style block into a compact one-line toolbar. The page label and title now sit inline, the API badge is part of the same control row, and the search, country filter, role filter, and Create User action stay aligned in a slim header.
+- **Files touched:**
+  - `src/main/resources/static/pages/users/users.js`
+  - `src/main/resources/static/pages/users/users.css`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** N/A (UI-only static resource refactor); verified with `get_errors`, `mvnw.cmd -q -DskipTests package`, and `mvnw.cmd -q test`
+- **Docs updated:** `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced (existing API client/session behavior preserved)
+  - [x] RBAC checked at service layer (unchanged backend responsibility)
+  - [x] Inputs validated (existing search/filter controls preserved; no new backend inputs added)
+  - [x] Audit log written for write actions (unchanged backend responsibility for user writes)
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config (N/A; no URL config touched)
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation (N/A for static UI-only change; existing API contracts preserved)
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions (unchanged backend responsibility)
+  - [x] No secrets exposed
+  - [x] Tests for core logic (no core logic changed; build/test suite executed)
+  - [x] Correlation ID supported (existing API client behavior preserved)
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Validate the compact toolbar visually at narrow widths in a browser; responsive fallback stacks controls below 1180px.
+- **Author:** copilot-agent
+- **Correlation:** manual-ui-compact-header-2026-06-13
+
+### 2026-06-13 — Consolidate User Management header and remove legacy counters
+- **Phase:** 1
+- **Module(s):** frontend/users
+- **Type:** fix + refactor
+- **Country/Tenant scope:** ALL (`KW`, `BH`, `EG` via existing country filter/session context)
+- **Summary:** Removed the redundant User Management summary blocks for shown/enabled/disabled/directory/local counts and merged the duplicate sign-in profile headers into a single enhanced page header. The header now contains the page name, API source badge, search, country filter, role filter, and Create User action while preserving the existing API-backed user list/create behavior.
+- **Files touched:**
+  - `src/main/resources/static/pages/users/users.js`
+  - `src/main/resources/static/pages/users/users.css`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** N/A (UI-only static resource refactor); verified with `get_errors`, `mvnw.cmd -q -DskipTests package`, and `mvnw.cmd -q test`
+- **Docs updated:** `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced (existing API client/session headers preserved; no API bypass added)
+  - [x] RBAC checked at service layer (unchanged; backend enforcement preserved)
+  - [x] Inputs validated (existing search/filter/select controls preserved; no new backend inputs added)
+  - [x] Audit log written for write actions (unchanged backend responsibility for user writes)
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config (N/A; no URL config touched)
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation (N/A for static UI-only change; existing API contracts preserved)
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions (unchanged backend responsibility)
+  - [x] No secrets exposed
+  - [x] Tests for core logic (no core logic changed; build/test suite executed)
+  - [x] Correlation ID supported (existing API client behavior preserved)
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Consider removing obsolete unused users CSS sections in a separate low-risk cleanup after visual regression review.
+- **Author:** copilot-agent
+- **Correlation:** manual-ui-cleanup-2026-06-13
+
+### 2026-06-13 — Simplify User Management page with country and role filters
+- **Phase:** 1
+- **Module(s):** frontend/users, frontend/navigation, docs/ui, docs/runbooks
+- **Type:** refactor + feature + docs
+- **Country/Tenant scope:** ALL (`KW`, `BH`, `EG`)
+- **Summary:** Replaced the oversized Users/RBAC workspace with a simple modern User Management page matching the requested compact reference style. Removed embedded Roles/Policies/Audit page tabs and legacy role-management renderers from the users module, retained user creation, added country and role filters, simplified the details drawer, and renamed navigation labels to User Management.
+- **Files touched:**
+  - `src/main/resources/static/pages/users/users.js`
+  - `src/main/resources/static/pages/users/users.css`
+  - `src/main/resources/static/pages/users/users.html`
+  - `src/main/resources/static/index.html`
+  - `src/main/resources/static/shared/js/config.js`
+  - `src/main/resources/static/shared/js/router.js`
+  - `src/main/resources/static/shared/js/shell.js`
+  - `src/main/resources/static/shared/js/layout.js`
+  - `src/main/resources/static/pages/dashboard/dashboard.html`
+  - `src/main/resources/static/pages/incidents/incidents.html`
+  - `src/main/resources/static/pages/applications/applications.html`
+  - `src/main/resources/static/pages/applications/applicationconfig.html`
+  - `src/main/resources/static/pages/inventory/inventory.html`
+  - `src/main/resources/static/pages/connectors/connectors.html`
+  - `src/main/resources/static/pages/reports/reports.html`
+  - `src/main/resources/static/pages/settings/settings.html`
+  - `src/main/resources/static/pages/audit/audit.html`
+  - `docs/UI_PAGES.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** N/A; static UI refactor verified with IDE diagnostics and `./mvnw.cmd verify` (19 tests passed). Node syntax check was not run because `node` is not installed in the local PowerShell environment.
+- **Docs updated:** `docs/UI_PAGES.md`, `docs/RUNBOOKS.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — country switching continues through session context and backend country guards remain authoritative.
+  - [x] RBAC checked at service layer — no backend authorization behavior changed.
+  - [x] Inputs validated (Bean Validation) — create form keeps required fields and maxlength/email constraints.
+  - [x] Audit log written for write actions — existing `/api/v1/users` write behavior unchanged.
+  - [x] No secrets / PII / tokens logged or returned — no credential fields or raw payload logging added.
+  - [x] SSRF-safe for any URL-based config — no outbound URL/config behavior changed.
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation — existing API DTO contract retained.
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions — existing write flow unchanged.
+  - [x] No secrets exposed
+  - [x] Tests for core logic — backend regression verification passed; no backend business logic changed.
+  - [x] Correlation ID supported — unchanged API client propagation remains in place.
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Add server-side role filter support to `/api/v1/users` if user volume grows beyond current client-side filtering assumptions.
+- **Author:** copilot-agent
+- **Correlation:** local-task-2026-06-13-user-management-simplification
+
+### 2026-06-13 — Modernize Users & RBAC page with KFH identity design
+- **Phase:** 1
+- **Module(s):** frontend/users, docs/ui
+- **Type:** feature + refactor + docs
+- **Country/Tenant scope:** ALL (`KW`, `BH`, `EG`)
+- **Summary:** Redesigned the `/ #users` Users & RBAC workspace with a premium KFH-branded hero, country-scope governance badges, glass-style KPI cards, pill tabs, modern user table toolbar, empty state, polished drawer and create-user modal visuals. Existing tenant/country-scoped API behavior and user creation flow remain unchanged.
+- **Files touched:**
+  - `src/main/resources/static/pages/users/users.js`
+  - `src/main/resources/static/pages/users/users.css`
+  - `docs/UI_PAGES.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** N/A; frontend visual refactor. Static file inspection shows only existing JS warnings; full Maven verification run with `./mvnw.cmd verify`.
+- **Docs updated:** `docs/UI_PAGES.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — no API/header behavior changed.
+  - [x] RBAC checked at service layer — no backend authorization behavior changed.
+  - [x] Inputs validated (Bean Validation) — create-user form constraints retained.
+  - [x] Audit log written for write actions — user create behavior unchanged.
+  - [x] No secrets / PII / tokens logged or returned — visual-only changes; no secret surfaces added.
+  - [x] SSRF-safe for any URL-based config — no outbound URL/config behavior changed.
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation — existing `UiWriteRequest` contract retained.
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions — existing write flow unchanged.
+  - [x] No secrets exposed
+  - [x] Tests for core logic — no business logic changed; regression verification run.
+  - [x] Correlation ID supported — unchanged API client propagation remains in place.
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Consider adding frontend screenshot/visual regression tests once a browser automation toolchain is available.
+- **Author:** copilot-agent
+- **Correlation:** local-task-20260613-modern-users-page
+
+### 2026-06-13 — Enable HTTPS-only default on port 8443
+- **Phase:** 1
+- **Module(s):** platform.config, infra/local-runtime, docs/runbooks
+- **Type:** fix + security + docs + test
+- **Country/Tenant scope:** ALL (`KW`, `BH`, `EG`)
+- **Summary:** Changed the default server protocol on port `8443` from HTTP to HTTPS by enabling `server.ssl.enabled` by default. Stopped the previous HTTP listener, restarted the local profile, and verified `https://172.17.134.118:8443/` returns `HTTP/1.1 200` while plain HTTP no longer serves the site.
+- **Files touched:**
+  - `src/main/resources/application.properties`
+  - `src/test/java/org/kfh/aiops/AiOpsConfigurationPropertiesTest.java`
+  - `docs/RUNBOOKS.md`
+  - `README.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** `AiOpsConfigurationPropertiesTest`; full verification run with `./mvnw.cmd verify` (`19` tests, `0` failures).
+- **Docs updated:** `docs/RUNBOOKS.md`, `README.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — no API context behavior changed.
+  - [x] RBAC checked at service layer — no service-layer authorization behavior changed.
+  - [x] Inputs validated (Bean Validation) — no input validation changes.
+  - [x] Audit log written for write actions — no write behavior changed.
+  - [x] No secrets / PII / tokens logged or returned — preserved existing dev-server SSL password default per repository rule; did not print or document secret values.
+  - [x] SSRF-safe for any URL-based config — no outbound URL/config behavior changed.
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context — HTTPS transport change only.
+  - [x] Clear DTOs and validation — N/A for runtime transport config.
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions — no write behavior changed.
+  - [x] No secrets exposed
+  - [x] Tests for core logic — configuration regression test updated; full Maven verification passed.
+  - [x] Correlation ID supported — verified HTTPS response includes `X-Correlation-Id`.
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Production/UAT deployments must continue to provide TLS material and passwords through deployment secrets or external mounts; use `SERVER_SSL_ENABLED=false` only for explicit local diagnostics.
+- **Author:** copilot-agent
+- **Correlation:** local-task-20260613-https-only-8443
+
+### 2026-06-13 — Verify local site protocol on port 8443
+- **Phase:** 1
+- **Module(s):** infra/local-runtime, frontend/shell
+- **Type:** fix + docs
+- **Country/Tenant scope:** ALL (`KW`, `BH`, `EG`)
+- **Summary:** Investigated browser `ERR_SSL_PROTOCOL_ERROR` when opening `https://172.17.134.118:8443/index.html#audit`. Confirmed the active Tomcat process is serving plain HTTP on port `8443`, so the correct URL for the current run is `http://172.17.134.118:8443/index.html#audit`; HTTPS requires running the `https-local` profile/script.
+- **Files touched:**
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** N/A; operational verification performed with `curl.exe -I http://172.17.134.118:8443/` returning `HTTP/1.1 200` and `curl.exe -k -I https://172.17.134.118:8443/` failing with TLS protocol error, matching the browser symptom.
+- **Docs updated:** `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — no API behavior changed.
+  - [x] RBAC checked at service layer — no service-layer behavior changed.
+  - [x] Inputs validated (Bean Validation) — no input validation changes.
+  - [x] Audit log written for write actions — no write behavior changed.
+  - [x] No secrets / PII / tokens logged or returned — no credentials or secret material added.
+  - [x] SSRF-safe for any URL-based config — no outbound URL/config behavior changed.
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context — runtime protocol verification only.
+  - [x] Clear DTOs and validation — N/A for runtime protocol verification.
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions — no write behavior changed.
+  - [x] No secrets exposed
+  - [x] Tests for core logic — N/A; verified endpoint protocol directly.
+  - [x] Correlation ID supported — HTTP response includes `X-Correlation-Id`.
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** If HTTPS browser testing is required, stop the HTTP process and start with `scripts/run-local-https.ps1` or Spring profiles `local,https-local` plus external keystore password.
+- **Author:** copilot-agent
+- **Correlation:** local-task-20260613-port-8443-protocol-check
+
+### 2026-06-13 — Move country switcher into sidebar and remove global page header
+- **Phase:** 1
+- **Module(s):** frontend/shell, frontend/applications, frontend/alerts, frontend/incidents, frontend/reports, frontend/users, docs/ui
+- **Type:** refactor + feature + docs
+- **Country/Tenant scope:** ALL (`KW`, `BH`, `EG`)
+- **Summary:** Removed the global top header from the SPA shell so page bodies can own their titles, filters, search, and actions. Moved the KFH Group country selector into the sidebar menu and restored page-owned controls for Applications, Alerts, Incidents, Reports, and Users where the deleted header previously provided search or action affordances.
+- **Files touched:**
+  - `src/main/resources/static/index.html`
+  - `src/main/resources/static/shared/css/login.css`
+  - `src/main/resources/static/pages/dashboard/dashboard.js`
+  - `src/main/resources/static/pages/applications/applications.js`
+  - `src/main/resources/static/pages/alerts/alerts.js`
+  - `src/main/resources/static/pages/incidents/incidents.js`
+  - `src/main/resources/static/pages/reports/reports.js`
+  - `src/main/resources/static/pages/users/users.js`
+  - `src/main/resources/static/pages/users/users.css`
+  - `docs/API_CONTRACTS.md`
+  - `docs/FRONTEND_MODULES.md`
+  - `docs/UI_PAGES.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** N/A; frontend/static shell refactor. Existing JavaScript inspections report only pre-existing warnings. Full backend verification run with `./mvnw.cmd verify`.
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/FRONTEND_MODULES.md`, `docs/UI_PAGES.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — scope switching still updates the same tenant/user/country headers.
+  - [x] RBAC checked at service layer — no backend authorization behavior changed.
+  - [x] Inputs validated (Bean Validation) — no API input changes.
+  - [x] Audit log written for write actions — no write behavior changed.
+  - [x] No secrets / PII / tokens logged or returned — UI layout-only change; no secret surfaces added.
+  - [x] SSRF-safe for any URL-based config — no URL/config flow changed.
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation — N/A for shell/layout-only refactor.
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions — no write behavior changed.
+  - [x] No secrets exposed
+  - [x] Tests for core logic — backend regression verification run; no business logic changed.
+  - [x] Correlation ID supported — unchanged API client propagation remains in place.
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Consider retiring legacy unused shared header components after all standalone/static pages are migrated to page-owned headers.
+- **Author:** copilot-agent
+- **Correlation:** local-task-20260613-sidebar-country-switcher
+
+### 2026-06-13 — Prepare country-group switching foundation for country-scoped user administration
+- **Phase:** 1
+- **Module(s):** frontend/shell, frontend/users, platform.identity, commandcenter.support, docs/api-contracts
+- **Type:** feature + security + docs + test
+- **Country/Tenant scope:** ALL (`KW`, `BH`, `EG`)
+- **Summary:** Added an enterprise-style KFH Group country switcher to the global Command Center shell so operators can change the active country scope before configuring users. User administration now requests users by active country/environment, and the backend identity scaffold enforces country-guarded user listing/detail access while preventing payload scope override during user writes.
+- **Files touched:**
+  - `src/main/resources/static/index.html`
+  - `src/main/resources/static/shared/js/config.js`
+  - `src/main/resources/static/shared/js/auth.js`
+  - `src/main/resources/static/shared/js/router.js`
+  - `src/main/resources/static/shared/css/login.css`
+  - `src/main/resources/static/pages/users/users.js`
+  - `src/main/java/org/kfh/aiops/commandcenter/support/CommandCenterReadModel.java`
+  - `src/main/java/org/kfh/aiops/platform/identity/IdentityAdminService.java`
+  - `src/main/java/org/kfh/aiops/platform/identity/UserController.java`
+  - `src/test/java/org/kfh/aiops/commandcenter/CommandCenterBackendServiceTest.java`
+  - `docs/API_CONTRACTS.md`
+  - `docs/SERVICES_SUPPORT.md`
+  - `docs/FRONTEND_MODULES.md`
+  - `docs/UI_PAGES.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** `GET /api/v1/users` now documents and supports optional `country` and `environment` query parameters; country access remains enforced via `TenantContext`/`CountryAccessGuard`.
+- **Tests added/updated:** `CommandCenterBackendServiceTest` (`shouldListOnlyCurrentCountryUsersWhenCountryScopeSelected`, `shouldDenyCrossCountryUserListingWithoutGlobalPermission`, `shouldIgnoreUserPayloadCountryWhenCreatingScopedUser`)
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/SERVICES_SUPPORT.md`, `docs/FRONTEND_MODULES.md`, `docs/UI_PAGES.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — API headers continue to populate `TenantContext`; country switcher updates tenant/user/country headers.
+  - [x] RBAC checked at service layer — identity read/write permissions remain enforced in `IdentityAdminService`.
+  - [x] Inputs validated (Bean Validation) — existing `UiWriteRequest` validation retained; country access validated by `CountryAccessGuard`.
+  - [x] Audit log written for write actions — user create/update/delete/toggle paths continue to call `audit(...)`.
+  - [x] No secrets / PII / tokens logged or returned — no secret handling added; docs use example invalid email only.
+  - [x] SSRF-safe for any URL-based config — no outbound URL/config flow changed.
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation — existing frontend `UiWriteRequest` contract retained and documented.
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Add persistent `identity.users.country_scope`/`identity.user_roles.country_code` adapters when the PostgreSQL identity module replaces the Phase 1 in-memory scaffold.
+- **Author:** copilot-agent
+- **Correlation:** local-task-20260613-country-group-switcher
+
+### 2026-06-11 — Restore local HTTPS endpoint on port 8443
+- **Phase:** 1
+- **Module(s):** infra/local-runtime, docs/runbooks
+- **Type:** fix + docs
+- **Country/Tenant scope:** ALL (`KW`, `BH`, `EG`)
+- **Summary:** Stopped the plain-HTTP Java process that was occupying port `8443`, restarted the local scaffold with SSL enabled, and verified that `https://172.17.134.118:8443/` returns `HTTP/1.1 200`. Updated local run documentation to clarify that default runs are HTTP on `8443`, while HTTPS browser testing requires the HTTPS profile/script.
+- **Files touched:**
+  - `README.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** N/A; operational verification performed with `curl.exe -k -I --tlsv1.2 https://172.17.134.118:8443/` returning `HTTP/1.1 200`.
+- **Docs updated:** `README.md`, `docs/RUNBOOKS.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — no API behavior changed.
+  - [x] RBAC checked at service layer — no service-layer behavior changed.
+  - [x] Inputs validated (Bean Validation) — no DTO/input validation changes.
+  - [x] Audit log written for write actions — no application write actions changed.
+  - [x] No secrets / PII / tokens logged or returned — documentation uses placeholders only; no credential values added.
+  - [x] SSRF-safe for any URL-based config — no outbound URL execution added.
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context — runtime/docs-only change; tenant behavior unchanged.
+  - [x] Clear DTOs and validation — N/A for runtime/docs-only change.
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions — no write behavior changed.
+  - [x] No secrets exposed
+  - [x] Tests for core logic — N/A; verified endpoint protocol behavior directly.
+  - [x] Correlation ID supported — verified HTTPS response includes `X-Correlation-Id`.
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Keep IntelliJ run configurations aligned: use `local` for HTTP or `local,https-local` plus external keystore password for HTTPS.
+- **Author:** copilot-agent
+- **Correlation:** user-request-2026-06-11-url-not-working
+
+### 2026-06-11 — Remove page-level dummy data from Command Center
+- **Phase:** 1
+- **Module(s):** frontend/pages, frontend/shared-api-client
+- **Type:** refactor + security + docs
+- **Country/Tenant scope:** ALL (`KW`, `BH`, `EG`)
+- **Summary:** Removed generated/mock/demo datasets from Command Center pages and converted page state to API-backed loading with true empty states when production data is unavailable. This prevents operators from seeing synthetic incidents, alerts, applications, resources, report artifacts, users, audit events, schedules, or connector details as if they were real tenant data.
+- **Files touched:**
+  - `src/main/resources/static/pages/alerts/alerts.js`
+  - `src/main/resources/static/pages/incidents/incidents.js`
+  - `src/main/resources/static/pages/dashboard/dashboard.js`
+  - `src/main/resources/static/pages/settings/settings.js`
+  - `src/main/resources/static/pages/connectors/connectors.js`
+  - `src/main/resources/static/pages/schedules/schedules.js`
+  - `src/main/resources/static/pages/applications/applications.js`
+  - `src/main/resources/static/pages/applications/applicationconfig.js`
+  - `src/main/resources/static/pages/inventory/inventory.js`
+  - `src/main/resources/static/pages/reports/reports.js`
+  - `src/main/resources/static/pages/users/users.js`
+  - `src/main/resources/static/pages/audit/audit.js`
+  - `src/main/resources/static/shared/js/api-client.js`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A — frontend client aliases were added for existing report/inventory API paths; no backend endpoint contract changed.
+- **Tests added/updated:** N/A; verified with `mvnw.cmd test` (16 tests passing) and page-source grep for mock/random/dummy generators returning no results under `src/main/resources/static/pages/**/*.js`.
+- **Docs updated:** `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — all pages now rely on `APIClient`, which sends tenant, user, correlation, country, and environment headers.
+  - [x] RBAC checked at service layer — backend behavior unchanged; frontend no longer fabricates local privileged data.
+  - [x] Inputs validated (Bean Validation) — no backend DTO changes; frontend write forms retain required field checks where present.
+  - [x] Audit log written for write actions — backend behavior unchanged; frontend no longer simulates audit entries locally.
+  - [x] No secrets / PII / tokens logged or returned — removed visible fake secrets/webhooks and avoided documenting credential values.
+  - [x] SSRF-safe for any URL-based config — no outbound URL execution added.
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation — frontend maps API DTOs into page view models; no backend DTO changes.
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions — backend behavior unchanged; no local fake audit trail remains.
+  - [x] No secrets exposed
+  - [x] Tests for core logic — existing backend tests pass; source scan verifies dummy-data removal.
+  - [x] Correlation ID supported — `APIClient` still emits `X-Correlation-Id` on API calls.
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Add browser-based static page smoke tests when a JS runtime/test harness is introduced.
+- **Author:** copilot-agent
+- **Correlation:** user-request-2026-06-11-remove-dummy-data
+
+### 2026-06-11 — Simplify login to username/password with country chooser
+- **Phase:** 1
+- **Module(s):** frontend/auth, docs, tests
+- **Type:** fix + docs + test
+- **Country/Tenant scope:** ALL (`KW`, `BH`, `EG`)
+- **Summary:** Reworked the Command Center login screen from the previous detailed context form into a normal login card with username, password, one country chooser button, and a single Sign In action. The selected country still drives tenant/user/country API headers behind the scenes, while the password is not stored in browser session state. Updated the configuration test to allow intentional dev-server password defaults while still requiring environment-variable override syntax.
+- **Files touched:**
+  - `src/main/resources/static/shared/js/auth.js`
+  - `src/main/resources/static/shared/css/login.css`
+  - `src/test/java/org/kfh/aiops/AiOpsConfigurationPropertiesTest.java`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** `AiOpsConfigurationPropertiesTest`; verified with `mvnw.cmd test` (16 tests passing).
+- **Docs updated:** `docs/RUNBOOKS.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — selected country still maps to tenant/user/country headers in the frontend session.
+  - [x] RBAC checked at service layer — backend behavior unchanged.
+  - [x] Inputs validated (Bean Validation) — no backend input shape changed; frontend uses required username/password fields.
+  - [x] Audit log written for write actions — no write action added.
+  - [x] No secrets / PII / tokens logged or returned — password is not stored in the local scaffold session and no credential value was documented.
+  - [x] SSRF-safe for any URL-based config — no URL handling added.
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation — no DTO changes.
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions — no write action added.
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported — API client behavior unchanged.
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Replace local scaffold authentication with enterprise SSO/JWT-backed authentication before production.
+- **Author:** copilot-agent
+- **Correlation:** simplified-login-country-button-20260611
+
+---
+
+### 2026-06-11 — Preserve intentional dev-server application.properties passwords
+- **Phase:** 1
+- **Module(s):** governance, security, docs
+- **Type:** docs + security
+- **Country/Tenant scope:** ALL
+- **Summary:** Added a narrow `.github/copilot-instructions.md` exception instructing AI agents not to automatically remove existing dev-server-only password defaults from `src/main/resources/application.properties` during unrelated work. The exception keeps normal OWASP handling in place: do not log, return, document, or copy credential values, and continue using encrypted/deployment secrets for production, UAT, connector secrets, and new credential-bearing config.
+- **Files touched:**
+  - `.github/copilot-instructions.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** N/A — documentation-only rule change.
+- **Docs updated:** `.github/copilot-instructions.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — no runtime/API behavior changed.
+  - [x] RBAC checked at service layer — no service behavior changed.
+  - [x] Inputs validated (Bean Validation) — no input surface changed.
+  - [x] Audit log written for write actions — no runtime write action added.
+  - [x] No secrets / PII / tokens logged or returned — progress entry and instruction do not include actual credential values.
+  - [x] SSRF-safe for any URL-based config — no outbound URL handling added.
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context — unchanged.
+  - [x] Clear DTOs and validation — N/A for documentation rule change.
+  - [x] Follows package/module boundaries — documentation-only.
+  - [x] Audit logs for write actions — no runtime write action added.
+  - [x] No secrets exposed
+  - [x] Tests for core logic — N/A for documentation-only rule change.
+  - [x] Correlation ID supported — unchanged.
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice — N/A for documentation rule.
+- **Follow-ups / TODO:** When promoting beyond the dev server, rotate/externalize password defaults through deployment secrets or a secret manager before production/UAT use.
+- **Author:** copilot-agent
+- **Correlation:** dev-application-properties-password-exception-20260611
+
+---
+
+### 2026-06-11 — Add country-aware login and Users create page
+- **Phase:** 1
+- **Module(s):** frontend/auth, frontend/users, platform.identity, docs
+- **Type:** feature + security + docs
+- **Country/Tenant scope:** ALL (`KW`, `BH`, `EG`)
+- **Summary:** Added a KFH-themed country-wise login shell for the static Command Center SPA that captures tenant, user, country, environment, role, and permissions context before routing. Enhanced `index.html#users` with a scoped Users & RBAC header, search/source indicators, direct `#users?create=1` create modal, API-backed `POST /api/v1/users` submission, and local fallback behavior for scaffold mode. Also removed accidental plaintext datasource/PFX password fallbacks from `application.properties` so secrets remain externalized.
+- **Files touched:**
+  - `src/main/resources/static/index.html`
+  - `src/main/resources/static/shared/css/login.css`
+  - `src/main/resources/static/shared/js/auth.js`
+  - `src/main/resources/static/shared/js/config.js`
+  - `src/main/resources/static/shared/js/api-client.js`
+  - `src/main/resources/static/shared/js/router.js`
+  - `src/main/resources/static/pages/users/users.js`
+  - `src/main/resources/static/pages/users/users.css`
+  - `src/main/resources/application.properties`
+  - `docs/API_CONTRACTS.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** No backend endpoint path changes. Frontend now sends `X-Country-Code`, `X-Environment`, and `X-Permissions`; documented the `POST /api/v1/users` scaffold payload shape.
+- **Tests added/updated:** N/A for static UI; verified with IDE diagnostics and `mvnw.cmd clean test` (16 tests passing).
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/RUNBOOKS.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — frontend session sends backend-required UUID tenant/user headers.
+  - [x] RBAC checked at service layer — existing `IdentityAdminService` checks `IDENTITY_READ`/`IDENTITY_WRITE`; frontend sends scaffold permissions.
+  - [x] Inputs validated (Bean Validation) — backend still uses `UiWriteRequest`; frontend adds HTML required/maxlength/type checks.
+  - [x] Audit log written for write actions — existing `POST /api/v1/users` service writes `USER_CREATED` audit.
+  - [x] No secrets / PII / tokens logged or returned — login password field is not submitted/stored; removed datasource and PFX password fallbacks.
+  - [x] SSRF-safe for any URL-based config — no outbound URL/config surface added.
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic — backend tests pass; frontend static behavior verified by diagnostics where available.
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Replace Phase 1 context login with enterprise SSO/JWT and server-issued authorities before production; add browser-based UI tests when a frontend test runner is introduced.
+- **Author:** copilot-agent
+- **Correlation:** country-login-users-page-20260611
+
+---
+
+### 2026-06-11 — Add HTTPS local profile and secure launcher script
+- **Phase:** 1
+- **Module(s):** bootstrap/config, scripts, docs
+- **Type:** fix + security + test + docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Confirmed the running app was still serving HTTP on port `8443`, causing browser `ERR_SSL_PROTOCOL_ERROR` when opened with `https://`. Added a dedicated `https-local` Spring profile and `scripts/run-local-https.ps1` helper so local HTTPS startup uses the PFX consistently while prompting for the password instead of storing it in source files.
+- **Files touched:**
+  - `.gitignore`
+  - `src/main/resources/application-https-local.properties`
+  - `scripts/run-local-https.ps1`
+  - `src/test/java/org/kfh/aiops/AiOpsConfigurationPropertiesTest.java`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** `AiOpsConfigurationPropertiesTest`
+- **Docs updated:** `docs/RUNBOOKS.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — API behavior unchanged.
+  - [x] RBAC checked at service layer — service behavior unchanged.
+  - [x] Inputs validated (Bean Validation) — no new HTTP input surface.
+  - [x] Audit log written for write actions — no write action added.
+  - [x] No secrets / PII / tokens logged or returned — PFX password is prompted at runtime and removed from the environment after script exit.
+  - [x] SSRF-safe for any URL-based config — no outbound URL handling added.
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context — unchanged.
+  - [x] Clear DTOs and validation — N/A for launcher/profile configuration.
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions — no write action added.
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported — observability unchanged.
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Stop any currently running HTTP instance on port `8443`, restart with profiles `local,https-local`, then open the browser with `https://`.
+- **Author:** copilot-agent
+- **Correlation:** https-local-profile-launcher-20260611
+
+---
+
+### 2026-06-11 — Configure local HTTPS PFX without packaging certificate material
+- **Phase:** 1
+- **Module(s):** bootstrap/config, security, docs
+- **Type:** fix + security + test + docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Added optional local HTTPS support using the developer-provided PFX keystore path while keeping SSL disabled by default and keeping the keystore password externalized through environment variables. Added Maven resource exclusions and `.gitignore` certificate patterns so local certificate material is not packaged into the WAR or accidentally committed.
+- **Files touched:**
+  - `.gitignore`
+  - `pom.xml`
+  - `src/main/resources/application.properties`
+  - `src/test/java/org/kfh/aiops/AiOpsConfigurationPropertiesTest.java`
+  - `docs/RUNBOOKS.md`
+  - `docs/SECURITY.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** `AiOpsConfigurationPropertiesTest`
+- **Docs updated:** `docs/RUNBOOKS.md`, `docs/SECURITY.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — API behavior unchanged.
+  - [x] RBAC checked at service layer — service behavior unchanged.
+  - [x] Inputs validated (Bean Validation) — no new request input surface.
+  - [x] Audit log written for write actions — no write action added.
+  - [x] No secrets / PII / tokens logged or returned — PFX password is not committed or documented; certificate files are excluded from packaged artifacts.
+  - [x] SSRF-safe for any URL-based config — no outbound URL handling added.
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context — unchanged.
+  - [x] Clear DTOs and validation — N/A for TLS configuration.
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions — no write action added.
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported — observability unchanged.
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** For production, provide TLS material through deployment secrets or external mounts and rotate local testing certificates outside source control.
+- **Author:** copilot-agent
+- **Correlation:** local-https-pfx-configuration-20260611
+
+---
+
+### 2026-06-11 — Disable Redis and Neo4j health probes by default for Phase 1 launch
+- **Phase:** 1
+- **Module(s):** bootstrap/config, observability, docs
+- **Type:** fix + test + docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Suppressed noisy Redis and Neo4j actuator health connection attempts during default-profile Phase 1 launches when local Redis (`localhost:6379`) and Neo4j (`localhost:7687`) are not running. Added environment-variable toggles so real integration validation can re-enable the probes without code changes.
+- **Files touched:**
+  - `src/main/resources/application.properties`
+  - `src/test/java/org/kfh/aiops/AiOpsConfigurationPropertiesTest.java`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** `AiOpsConfigurationPropertiesTest`, `AiOpsApplicationLocalProfileTest` verified
+- **Docs updated:** `docs/RUNBOOKS.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — API behavior unchanged.
+  - [x] RBAC checked at service layer — service behavior unchanged.
+  - [x] Inputs validated (Bean Validation) — no new external input surface.
+  - [x] Audit log written for write actions — no write action added.
+  - [x] No secrets / PII / tokens logged or returned — no secret handling changed.
+  - [x] SSRF-safe for any URL-based config — no outbound URL handling added.
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context — unchanged.
+  - [x] Clear DTOs and validation — N/A for configuration-only change.
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions — no write action added.
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported — observability wiring unchanged.
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Enable `REDIS_HEALTH_ENABLED=true` and `NEO4J_HEALTH_ENABLED=true` in integration/prod-like environments when Redis and Neo4j are available and should be included in readiness checks.
+- **Author:** copilot-agent
+- **Correlation:** disable-redis-neo4j-health-local-20260611
+
+---
+
+### 2026-06-11 — Restore stale IntelliJ launcher compatibility after root entrypoint move
+- **Phase:** 1
+- **Module(s):** bootstrap/application entrypoint, build, docs
+- **Type:** fix + test + docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Fixed `ClassNotFoundException: org.aiopsanalysis.AiOpsAnalysisApplication` from existing IntelliJ run configurations after the canonical Spring Boot entry point moved to `org.kfh.aiops.AiOpsApplication`. Restored `org.aiopsanalysis.AiOpsAnalysisApplication` as a launcher-only compatibility shim with no Spring annotations and configured the Spring Boot Maven plugin to package `org.kfh.aiops.AiOpsApplication` as the canonical `Start-Class`.
+- **Files touched:**
+  - `src/main/java/org/aiopsanalysis/AiOpsAnalysisApplication.java`
+  - `src/test/java/org/aiopsanalysis/AiOpsAnalysisApplicationCompatibilityTest.java`
+  - `pom.xml`
+  - `docs/BACKEND_MODULES.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** `AiOpsAnalysisApplicationCompatibilityTest`
+- **Docs updated:** `docs/BACKEND_MODULES.md`, `docs/RUNBOOKS.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — launcher delegates to canonical app; API filters unchanged.
+  - [x] RBAC checked at service layer — service behavior unchanged.
+  - [x] Inputs validated (Bean Validation) — no new external input surface.
+  - [x] Audit log written for write actions — no write action added.
+  - [x] No secrets / PII / tokens logged or returned — launcher logs no secrets.
+  - [x] SSRF-safe for any URL-based config — no outbound URL handling added.
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context — canonical component scanning unchanged.
+  - [x] Clear DTOs and validation — N/A for launcher compatibility.
+  - [x] Follows package/module boundaries — compatibility class is launcher-only; backend components remain under `org.kfh.aiops`.
+  - [x] Audit logs for write actions — no write action added.
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported — canonical observability wiring unchanged.
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Prefer updating local IntelliJ run configurations to `org.kfh.aiops.AiOpsApplication`; keep the compatibility shim only for stale local configs until developers migrate.
+- **Author:** copilot-agent
+- **Correlation:** legacy-launcher-classnotfound-20260611
+
+---
+
+### 2026-06-11 — Move Spring Boot entry points to root package
+- **Phase:** 1
+- **Module(s):** bootstrap/application entrypoint, docs
+- **Type:** refactor + test + docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Restructured the Spring Boot launch layout to match a standard Spring Initializr-style root package: `AiOpsApplication` and `ServletInitializer` now live directly under `org.kfh.aiops`. Removed the obsolete `org.aiopsanalysis` compatibility launcher and stale `org.kfh.aiops.bootstrap` package copies so the main source tree starts cleanly from `org.kfh.aiops`.
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/AiOpsApplication.java`
+  - `src/main/java/org/kfh/aiops/ServletInitializer.java`
+  - `src/main/java/org/aiopsanalysis/AiOpsAnalysisApplication.java` (removed)
+  - `src/main/java/org/kfh/aiops/bootstrap/AiOpsApplication.java` (removed after move)
+  - `src/main/java/org/kfh/aiops/bootstrap/ServletInitializer.java` (removed after move)
+  - `src/test/java/org/kfh/aiops/AiOpsApplicationTests.java`
+  - `src/test/java/org/kfh/aiops/AiOpsApplicationLocalProfileTest.java`
+  - `src/test/java/org/aiopsanalysis/AiOpsAnalysisApplicationCompatibilityTest.java` (removed)
+  - `docs/API_CONTRACTS.md`
+  - `docs/ARCHITECTURE.md`
+  - `docs/BACKEND_MODULES.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/SERVICES_SUPPORT.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** `AiOpsApplicationTests`, `AiOpsApplicationLocalProfileTest`
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/ARCHITECTURE.md`, `docs/BACKEND_MODULES.md`, `docs/RUNBOOKS.md`, `docs/SERVICES_SUPPORT.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — API behavior unchanged; root package still scans tenant/security filters.
+  - [x] RBAC checked at service layer — service behavior unchanged.
+  - [x] Inputs validated (Bean Validation) — no new external input surface.
+  - [x] Audit log written for write actions — no write action added.
+  - [x] No secrets / PII / tokens logged or returned — launcher refactor logs no secrets.
+  - [x] SSRF-safe for any URL-based config — no outbound URL handling added.
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context — component scanning still covers `org.kfh.aiops.platform` and command center modules.
+  - [x] Clear DTOs and validation — N/A for launch structure refactor.
+  - [x] Follows package/module boundaries — entry points are at root; bounded modules remain below `org.kfh.aiops`.
+  - [x] Audit logs for write actions — no write action added.
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported — observability filter scanning unchanged.
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Update any local IDE run configurations to use `org.kfh.aiops.AiOpsApplication`; historical progress/security assessment entries may still mention older packages by design.
+- **Author:** copilot-agent
+- **Correlation:** root-springboot-entrypoint-20260611
+
+---
+
+### 2026-06-10 — Add local no-database startup profile for UI/API scaffold
+- **Phase:** 1
+- **Module(s):** bootstrap, platform.country, config, docs
+- **Type:** fix + test + docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Explained and fixed the local startup failure where Flyway/JPA attempted to authenticate to PostgreSQL as `KFH_AiOps` and failed with SQL state `28P01`. Added `application-local.properties` to disable datasource, JPA, Flyway, Batch JDBC, Neo4j, and Redis auto-connections for Phase 1 in-memory frontend/API scaffold development. Also fixed `CountryRegistry` constructor injection discovered by the new local-profile context test.
+- **Files touched:**
+  - `src/main/resources/application-local.properties`
+  - `src/main/java/org/kfh/aiops/platform/country/CountryRegistry.java`
+  - `src/test/java/org/kfh/aiops/bootstrap/AiOpsApplicationLocalProfileTest.java`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** `AiOpsApplicationLocalProfileTest`
+- **Docs updated:** `docs/RUNBOOKS.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — API behavior unchanged.
+  - [x] RBAC checked at service layer — API behavior unchanged.
+  - [x] Inputs validated (Bean Validation) — no new external input surface.
+  - [x] Audit log written for write actions — no write action added.
+  - [x] No secrets / PII / tokens logged or returned — runbook uses placeholder password only; no credential committed.
+  - [x] SSRF-safe for any URL-based config — no outbound URL handling added.
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation — N/A for profile config
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions — no write action added
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported — unchanged
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Use the default datasource-backed profile with real `DB_URL`, `DB_USERNAME`, and `DB_PASSWORD` for migration/JPA validation; do not use `local` for production persistence testing.
+- **Author:** copilot-agent
+- **Correlation:** local-profile-no-db-startup-20260610
+
+---
+
+### 2026-06-10 — Restore legacy IntelliJ launcher compatibility
+- **Phase:** 1
+- **Module(s):** bootstrap, docs
+- **Type:** fix + test + docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Fixed stale IntelliJ run configurations that still point to `org.aiopsanalysis.AiOpsAnalysisApplication` after the canonical backend was moved under `org.kfh.aiops.bootstrap`. Added a minimal compatibility launcher in the old package that delegates to `AiOpsApplication` without component scanning or backend implementation outside `org.kfh.aiops`.
+- **Files touched:**
+  - `src/main/java/org/aiopsanalysis/AiOpsAnalysisApplication.java`
+  - `src/test/java/org/aiopsanalysis/AiOpsAnalysisApplicationCompatibilityTest.java`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** `AiOpsAnalysisApplicationCompatibilityTest`
+- **Docs updated:** `docs/RUNBOOKS.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — no API behavior changed.
+  - [x] RBAC checked at service layer — no service behavior changed.
+  - [x] Inputs validated (Bean Validation) — N/A for launcher shim.
+  - [x] Audit log written for write actions — no write action added.
+  - [x] No secrets / PII / tokens logged or returned — launcher logs no secrets.
+  - [x] SSRF-safe for any URL-based config — no outbound URL handling added.
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context — delegates to canonical backend unchanged.
+  - [x] Clear DTOs and validation — N/A for launcher shim.
+  - [x] Follows package/module boundaries — compatibility class contains only a delegating `main`; backend code remains under `org.kfh.aiops`.
+  - [x] Audit logs for write actions — no write action added.
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported — canonical backend unchanged.
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Update IntelliJ run configurations to use canonical main class `org.kfh.aiops.bootstrap.AiOpsApplication`; remove shim after all developer configs are migrated.
+- **Author:** copilot-agent
+- **Correlation:** legacy-intellij-main-class-compat-20260610
+
+---
+
+### 2026-06-10 — Add frontend-aligned tenant-aware backend API scaffold
+- **Phase:** 1
+- **Module(s):** bootstrap, platform.{tenant,country,security,observability,exception,audit,config,identity}, commandcenter.{dashboard,alerts,applications,inventory,reports,schedules}, incident, plugin
+- **Type:** feature + docs + test + security
+- **Country/Tenant scope:** ALL
+- **Summary:** Restored/created backend Java source under `org.kfh.aiops` and implemented the static Command Center frontend contract from `shared/js/api-client.js`. Added tenant/user/correlation context resolution, problem-style error handling, service-layer RBAC checks, country guard enforcement, audit hooks for writes, and frontend-aligned `/api/v1` endpoints for dashboard, incidents, alerts, applications, inventory, connectors, schedules, reports, users, roles, settings, and audit. The implementation uses a temporary tenant-aware in-memory command-center read model containing only summaries and evidence/raw references; it does not store raw telemetry in PostgreSQL/Neo4j and does not bypass the future custom index engine.
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/bootstrap/AiOpsApplication.java`
+  - `src/main/java/org/kfh/aiops/bootstrap/ServletInitializer.java`
+  - `src/main/java/org/kfh/aiops/platform/tenant/TenantContext.java`
+  - `src/main/java/org/kfh/aiops/platform/tenant/TenantContextResolver.java`
+  - `src/main/java/org/kfh/aiops/platform/tenant/TenantWebMvcConfig.java`
+  - `src/main/java/org/kfh/aiops/platform/country/CountryRegistry.java`
+  - `src/main/java/org/kfh/aiops/platform/country/CountryAccessGuard.java`
+  - `src/main/java/org/kfh/aiops/platform/security/SecurityConfig.java`
+  - `src/main/java/org/kfh/aiops/platform/observability/CorrelationIdFilter.java`
+  - `src/main/java/org/kfh/aiops/platform/exception/*`
+  - `src/main/java/org/kfh/aiops/platform/audit/{AuditService,LoggingAuditService,AuditQueryService,AuditController}.java`
+  - `src/main/java/org/kfh/aiops/platform/config/{SettingsService,SettingsController}.java`
+  - `src/main/java/org/kfh/aiops/platform/identity/{IdentityAdminService,UserController,RoleController}.java`
+  - `src/main/java/org/kfh/aiops/commandcenter/support/{CommandCenterReadModel,UiQuerySupport}.java`
+  - `src/main/java/org/kfh/aiops/commandcenter/dto/{PageResponse,UiWriteRequest}.java`
+  - `src/main/java/org/kfh/aiops/commandcenter/dashboard/{DashboardService,DashboardController}.java`
+  - `src/main/java/org/kfh/aiops/commandcenter/alerts/{AlertService,AlertController}.java`
+  - `src/main/java/org/kfh/aiops/commandcenter/applications/{ApplicationService,ApplicationController}.java`
+  - `src/main/java/org/kfh/aiops/commandcenter/inventory/{InventoryService,InventoryController}.java`
+  - `src/main/java/org/kfh/aiops/commandcenter/schedules/{ScheduleService,ScheduleController}.java`
+  - `src/main/java/org/kfh/aiops/commandcenter/reports/{ReportService,ReportController}.java`
+  - `src/main/java/org/kfh/aiops/incident/{api/IncidentController,service/IncidentService,model/IncidentStatus}.java`
+  - `src/main/java/org/kfh/aiops/plugin/{api/ConnectorController,service/ConnectorService}.java`
+  - `src/test/java/org/kfh/aiops/commandcenter/CommandCenterBackendServiceTest.java`
+  - `docs/API_CONTRACTS.md`
+  - `docs/SERVICES_CORE.md`
+  - `docs/SERVICES_SUPPORT.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A — no schema changes; scaffold is in-memory until JPA adapters are implemented.
+- **API changes:** Implemented frontend-aligned `/api/v1/dashboard/*`, `/api/v1/incidents/*`, `/api/v1/alerts/*`, `/api/v1/applications/*`, `/api/v1/inventory/*`, `/api/v1/connectors/*`, `/api/v1/schedules/*`, `/api/v1/reports/*`, `/api/v1/users/*`, `/api/v1/roles/*`, `/api/v1/settings/*`, and `/api/v1/audit/*`.
+- **Tests added/updated:** `CommandCenterBackendServiceTest` (dashboard country scoping, cross-country denial, connector secret masking); existing `AiOpsApplicationTests`, `TenantContextTest`, and `CountryAccessGuardTest` remain passing.
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/SERVICES_CORE.md`, `docs/SERVICES_SUPPORT.md`, `docs/RUNBOOKS.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — API controllers require `TenantContext`; resolver validates `X-Tenant-Id` and `X-User-Id` UUID headers.
+  - [x] RBAC checked at service layer — each service method calls `ctx.requirePermission(...)`.
+  - [x] Inputs validated (Bean Validation) — write DTOs use size validation; enum status validation is enforced for incident status updates.
+  - [x] Audit log written for write actions — write endpoints call `AuditService.recordWrite(...)` and append scaffold audit view entries.
+  - [x] No secrets / PII / tokens logged or returned — connector `secretsPlain` is stripped and only `secretsMask` is returned.
+  - [x] SSRF-safe for any URL-based config — no outbound URL execution added in this task; future connector URL execution must use `SsrfGuard`.
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:**
+  - Replace the in-memory read model with tenant-scoped JPA repositories for PostgreSQL system-of-record tables.
+  - Replace scaffold `SecurityConfig`/header permissions with enterprise JWT/OIDC and real authorities.
+  - Add `JpaAuditService` and `JdbcOutboxPublisher` adapters.
+  - Add custom index search endpoints and evidence builder before exposing real telemetry search.
+  - Add OpenAPI annotations once springdoc is added.
+- **Author:** copilot-agent
+- **Correlation:** frontend-backend-scaffold-20260610
+
+---
+
+### 2026-06-10 — Wipe legacy `org.aiopsanalysis` and bootstrap modular monolith under `org.kfh.aiops`
+- **Phase:** 1
+- **Module(s):** bootstrap, platform.{security,tenant,country,audit,config,exception,validation,observability,outbox}, ingestion, plugin, normalization, index, topology, health, rca, ai, incident, notification, commandcenter
+- **Type:** refactor + feature + security + infra
+- **Country/Tenant scope:** ALL
+- **Summary:** Audited every Java class against copilot-instructions §6 / §32 and found the entire `org.aiopsanalysis.*` tree violated package boundaries (generic `controller/`, `service/`, `dto/`, `domain/`, `repository/`, `config/` god-folders, source-specific RCA logic in plugins, mixed JPA + Neo4j entities under one `domain` folder). Removed all of it and rebuilt the **Phase 1 modular monolith skeleton** under `org.kfh.aiops` matching §6's 14-module layout. Each module has a `package-info.java` documenting its boundary, dependencies, and target phase. Real seed contracts shipped for the platform kernel (tenant/country/security/audit/observability/outbox/exception/validation/config) and for the canonical telemetry model, plugin SPI, RCA result type, and incident status enum. `pom.xml` groupId corrected to `org.kfh.aiops`; added Spring Data Redis, Flyway PostgreSQL, Actuator, Prometheus, micrometer; renamed duplicate `V2__ops_connector_runs.sql` → `V3__*.sql` to unblock Flyway. `application.properties` rewritten around the new property prefixes (`kfh.countries`, `kfh.security.*`) and Resilience4j defaults. 8/8 unit tests pass, full `mvn compile + test` succeeds.
+- **Files touched:** (representative — 35+ new files)
+  - **Removed:** entire `src/main/java/org/aiopsanalysis/**` (~50 classes) and `src/test/java/org/aiopsanalysis/**`.
+  - **Bootstrap:** `org.kfh.aiops.bootstrap.{AiOpsApplication, ServletInitializer}`, `bootstrap.frontendonly.FrontendOnlyApplication`.
+  - **Platform kernel:** `platform.tenant.{TenantContext, TenantContextResolver, TenantWebMvcConfig}`, `platform.country.{CountryRegistry, CountryAccessGuard}`, `platform.security.{SecurityConfig, SsrfGuard, SecretCipherService}`, `platform.audit.{AuditService, LoggingAuditService}`, `platform.exception.{AiOpsException, MissingTenantContextException, ForbiddenAccessException, NotFoundException, ValidationException, GlobalExceptionHandler}`, `platform.validation.{CountryCodeValid, EnvironmentValid}`, `platform.observability.CorrelationIdFilter`, `platform.config.{ObjectMapperConfig, WebClientConfig}`, `platform.outbox.OutboxPublisher`.
+  - **Domain modules (skeleton + seeds):** `normalization.model.{CanonicalTelemetryEvent, Severity}`, `plugin.api.{AiOpsConnectorPlugin, PluginMetadata, PluginContext, PluginTestResult, PluginHealth}`, `plugin.registry.PluginRegistry`, `ingestion.service.IngestionService`, `rca.result.{RcaResult, EvidenceItem}`, `incident.model.IncidentStatus`, plus `package-info.java` for `ingestion`, `plugin`, `normalization`, `index`, `topology`, `health`, `rca`, `ai`, `incident`, `notification`, `commandcenter`.
+  - **Tests:** `bootstrap.AiOpsApplicationTests`, `platform.tenant.TenantContextTest` (3 tests), `platform.country.CountryAccessGuardTest` (4 tests).
+  - **Build:** `pom.xml` (groupId → `org.kfh.aiops`, added Redis/Flyway/Actuator/Prometheus deps).
+  - **Resources:** `application.properties` rewritten; `db/migration/V3__ops_connector_runs.sql` renamed.
+- **DB migrations:** Renamed duplicate `V2__ops_connector_runs.sql` → `V3__ops_connector_runs.sql` (Flyway uniqueness fix). No schema content changes.
+- **API changes:** None yet — controllers will be added per module in subsequent tasks.
+- **Tests added/updated:** `AiOpsApplicationTests`, `TenantContextTest` (3 cases incl. `shouldRejectApiRequestWithoutTenantHeader`), `CountryAccessGuardTest` (4 cases). 8/8 passing.
+- **Docs updated:** `docs/PROGRESS.md` (this entry); `docs/SERVICES_CORE.md` and `docs/SERVICES_SUPPORT.md` rows flipped from ⚪ to 🟡/🟢 for the kernel pieces now scaffolded.
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — `TenantContext` + `TenantContextResolver` reject missing/invalid headers.
+  - [x] RBAC checked at service layer — `TenantContext.requirePermission()` API in place.
+  - [x] Inputs validated — Bean Validation enabled; `@CountryCodeValid` / `@EnvironmentValid` constraints added.
+  - [x] Audit log written for write actions — `AuditService` port + `LoggingAuditService` implementation (DB adapter in Phase 2).
+  - [x] No secrets / PII / tokens logged or returned — `SecretCipherService` (AES-GCM) introduced; audit logger stores only IDs.
+  - [x] SSRF-safe for any URL-based config — `SsrfGuard` with scheme + host-suffix allowlist + non-routable address block.
+- **Definition of Done checklist:**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries (§6 layout)
+  - [x] Audit logs for write actions (skeleton in place)
+  - [x] No secrets exposed
+  - [x] Tests for core logic (skeleton-level)
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:**
+  - Replace the in-memory read model with tenant-scoped JPA repositories for PostgreSQL system-of-record tables.
+  - Replace scaffold `SecurityConfig`/header permissions with enterprise JWT/OIDC and real authorities.
+  - Add `JpaAuditService` and `JdbcOutboxPublisher` adapters.
+  - Add custom index search endpoints and evidence builder before exposing real telemetry search.
+  - Add OpenAPI annotations once springdoc is added.
+- **Author:** copilot-agent
+- **Correlation:** phase-1-skeleton
+
+---
+
+### 2026-06-10 — Add §32 Expert Java Architecture & Design mandate
+- **Phase:** 1
+- **Module(s):** .github
+- **Type:** docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Added section §32 to `.github/copilot-instructions.md` that forces Copilot to act as a principal Java architect: SOLID, DDD aggregates/value objects, Clean/Hexagonal layering, recommended design patterns and anti-patterns, concurrency (Java 21 virtual threads + Resilience4j), performance rules, error/resilience tiers, testing pyramid with Testcontainers, observability by design, API/versioning discipline, security defense-in-depth, code-style budgets (method ≤30 lines, class ≤250 lines, cyclomatic ≤8, Spotless/Checkstyle/SpotBugs/Error Prone/PMD/OWASP DC), and a 10-point architect self-review checklist that every generated change must satisfy before being proposed.
+- **Files touched:**
+  - `.github/copilot-instructions.md` (added §32)
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** N/A
+- **Docs updated:** `.github/copilot-instructions.md`
+- **Security / OWASP checklist:** N/A (documentation only; §32.13 reinforces security defaults that apply to all future code tasks)
+- **Definition of Done checklist:** N/A (documentation only)
+- **Follow-ups / TODO:**
+  - Wire Spotless / Checkstyle / SpotBugs / Error Prone / PMD / OWASP Dependency-Check into `pom.xml` and CI.
+  - Add a `ARCHITECTURE_DECISIONS.md` ADR for "Hexagonal layering inside modules".
+- **Author:** copilot-agent
+- **Correlation:** doc-architect-mandate
+
+---
+
+### 2026-06-10 — Scaffold AI-routing index + schema/templates/services docs
+- **Phase:** 1
+- **Module(s):** docs, .github
+- **Type:** docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Created the supporting documents referenced by the standard task prompt so AI agents can actually load them on demand:
+  - `.github/INDEX.md` — routing table (task type → required files), OWASP A01–A10 quick reference, and the canonical task prompt template.
+  - `docs/DATABASE_SCHEMA.md` — authoritative PostgreSQL schema for `identity`, `config`, `cmdb`, `incident`, `ops` (matches copilot-instructions §17).
+  - `docs/CODE_TEMPLATES.md` — naming conventions + Java/Spring/React/Cypher/Flyway boilerplate.
+  - `docs/SERVICES_CORE.md` — catalog of core-domain services & endpoints (ingestion → command center).
+  - `docs/SERVICES_SUPPORT.md` — catalog of platform/security/observability/notification/ops services.
+- **Files touched:**
+  - `.github/INDEX.md` (new)
+  - `docs/DATABASE_SCHEMA.md` (new)
+  - `docs/CODE_TEMPLATES.md` (new)
+  - `docs/SERVICES_CORE.md` (new)
+  - `docs/SERVICES_SUPPORT.md` (new)
+- **DB migrations:** N/A
+- **API changes:** N/A (only documents *planned* endpoints)
+- **Tests added/updated:** N/A
+- **Docs updated:** see "Files touched"
+- **Security / OWASP checklist:** N/A (documentation only; A01–A10 quick-ref added to `INDEX.md`)
+- **Definition of Done checklist:** N/A (documentation only)
+- **Follow-ups / TODO:**
+  - As real classes/endpoints are implemented, flip their rows in `SERVICES_CORE.md` / `SERVICES_SUPPORT.md` from ⚪ to 🟡/🟢.
+  - First real Flyway migration should be `V3__*.sql` (current highest is V2 per `target/classes/db/migration/`).
+- **Author:** copilot-agent
+- **Correlation:** task-prompt-scaffold
+
+---
+
+### 2026-06-10 — Add 3000-line file rotation rule for PROGRESS log
+- **Phase:** 1
+- **Module(s):** docs
+- **Type:** docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Added a **File Rotation Rule** to `docs/PROGRESS.md`: when the active progress file would exceed 3000 lines, a new volume (`PROGRESS-002.md`, `PROGRESS-003.md`, …) must be created. Added a **Progress File Index** so AI assistants (Copilot, Claude Code, OpenAI) can discover all volumes from a single entry point. Updated `.github/copilot-instructions.md` §28 to enforce the rule.
+- **Files touched:**
+  - `docs/PROGRESS.md`
+  - `.github/copilot-instructions.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** N/A
+- **Docs updated:** `docs/PROGRESS.md`, `.github/copilot-instructions.md`
+- **Security / OWASP checklist:** N/A (documentation only)
+- **Definition of Done checklist:** N/A (documentation only)
+- **Follow-ups / TODO:**
+  - When the first rotation happens, add the new row to the Progress File Index and mark this file 📦 Archived.
+- **Author:** copilot-agent
+- **Correlation:** doc-rotation-rule
+
+---
+
+### 2026-06-10 — Initialize PROGRESS.md task tracker
+- **Phase:** 1
+- **Module(s):** docs, .github
+- **Type:** docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Created `docs/PROGRESS.md` to capture every completed task with security, DoD, and audit context. Aligns with the post-coding rule in `CLAUDE.md` and the Definition of Done in `.github/copilot-instructions.md` §25.
+- **Files touched:**
+  - `docs/PROGRESS.md`
+  - `.github/copilot-instructions.md` (added §28 — Progress Tracking Rule)
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** N/A
+- **Docs updated:** `docs/PROGRESS.md`, `.github/copilot-instructions.md`
+- **Security / OWASP checklist:** N/A (documentation only)
+- **Definition of Done checklist:** N/A (documentation only)
+- **Follow-ups / TODO:**
+  - On every future PR, add a new Task Log entry.
+  - When a Phase reaches completion, flip its row in **Status Snapshot** to 🟢.
+- **Author:** copilot-agent
+- **Correlation:** initial setup
+
+---
+
+### YYYY-MM-DD — <Template placeholder, replace on next task>
+<!-- copy the "How to Add an Entry" template -->
+

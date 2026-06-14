@@ -9,18 +9,35 @@ window.KFHConfig = (function() {
   const API_BASE_URL = '/api/v1';
 
   // Default Headers (multi-tenancy support)
-  const DEFAULT_TENANT_ID = 'KFH_PROD';
-  const DEFAULT_USER_ID = 'system';
+  const DEFAULT_TENANT_ID = '00000000-0000-4000-8000-000000000001';
+  const DEFAULT_USER_ID = '00000000-0000-4000-8000-000000000101';
+  const SESSION_STORAGE_KEY = 'kfh.aiops.commandcenter.session.v1';
 
-  // Current user session (will be populated from auth)
-  let currentSession = {
-    tenantId: DEFAULT_TENANT_ID,
-    userId: DEFAULT_USER_ID,
-    userName: 'Ahmed Al-Rashid',
-    userInitials: 'AR',
-    userRole: 'Platform Admin',
-    permissions: ['*'] // All permissions for demo
-  };
+  const COUNTRY_GROUP_NAME = 'KFH Group';
+  const ALL_COUNTRIES_CODE = 'ALL';
+  const ALL_COUNTRY_SCOPE = { code: ALL_COUNTRIES_CODE, name: 'All countries', groupName: COUNTRY_GROUP_NAME, tenantId: DEFAULT_TENANT_ID, defaultUserId: DEFAULT_USER_ID, flag: '🌐', allCountries: true };
+
+  const COUNTRIES = [
+    { code: 'KW', name: 'KFH Kuwait', groupName: COUNTRY_GROUP_NAME, tenantId: DEFAULT_TENANT_ID, defaultUserId: DEFAULT_USER_ID, flag: '🇰🇼' },
+    { code: 'BH', name: 'KFH Bahrain', groupName: COUNTRY_GROUP_NAME, tenantId: '00000000-0000-4000-8000-000000000002', defaultUserId: '00000000-0000-4000-8000-000000000102', flag: '🇧🇭' },
+    { code: 'EG', name: 'KFH Egypt', groupName: COUNTRY_GROUP_NAME, tenantId: '00000000-0000-4000-8000-000000000003', defaultUserId: '00000000-0000-4000-8000-000000000103', flag: '🇪🇬' }
+  ];
+  const COUNTRY_SCOPES = [ALL_COUNTRY_SCOPE, ...COUNTRIES];
+
+  const LOGIN_ENVIRONMENTS = [
+    { code: 'PROD', name: 'Production' },
+    { code: 'UAT', name: 'UAT' },
+    { code: 'DEV', name: 'Development' }
+  ];
+
+  const LOGIN_ROLES = [
+    { id: 'GLOBAL_ADMIN', name: 'KFH Global Admin', permissions: ['*'] },
+    { id: 'COUNTRY_ADMIN', name: 'Country Admin', permissions: ['DASHBOARD_READ', 'INCIDENT_READ', 'ALERT_READ', 'IDENTITY_READ', 'IDENTITY_WRITE'] },
+    { id: 'NOC_OPERATOR', name: 'NOC Operator', permissions: ['DASHBOARD_READ', 'INCIDENT_READ', 'ALERT_READ', 'IDENTITY_READ'] },
+    { id: 'VIEWER', name: 'Viewer', permissions: ['DASHBOARD_READ', 'INCIDENT_READ', 'ALERT_READ'] }
+  ];
+
+  let currentSession = loadStoredSession();
 
   // Navigation configuration
   const NAV_ITEMS = [
@@ -45,7 +62,7 @@ window.KFHConfig = (function() {
       items: [
         { id: 'connectors', label: 'Connectors', icon: 'connector', path: '/connectors' },
         { id: 'schedules', label: 'Schedules', icon: 'schedule', path: '/schedules' },
-        { id: 'users', label: 'Users & RBAC', icon: 'users', path: '/users' },
+        { id: 'users', label: 'User Management', icon: 'users', path: '/users' },
         { id: 'settings', label: 'Settings', icon: 'settings', path: '/settings' },
         { id: 'audit', label: 'Audit Logs', icon: 'audit', path: '/audit' }
       ]
@@ -62,7 +79,7 @@ window.KFHConfig = (function() {
     'reports': 'Reports',
     'connectors': 'Connectors',
     'schedules': 'Schedules',
-    'users': 'Users & RBAC',
+    'users': 'User Management',
     'settings': 'Settings',
     'audit': 'Audit Logs'
   };
@@ -153,12 +170,19 @@ window.KFHConfig = (function() {
     API_BASE_URL,
     DEFAULT_TENANT_ID,
     DEFAULT_USER_ID,
+    COUNTRY_GROUP_NAME,
+    ALL_COUNTRIES_CODE,
+    ALL_COUNTRY_SCOPE,
     NAV_ITEMS,
     PAGE_TITLES,
     SEVERITIES,
     STATUSES,
     CLASSIFICATIONS,
     CONNECTOR_TYPES,
+    COUNTRIES,
+    COUNTRY_SCOPES,
+    LOGIN_ENVIRONMENTS,
+    LOGIN_ROLES,
     DOMAINS,
     ENVIRONMENTS,
     TEAMS,
@@ -167,11 +191,61 @@ window.KFHConfig = (function() {
 
     // Session management
     getSession: function() {
-      return { ...currentSession };
+      return currentSession ? { ...currentSession } : {
+        tenantId: DEFAULT_TENANT_ID,
+        userId: DEFAULT_USER_ID,
+        countryCode: 'KW',
+        environment: 'PROD',
+        userName: 'Unauthenticated',
+        userInitials: 'NA',
+        userRole: 'Not signed in',
+        permissions: []
+      };
     },
 
     setSession: function(session) {
-      currentSession = { ...currentSession, ...session };
+      currentSession = normalizeSession({ ...(currentSession || {}), ...session });
+      window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(currentSession));
+      notifyScopeChanged(currentSession);
+      return { ...currentSession };
+    },
+
+    switchCountryGroup: function(countryCode) {
+      const selected = COUNTRY_SCOPES.find(country => country.code === String(countryCode || '').trim().toUpperCase());
+      if (!selected) {
+        return this.getSession();
+      }
+      const session = this.getSession();
+      const canSwitch = Array.isArray(session.permissions)
+        && (session.permissions.includes('*') || session.permissions.includes('COUNTRY_GLOBAL_VIEW'));
+      if (!canSwitch && session.countryCode !== selected.code) {
+        return session;
+      }
+      return this.setSession({
+        ...session,
+        tenantId: selected.tenantId,
+        userId: selected.defaultUserId,
+        countryCode: selected.code,
+        countryName: selected.name,
+        countryGroupName: selected.groupName
+      });
+    },
+
+    clearSession: function() {
+      currentSession = null;
+      window.localStorage.removeItem(SESSION_STORAGE_KEY);
+    },
+
+    isAuthenticated: function() {
+      return Boolean(currentSession && currentSession.tenantId && currentSession.userId);
+    },
+
+    getCountry: function(countryCode) {
+      return COUNTRY_SCOPES.find(country => country.code === String(countryCode || '').trim().toUpperCase()) || COUNTRIES[0];
+    },
+
+    getLoginRole: function(roleId) {
+      return LOGIN_ROLES.find(role => role.id === roleId) || LOGIN_ROLES[2];
     },
 
     // Permission check
@@ -198,4 +272,58 @@ window.KFHConfig = (function() {
     // Build timestamp for cache busting
     BUILD_TS: window.BUILD_TS || Date.now()
   };
+
+  function loadStoredSession() {
+    try {
+      const raw = window.localStorage.getItem(SESSION_STORAGE_KEY);
+      return raw ? normalizeSession(JSON.parse(raw)) : null;
+    } catch (error) {
+      window.localStorage.removeItem(SESSION_STORAGE_KEY);
+      return null;
+    }
+  }
+
+  function normalizeSession(session) {
+    const country = COUNTRY_SCOPES.find(item => item.code === String(session.countryCode || '').trim().toUpperCase()) || COUNTRIES[0];
+    const role = LOGIN_ROLES.find(item => item.id === session.roleId) || LOGIN_ROLES[2];
+    const userName = String(session.userName || 'KFH Operator').trim();
+    const environment = String(session.environment || 'PROD').toUpperCase();
+
+    return {
+      tenantId: session.tenantId || country.tenantId,
+      userId: session.userId || country.defaultUserId,
+      userName,
+      userInitials: session.userInitials || initials(userName),
+      userRole: session.userRole || role.name,
+      roleId: role.id,
+      permissions: Array.isArray(session.permissions) && session.permissions.length > 0 ? session.permissions : role.permissions,
+      countryCode: country.code,
+      countryName: country.name,
+      countryGroupName: country.groupName,
+      environment,
+      authenticatedAt: session.authenticatedAt || new Date().toISOString()
+    };
+  }
+
+  function notifyScopeChanged(session) {
+    window.dispatchEvent(new CustomEvent('kfh:scope-changed', {
+      detail: {
+        tenantId: session.tenantId,
+        userId: session.userId,
+        countryCode: session.countryCode,
+        countryName: session.countryName,
+        environment: session.environment
+      }
+    }));
+  }
+
+  function initials(name) {
+    return String(name || 'KFH Operator')
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map(part => part[0])
+      .join('')
+      .toUpperCase() || 'KO';
+  }
 })();

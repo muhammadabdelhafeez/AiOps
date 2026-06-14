@@ -22,7 +22,7 @@
 
   // ---------- Utilities ----------
   function generateId(prefix) {
-    return (prefix || 'id') + '_' + Math.random().toString(36).slice(2, 10);
+    return (window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID() : (prefix || 'id') + '_' + Date.now());
   }
 
   function nowIso() {
@@ -38,90 +38,42 @@
     return Math.max(min, Math.min(max, isNaN(x) ? min : x));
   }
 
-  // ---------- Local persistence (UI-only) ----------
-  var STORAGE_KEY = 'kfh.aiops.apps.v1';
-
-  function loadPersistedApps() {
-    try {
-      var raw = window.localStorage.getItem(STORAGE_KEY);
-      if (!raw) return null;
-      var parsed = JSON.parse(raw);
-      // Validate that we have a non-empty array of objects with required fields
-      if (!Array.isArray(parsed) || parsed.length === 0) return null;
-      var valid = parsed.every(function(app) {
-        return app && typeof app === 'object' && app.id && app.name && app.shortCode;
-      });
-      return valid ? parsed : null;
-    } catch (e) {
-      // If localStorage is corrupted, clear it
-      try { window.localStorage.removeItem(STORAGE_KEY); } catch (ex) { /* ignore */ }
-      return null;
-    }
+  function pageContent(response) {
+    return response && Array.isArray(response.content) ? response.content : Array.isArray(response) ? response : [];
   }
 
-  function savePersistedApps(apps) {
-    try {
-      if (!Array.isArray(apps) || apps.length === 0) return;
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(apps));
-    } catch (e) {
-      // ignore (private mode/quota)
-    }
+  function normalizeApplication(row) {
+    var name = row.name || row.applicationName || 'Untitled application';
+    var shortCode = row.shortCode || row.code || name.split(/\s+/).map(function(p) { return p[0]; }).join('').slice(0, 6).toUpperCase();
+    return {
+      id: row.id || row.applicationId || generateId('app'),
+      name: name,
+      shortCode: shortCode,
+      domain: row.businessDomain || row.domain || '',
+      environment: row.environment || 'PROD',
+      criticality: row.criticality || 'Tier3',
+      tags: Array.isArray(row.tags) ? row.tags : [],
+      businessOwner: row.businessOwner || '',
+      techOwnerTeam: row.techOwnerTeam || row.ownerTeam || '',
+      onboardedSources: Array.isArray(row.onboardedSources) ? row.onboardedSources : [],
+      healthScore: Number(row.healthScore || 0),
+      incidentStats: row.incidentStats || { openTotal: 0, openCritical: 0, new15d: 0, recurring15d: 0 },
+      inventoryCount: Number(row.inventoryCount || 0),
+      inventoryCounts: row.inventoryCounts || { servers: 0, databases: 0, k8s: 0, urls: 0 },
+      createdAt: row.createdAt || nowIso(),
+      updatedAt: row.updatedAt || nowIso(),
+      config: row.config || { onboardingSources: {} }
+    };
   }
 
-  // ---------- Mock data (UI-only) ----------
-  // NOTE: This static page does not call backend APIs yet.
-  // It exists to align UI shell/flow and can be wired to tenant-scoped APIs later.
+  // ---------- UI option catalogs ----------
   var DOMAINS = ['Core Banking', 'Digital Channels', 'Treasury', 'Risk Management', 'HR Systems', 'Infrastructure'];
   var ENVIRONMENTS = ['Production', 'UAT', 'Development', 'DR'];
   var CRITICALITIES = ['Tier1', 'Tier2', 'Tier3', 'Tier4'];
   var SOURCES = ['SCOM', 'vROps', 'BMC', 'SolarWinds', 'Elastic'];
 
-  function initialApps() {
-    var mk = function(name, shortCode, domain, environment, criticality) {
-      return {
-        id: generateId('app'),
-        name: name,
-        shortCode: shortCode,
-        domain: domain,
-        environment: environment,
-        criticality: criticality,
-        tags: [domain.split(' ')[0], environment.toLowerCase(), criticality.toLowerCase()],
-        businessOwner: 'owner.' + shortCode.toLowerCase() + '@kfh.com',
-        techOwnerTeam: 'Platform Engineering',
-        onboardedSources: SOURCES.slice(0, 3),
-        healthScore: 86,
-        incidentStats: {
-          openTotal: 7,
-          openCritical: 1,
-          new15d: 3,
-          recurring15d: 2
-        },
-        // Total inventory items (used already)
-        inventoryCount: 24,
-        // Breakdown for card "items" row
-        inventoryCounts: {
-          servers: 12,
-          databases: 3,
-          k8s: 6,
-          urls: 3
-        },
-        createdAt: nowIso(),
-        updatedAt: nowIso(),
-        config: {
-          onboardingSources: Object.fromEntries(SOURCES.map(function(s) { return [s, { enabled: true, filter: '' }]; }))
-        }
-      };
-    };
-
-    var persisted = loadPersistedApps();
-    if (persisted && persisted.length) return persisted;
-
-    return [
-      mk('Core Banking System', 'CBS', 'Core Banking', 'Production', 'Tier1'),
-      mk('Mobile Banking App', 'MBA', 'Digital Channels', 'Production', 'Tier1'),
-      mk('Payment Gateway', 'PGW', 'Core Banking', 'Production', 'Tier1'),
-      mk('Customer Portal', 'CRM', 'Digital Channels', 'UAT', 'Tier2')
-    ];
+  function emptyApplications() {
+    return [];
   }
 
   // ---------- Design helpers ----------
@@ -865,7 +817,7 @@
   }
 
   function App() {
-    var [apps, setApps] = React.useState(initialApps);
+    var [apps, setApps] = React.useState(emptyApplications);
     var [search, setSearch] = React.useState('');
     var [createOpen, setCreateOpen] = React.useState(false);
 
@@ -895,10 +847,24 @@
       }
     }, []);
 
-    // persist any local changes
     React.useEffect(function() {
-      savePersistedApps(apps);
-    }, [apps]);
+      var cancelled = false;
+      async function loadApplications() {
+        if (!window.APIClient || !APIClient.applications) {
+          if (!cancelled) setApps([]);
+          return;
+        }
+        try {
+          var response = await APIClient.applications.list({ page: 0, size: 100 });
+          if (!cancelled) setApps(pageContent(response).map(normalizeApplication));
+        } catch (error) {
+          console.warn('[Applications] Unable to load production applications; rendering empty state.', error);
+          if (!cancelled) setApps([]);
+        }
+      }
+      loadApplications();
+      return function() { cancelled = true; };
+    }, []);
 
     var filtered = React.useMemo(function() {
       var q = search.trim().toLowerCase();
@@ -930,7 +896,7 @@
       setCreateOpen(true);
     }
 
-    function handleCreateSave(payload) {
+    async function handleCreateSave(payload) {
       var draft = payload.draft;
       var invSummary = payload.invSummary;
 
@@ -971,27 +937,19 @@
         inventoryItems: payload.inventory || []
       };
 
-      setApps(function(prev) { return [app].concat(prev); });
-      setCreateOpen(false);
+      try {
+        var created = await APIClient.applications.create({ name: app.name, attributes: app });
+        app = normalizeApplication(created || app);
+        setApps(function(prev) { return [app].concat(prev); });
+        setCreateOpen(false);
+      } catch (error) {
+        console.warn('[Applications] Unable to create application.', error);
+        return;
+      }
 
       // Navigate into config view (create mode) for the full multi-tab experience.
       window.location.href = '/pages/applications/applicationconfig.html?id=' + encodeURIComponent(app.id) + '&mode=create';
     }
-
-    // Hook the header search and "New Application" button from the static HTML shell.
-    React.useEffect(function() {
-      var searchEl = document.getElementById('globalSearch');
-
-      var cleanups = [];
-
-      if (searchEl) {
-        var handler = function(e) { setSearch(e.target.value || ''); };
-        searchEl.addEventListener('input', handler);
-        cleanups.push(function() { searchEl.removeEventListener('input', handler); });
-      }
-
-      return function() { cleanups.forEach(function(fn) { fn(); }); };
-    }, []);
 
     // Run lucide icons only once on mount
     React.useEffect(function() {
@@ -1012,8 +970,27 @@
       return { totalApps: totalApps, healthyApps: healthyApps, degradedApps: degradedApps, criticalApps: criticalApps, totalIncidents: totalIncidents, criticalIncidents: criticalIncidents, tier1Apps: tier1Apps };
     }, [apps]);
 
-    return h('div', { className: 'space-y-4' },
-      // Removed duplicate in-page header row (portfolio title/search/add). Use the global header search + Add Application button.
+    return h('div', { className: 'space-y-4', style: { padding: '24px 32px 32px' } },
+      h('div', { className: 'kfh-card', style: { padding: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 } },
+        h('div', null,
+          h('p', { style: { margin: 0, color: 'var(--kfh-gold)', fontSize: 12, fontWeight: 900, letterSpacing: '0.08em', textTransform: 'uppercase' } }, 'Application Portfolio'),
+          h('h1', { style: { margin: '4px 0 0', fontSize: 28, fontWeight: 900, color: 'var(--text-primary)' } }, 'Applications')
+        ),
+        h('div', { style: { display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', justifyContent: 'flex-end' } },
+          h('input', {
+            className: 'kfh-input',
+            value: search,
+            onChange: function(e) { setSearch(e.target.value || ''); },
+            placeholder: 'Search applications',
+            style: { width: 280 }
+          }),
+          h('button', {
+            type: 'button',
+            onClick: function() { setCreateOpen(true); },
+            className: 'px-4 py-2 bg-[var(--kfh-primary)] text-white text-sm font-semibold rounded-lg shadow-sm'
+          }, '+ Add Application')
+        )
+      ),
 
       // KPI Summary Row
       h('div', { className: 'grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3' },

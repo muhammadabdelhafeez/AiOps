@@ -34,4 +34,12 @@ build/
 
 ### Secrets / Sensitive ###
 **/keystore.p12
+**/*.p12
+**/*.pfx
+**/*.jks
+**/*.pem
+**/*.key
+**/*.crt
 **/application-*.properties
+!src/main/resources/application-local.properties
+!src/main/resources/application-https-local.properties

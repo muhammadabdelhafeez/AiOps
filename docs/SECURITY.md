@@ -47,6 +47,22 @@
 - Safe exception handling (no stack traces to client).
 - Centralized correlationId for traceability.
 
+## Implemented hardening controls (2026-06-03)
+- API context filter rejects `/api/**` requests unless `X-Tenant-Id` and `X-User-Id` are valid UUID values; malformed `X-Correlation-Id` values are rejected to reduce header/log injection risk.
+- Incident detail and status-write flows use tenant-scoped repository lookups (`incidentId + tenantId`) to prevent IDOR and cross-tenant access.
+- User-provided incident note fields are size-bounded and reject unsupported control characters; polling window parameters are bounded to 1–168 hours.
+- Connector list pagination is size-bounded and sort fields are allowlisted.
+- BMC connector outbound paths must be safe relative paths; absolute URLs, traversal, CR/LF, query strings, fragments, and disabled TLS verification are rejected.
+- SSRF validation requires HTTPS by default, rejects URL user-info/fragments, resolves all host addresses, and blocks localhost/private/link-local/metadata ranges unless explicitly configured otherwise for non-production.
+- Neo4j vector-index configuration is validated against numeric and enum allowlists before formatting Cypher.
+- Credentials and API keys are externalized through environment/property placeholders; packaged keystore material must not be committed or packaged.
+
+## Implemented hardening controls (2026-06-11)
+- Local HTTPS can reference a developer-supplied PFX keystore by file path, but the keystore password remains externalized through `SERVER_SSL_KEY_STORE_PASSWORD` and certificate files under `src/main/resources/certs/**` are excluded from Maven-packaged artifacts.
+
+## Residual architectural requirement
+- Permission-based RBAC annotations exist on connector services. Production deployments must provide authenticated principals/authorities from the enterprise identity layer or trusted gateway before enabling protected endpoints. Header-only tenant/user context is not a substitute for authentication.
+
 ## Audit logging
 Every write must log:
 - tenantId, userId, action, entity, before/after summary, timestamp, correlationId

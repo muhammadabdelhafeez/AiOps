@@ -15,10 +15,16 @@
 
 ### Backend (Spring Boot)
 - API Gateway layer (controllers)
+- API context validation filter for `/api/**` (`X-Tenant-Id`, `X-User-Id`, safe `X-Correlation-Id`)
 - Services (business logic + RBAC + audit)
 - Repositories (tenant-scoped DB access)
 - Outbox publisher/worker consumers
 - Integration clients (SharePoint, Teams, OpenAI, Neo4j)
+
+### Local development profile
+- The root Spring Boot application `org.kfh.aiops.AiOpsApplication` serves the static SPA from `classpath:/static/` and exposes Phase 1 tenant-aware `/api/v1/**` scaffold endpoints.
+- The `local` Spring profile disables datasource, JPA, Flyway, Spring Batch JDBC, Neo4j, and Redis auto-connections so UI/API scaffold work can proceed without PostgreSQL, Neo4j, Azure OpenAI, Redis, or SharePoint credentials.
+- This profile is for local development only and must not be used as a production substitute for tenant-scoped persistence, RBAC, audit, and integration-backed backend services.
 
 ### Datastores
 - PostgreSQL: system of record for config, identity, incidents, reports, runs, audit, outbox.
@@ -32,6 +38,7 @@
 - PostgreSQL is authoritative for: tenants/users/RBAC, connectors/schedules, incidents lifecycle, report pack index, audit/outbox.
 - Neo4j is authoritative for: topology traversal + correlation edges (analytics only).
 - SharePoint is authoritative for: large evidence artifacts, exports.
+- API-facing ID-based reads/writes must use tenant-scoped lookups and never `id` alone.
 
 ## Main workflows (deep)
 

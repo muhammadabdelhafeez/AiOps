@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Users & RBAC - KFH AIOps Command Center</title>
+  <title>User Management - KFH AIOps Command Center</title>
 
   <!-- Local Fonts -->
   <link rel="stylesheet" href="../../vendor/css/outfit-font.css">
@@ -14,6 +14,7 @@
 
   <!-- Page Styles -->
   <link rel="stylesheet" href="users.css">
+  <link rel="stylesheet" href="../../shared/css/kfh-aiops-parity.css">
 </head>
 <body class="h-full overflow-hidden" style="font-family: 'Outfit', sans-serif; background: var(--surface-bg);">
   <div id="app" class="kfh-app-layout h-full">
@@ -85,7 +86,7 @@
             </a>
             <a href="/pages/users/users.html" class="kfh-sidebar-nav-item active">
               <span class="kfh-sidebar-nav-icon">👥</span>
-              <span class="kfh-sidebar-nav-label">Users & RBAC</span>
+              <span class="kfh-sidebar-nav-label">User Management</span>
             </a>
             <a href="/pages/settings/settings.html" class="kfh-sidebar-nav-item">
               <span class="kfh-sidebar-nav-icon">⚙️</span>
@@ -124,7 +125,7 @@
               <svg class="kfh-header-search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
               </svg>
-              <input id="user-search" type="text" placeholder="Search users..." class="kfh-header-search-input">
+                  <input id="user-search" type="text" placeholder="Search users..." class="kfh-header-search-input" aria-label="Search users">
             </div>
             <button onclick="Users.addUser()" class="kfh-btn kfh-btn-primary">
               <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -152,6 +153,12 @@
       <!-- Rendered by JS -->
     </div>
   </div>
+
+  <!-- Shared API/session scripts required for database-backed User Management -->
+  <script src="../../shared/js/config.js"></script>
+  <script src="../../shared/js/utils.js"></script>
+  <script src="../../shared/js/api-client.js"></script>
+  <script src="../../shared/js/auth.js"></script>
 
   <!-- Page Script -->
   <script src="users.js"></script>

@@ -7,6 +7,7 @@ window.Router = (function() {
 
   // Current state
   let currentPage = null;
+  let currentRoute = null;
   let pageCache = {};
   let loadedScripts = {};
 
@@ -65,7 +66,7 @@ window.Router = (function() {
     'users': {
       js: 'pages/users/users.js',
       css: 'pages/users/users.css',
-      title: 'Users & RBAC',
+      title: 'User Management',
       usesReactModule: false
     },
     'settings': {
@@ -135,8 +136,8 @@ window.Router = (function() {
       pageId = DEFAULT_PAGE;
     }
 
-    // Skip if same page
-    if (currentPage === pageId) return;
+    // Skip only exact same hash route; query-only changes can drive page actions.
+    if (currentPage === pageId && currentRoute === rawPageId) return;
 
     console.log(`[Router] Navigating to: ${pageId}`);
 
@@ -185,6 +186,7 @@ window.Router = (function() {
     try {
       // Load CSS if not already loaded
       await loadCSS(pageId, pageConfig.css);
+      ensureFinalThemeCSS();
 
       // Check if this page uses the module pattern
       if (pageConfig.usesReactModule) {
@@ -244,6 +246,7 @@ window.Router = (function() {
       }
 
       currentPage = pageId;
+      currentRoute = rawPageId || pageId;
       console.log(`[Router] Successfully loaded: ${pageId}`);
     } catch (error) {
       console.error(`[Router] Failed to load page: ${pageId}`, error);
@@ -373,6 +376,20 @@ window.Router = (function() {
     });
   }
 
+  function ensureFinalThemeCSS() {
+    const href = 'shared/css/kfh-aiops-parity.css';
+    const existing = document.getElementById('kfh-aiops-parity-css');
+    if (existing) {
+      document.head.appendChild(existing);
+      return;
+    }
+    const link = document.createElement('link');
+    link.id = 'kfh-aiops-parity-css';
+    link.rel = 'stylesheet';
+    link.href = href;
+    document.head.appendChild(link);
+  }
+
   // Load page module (for pages that export a module)
   async function loadPageModule(pageId, path) {
     return new Promise((resolve, reject) => {
@@ -486,6 +503,12 @@ window.Router = (function() {
     return currentPage;
   }
 
+  function reloadCurrent() {
+    const route = currentRoute || (window.location.hash || '').slice(1) || DEFAULT_PAGE;
+    currentRoute = null;
+    return navigate(route, false);
+  }
+
   // Clear cache
   function clearCache() {
     pageCache = {};
@@ -496,6 +519,7 @@ window.Router = (function() {
   return {
     init,
     navigate,
+    reloadCurrent,
     getCurrentPage,
     clearCache
   };

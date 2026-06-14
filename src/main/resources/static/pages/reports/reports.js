@@ -28,7 +28,6 @@ var Reports = (function() {
   };
 
   // ===== UTILITIES =====
-  const randInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
   const esc = s => s ? s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])) : '';
 
   function formatDate(timestamp) {
@@ -52,256 +51,70 @@ var Reports = (function() {
   }
 
   function formatDuration(ms) {
-    const seconds = Math.floor(ms / 1000);
+    const seconds = Math.floor(Number(ms || 0) / 1000);
     const minutes = Math.floor(seconds / 60);
     if (minutes < 1) return `${seconds}s`;
     return `${minutes}m ${seconds % 60}s`;
   }
 
-  function chip(text, color = 'slate') {
-    return `<span class="chip chip-${color}">${esc(text)}</span>`;
-  }
-
-  // ===== DATA GENERATION =====
-  function generateData() {
-    const now = Date.now();
-    const hour = 3600000;
-    const day = 86400000;
-
-    // Apps & Resources
-    state.apps = [
-      { id: 'app-1', name: 'Customer Portal', criticality: 'Critical' },
-      { id: 'app-2', name: 'Payment Gateway', criticality: 'Critical' },
-      { id: 'app-3', name: 'Mobile API', criticality: 'High' },
-      { id: 'app-4', name: 'Analytics Engine', criticality: 'Medium' },
-      { id: 'app-5', name: 'Notification Service', criticality: 'High' },
-      { id: 'app-6', name: 'Auth Service', criticality: 'Critical' },
-      { id: 'app-7', name: 'Data Warehouse', criticality: 'Medium' },
-      { id: 'app-8', name: 'Email Service', criticality: 'Low' }
-    ];
-
-    state.resources = [
-      'prod-web-01', 'prod-web-02', 'prod-db-01', 'prod-cache-01',
-      'prod-queue-01', 'prod-api-01', 'prod-api-02', 'dr-web-01'
-    ];
-
-    // Fingerprints library
-    const fingerprintTemplates = [
-      'High CPU Usage on {resource}',
-      'Memory Leak Detected in {app}',
-      'Connection Pool Exhausted on {app}',
-      'Disk Space Critical on {resource}',
-      'SSL Certificate Expiring for {app}',
-      'Database Deadlock in {app}',
-      'API Rate Limit Exceeded on {app}',
-      'Service Unavailable: {app}',
-      'Network Latency Spike on {resource}',
-      'Failed Authentication Attempts on {app}'
-    ];
-
-    // Generate Alert Groups
-    state.alertGroups = [];
-    for (let i = 1; i <= 20; i++) {
-      const template = fingerprintTemplates[Math.floor(Math.random() * fingerprintTemplates.length)];
-      const app = state.apps[Math.floor(Math.random() * state.apps.length)];
-      const resource = state.resources[Math.floor(Math.random() * state.resources.length)];
-      const fingerprint = template.replace('{app}', app.name).replace('{resource}', resource);
-
-      state.alertGroups.push({
-        id: `ag-${i}`,
-        fingerprint,
-        count: Math.floor(Math.random() * 50) + 5,
-        severity: ['Critical', 'High', 'Medium', 'Low'][Math.floor(Math.random() * 4)],
-        firstSeen: now - Math.random() * 10 * day,
-        lastSeen: now - Math.random() * hour,
-        isRecurring: Math.random() > 0.4,
-        appId: app.id
-      });
-    }
-
-    // Generate 30 Runs
-    const statuses = ['Completed', 'Completed', 'Completed', 'Completed', 'Failed', 'Running'];
-    const windowOptions = [60, 180, 360, 720, 1440];
-    state.runs = [];
-    state.artifacts = [];
-    let artifactId = 1;
-
-    for (let i = 0; i < 30; i++) {
-      const runTime = now - (i * hour);
-      const windowMinutes = windowOptions[Math.floor(Math.random() * windowOptions.length)];
-      const status = i === 0 ? 'Running' : statuses[Math.floor(Math.random() * statuses.length)];
-
-      // Compute realistic totals
-      const alertsCount = Math.floor(Math.random() * 500) + 100;
-      const alertGroupsCount = Math.floor(Math.random() * 50) + 10;
-      const incidentsCount = Math.floor(Math.random() * 8) + 2;
-      const newCount = Math.floor(incidentsCount * 0.4);
-      const recurringCount = incidentsCount - newCount;
-      const criticalOpen = Math.floor(Math.random() * 3);
-      const mtta = Math.floor(Math.random() * 30) + 5;
-      const mttr = Math.floor(Math.random() * 120) + 30;
-      const noisySuppressed = Math.floor(Math.random() * 100) + 20;
-
-      // Top apps
-      const topApps = state.apps.slice(0, 5).map(app => ({
-        appId: app.id,
-        appName: app.name,
-        incidentCount: Math.floor(Math.random() * 3) + 1,
-        alertCount: Math.floor(Math.random() * 100) + 20,
-        criticalCount: Math.floor(Math.random() * 5),
-        highCount: Math.floor(Math.random() * 15) + 5
-      })).sort((a, b) => (b.criticalCount * 3 + b.highCount) - (a.criticalCount * 3 + a.highCount));
-
-      // Top fingerprints
-      const topFingerprints = state.alertGroups.slice(0, 8).map(group => ({
-        fingerprint: group.fingerprint,
-        count: group.count,
-        severity: group.severity,
-        isRecurring: group.isRecurring
-      })).sort((a, b) => b.count - a.count).slice(0, 5);
-
-      // Source breakdown
-      const sourceBreakdown = {
-        'Prometheus': Math.floor(alertsCount * 0.35),
-        'Azure Monitor': Math.floor(alertsCount * 0.30),
-        'Datadog': Math.floor(alertsCount * 0.20),
-        'Splunk': Math.floor(alertsCount * 0.15)
-      };
-
-      // Severity breakdown
-      const severityBreakdown = {
-        'Critical': Math.floor(alertsCount * 0.10),
-        'High': Math.floor(alertsCount * 0.25),
-        'Medium': Math.floor(alertsCount * 0.40),
-        'Low': Math.floor(alertsCount * 0.25)
-      };
-
-      // Notes/findings
-      const notes = [
-        `Analyzed ${alertsCount.toLocaleString()} alerts from ${alertGroupsCount} unique fingerprints`,
-        `Detected ${newCount} new incident patterns and ${recurringCount} recurring issues`,
-        criticalOpen > 0 ? `⚠️ ${criticalOpen} critical incidents remain open` : '✓ No critical incidents open',
-        `Top impacted service: ${topApps[0].appName} (${topApps[0].incidentCount} incidents)`,
-        noisySuppressed > 50 ? `Suppressed ${noisySuppressed} noisy alerts` : null
-      ].filter(Boolean);
-
-      const run = {
-        runId: `run-${String(i + 1).padStart(4, '0')}`,
-        startedAt: runTime,
-        completedAt: status === 'Running' ? null : runTime + Math.random() * 300000,
-        windowMinutes,
-        status,
-        totals: {
-          alerts: alertsCount,
-          alertGroups: alertGroupsCount,
-          incidents: incidentsCount,
-          newCount,
-          recurringCount,
-          criticalOpen,
-          mtta,
-          mttr,
-          noisySuppressed
-        },
-        topApps,
-        topFingerprints,
-        sourceBreakdown,
-        severityBreakdown,
-        notes,
-        executionLog: [
-          { ts: runTime, level: 'INFO', message: 'Analysis run started' },
-          { ts: runTime + 10000, level: 'INFO', message: `Loaded ${alertsCount} alerts from sources` },
-          { ts: runTime + 30000, level: 'INFO', message: `Fingerprinting completed: ${alertGroupsCount} unique patterns` },
-          { ts: runTime + 60000, level: 'INFO', message: `Incident correlation: ${incidentsCount} incidents created` },
-          status === 'Failed' ? { ts: runTime + 70000, level: 'ERROR', message: 'Export to SharePoint failed: timeout' } : null,
-          { ts: runTime + 90000, level: status === 'Failed' ? 'ERROR' : 'INFO', message: status === 'Failed' ? 'Run failed' : 'Run completed successfully' }
-        ].filter(Boolean)
-      };
-      state.runs.push(run);
-
-      // Generate Artifacts for completed runs
-      if (status !== 'Running') {
-        const baseTime = run.completedAt || run.startedAt;
-
-        // Original CSV (always 1)
-        state.artifacts.push({
-          id: `artifact-${artifactId++}`,
-          runId: run.runId,
-          type: 'OriginalCSV',
-          fileName: `alerts_raw_${run.runId}.csv`,
-          sizeKB: Math.floor(Math.random() * 5000) + 500,
-          createdAt: baseTime,
-          checksumMock: `sha256:${Math.random().toString(36).substring(2, 15)}...`,
-          rowsMock: run.totals.alerts
-        });
-
-        // Derived CSVs
-        if (status === 'Completed') {
-          state.artifacts.push(
-            {
-              id: `artifact-${artifactId++}`,
-              runId: run.runId,
-              type: 'DerivedCSV',
-              fileName: `incidents_${run.runId}.csv`,
-              sizeKB: Math.floor(run.totals.incidents * 2.5),
-              createdAt: baseTime + 10000,
-              checksumMock: `sha256:${Math.random().toString(36).substring(2, 15)}...`,
-              rowsMock: run.totals.incidents
-            },
-            {
-              id: `artifact-${artifactId++}`,
-              runId: run.runId,
-              type: 'DerivedCSV',
-              fileName: `alert_groups_${run.runId}.csv`,
-              sizeKB: Math.floor(run.totals.alertGroups * 1.8),
-              createdAt: baseTime + 15000,
-              checksumMock: `sha256:${Math.random().toString(36).substring(2, 15)}...`,
-              rowsMock: run.totals.alertGroups
-            },
-            {
-              id: `artifact-${artifactId++}`,
-              runId: run.runId,
-              type: 'EvidenceCSV',
-              fileName: `evidence_refs_${run.runId}.csv`,
-              sizeKB: Math.floor(Math.random() * 500) + 100,
-              createdAt: baseTime + 25000,
-              checksumMock: `sha256:${Math.random().toString(36).substring(2, 15)}...`,
-              rowsMock: Math.floor(Math.random() * 50) + 10
-            }
-          );
-
-          // Report HTML/PDF
-          if (Math.random() > 0.3) {
-            state.artifacts.push({
-              id: `artifact-${artifactId++}`,
-              runId: run.runId,
-              type: 'ReportHTML',
-              fileName: `executive_summary_${run.runId}.html`,
-              sizeKB: Math.floor(Math.random() * 200) + 50,
-              createdAt: baseTime + 30000,
-              checksumMock: `sha256:${Math.random().toString(36).substring(2, 15)}...`,
-              rowsMock: null
-            });
-          }
-
-          if (Math.random() > 0.5) {
-            state.artifacts.push({
-              id: `artifact-${artifactId++}`,
-              runId: run.runId,
-              type: 'ReportPDF',
-              fileName: `executive_summary_${run.runId}.pdf`,
-              sizeKB: Math.floor(Math.random() * 800) + 200,
-              createdAt: baseTime + 35000,
-              checksumMock: `sha256:${Math.random().toString(36).substring(2, 15)}...`,
-              rowsMock: null
-            });
-          }
-        }
+  // ===== API DATA =====
+      function pageContent(response) {
+        return response && Array.isArray(response.content) ? response.content : Array.isArray(response) ? response : [];
       }
-    }
 
-    // Sort runs by time descending
-    state.runs.sort((a, b) => b.startedAt - a.startedAt);
-    applyFilters();
+      function normalizeRun(row) {
+        const startedAt = Date.parse(row.startedAt || row.createdAt || new Date().toISOString());
+        const completedAt = row.completedAt ? Date.parse(row.completedAt) : null;
+        return {
+          runId: String(row.runId || row.id || ''),
+          startedAt,
+          completedAt,
+          windowMinutes: Number(row.windowMinutes || 0),
+          status: row.status || 'Completed',
+          totals: row.totals || { alerts: 0, alertGroups: 0, incidents: 0, newCount: 0, recurringCount: 0, criticalOpen: 0, mtta: 0, mttr: 0, noisySuppressed: 0 },
+          topApps: Array.isArray(row.topApps) ? row.topApps : [],
+          topFingerprints: Array.isArray(row.topFingerprints) ? row.topFingerprints : [],
+          sourceBreakdown: row.sourceBreakdown || {},
+          severityBreakdown: row.severityBreakdown || {},
+          notes: Array.isArray(row.notes) ? row.notes : [],
+          executionLog: Array.isArray(row.executionLog) ? row.executionLog.map(log => ({ ...log, ts: Date.parse(log.ts || log.timestamp || new Date().toISOString()) })) : []
+        };
+      }
+
+      function normalizeArtifact(row) {
+        return {
+          id: String(row.id || row.artifactId || ''),
+          runId: String(row.runId || ''),
+          type: row.type || row.artifactType || 'Artifact',
+          fileName: row.fileName || row.name || 'artifact',
+          sizeKB: Number(row.sizeKB || row.sizeKb || 0),
+          createdAt: Date.parse(row.createdAt || new Date().toISOString()),
+          checksum: row.checksum || '',
+          rows: row.rows || null
+        };
+      }
+
+      async function loadData() {
+        state.runs = [];
+        state.artifacts = [];
+        state.apps = [];
+        state.resources = [];
+        state.alertGroups = [];
+        if (!window.APIClient || !APIClient.reports) {
+          applyFilters();
+          return;
+        }
+        try {
+          const [runsResponse, artifactsResponse] = await Promise.all([
+            APIClient.reports.listRuns({ page: 0, size: 100 }),
+            APIClient.reports.listArtifacts({ page: 0, size: 200 })
+          ]);
+          state.runs = pageContent(runsResponse).map(normalizeRun).sort((a, b) => b.startedAt - a.startedAt);
+          state.artifacts = pageContent(artifactsResponse).map(normalizeArtifact);
+        } catch (error) {
+          console.warn('[Reports] Unable to load production report data; rendering empty state.', error);
+        }
+        applyFilters();
   }
 
   // ===== FILTERING =====
@@ -376,7 +189,7 @@ var Reports = (function() {
   }
 
   // ===== ACTIONS =====
-  function generateReportPack() {
+  async function generateReportPack() {
     const latestRun = state.runs.find(r => r.status === 'Completed');
     if (!latestRun) {
       toast('No completed runs available', 'error');
@@ -389,46 +202,20 @@ var Reports = (function() {
       return;
     }
 
+    if (!window.APIClient || !APIClient.reports || !APIClient.reports.generatePack) {
+      toast('Report generation API is unavailable', 'error');
+      return;
+    }
     toast(`Generating report pack for ${latestRun.runId}...`, 'info');
-
-    setTimeout(() => {
-      const newArtifacts = [];
-
-      if (!existingArtifacts.some(a => a.type === 'ReportHTML')) {
-        newArtifacts.push({
-          id: `artifact-${Date.now()}-1`,
-          runId: latestRun.runId,
-          type: 'ReportHTML',
-          fileName: `executive_summary_${latestRun.runId}.html`,
-          sizeKB: 145,
-          createdAt: Date.now(),
-          checksumMock: `sha256:${Math.random().toString(36).substring(2, 15)}...`,
-          rowsMock: null
-        });
-      }
-
-      if (!existingArtifacts.some(a => a.type === 'ReportPDF')) {
-        newArtifacts.push({
-          id: `artifact-${Date.now()}-2`,
-          runId: latestRun.runId,
-          type: 'ReportPDF',
-          fileName: `executive_summary_${latestRun.runId}.pdf`,
-          sizeKB: 456,
-          createdAt: Date.now(),
-          checksumMock: `sha256:${Math.random().toString(36).substring(2, 15)}...`,
-          rowsMock: null
-        });
-      }
-
-      state.artifacts.push(...newArtifacts);
-      toast(`Generated ${newArtifacts.length} new artifacts for ${latestRun.runId}`, 'success');
-
-      if (state.selectedRun?.runId === latestRun.runId) {
-        renderDrawer();
-      } else {
-        render();
-      }
-    }, 1500);
+    try {
+      await APIClient.reports.generatePack(latestRun.runId);
+      await loadData();
+      render();
+      toast(`Report pack requested for ${latestRun.runId}`, 'success');
+    } catch (error) {
+      console.warn('[Reports] Unable to generate report pack.', error);
+      toast('Unable to generate report pack', 'error');
+    }
   }
 
   function exportIndexCSV() {
@@ -456,44 +243,27 @@ var Reports = (function() {
     }, 500);
   }
 
-  function downloadArtifact(artifact) {
-    toast(`Downloading ${artifact.fileName}...`, 'info');
-
-    setTimeout(() => {
-      let content = '';
-      let mimeType = 'text/csv';
-
-      if (artifact.type.includes('CSV')) {
-        content = generateMockCSV(artifact);
-      } else if (artifact.type === 'ReportHTML') {
-        content = generateMockReportHTML();
-        mimeType = 'text/html';
-      } else if (artifact.type === 'ReportPDF') {
-        toast('PDF generation is a placeholder in this demo', 'info');
-        return;
-      }
-
-      downloadBlob(content, artifact.fileName, mimeType);
-      toast(`Downloaded ${artifact.fileName}`, 'success');
-    }, 500);
-  }
-
-  function generateMockCSV(artifact) {
-    const rows = artifact.rowsMock || 10;
-    let headers = 'timestamp,source,severity,fingerprint,app,resource,message';
-    const data = [];
-    for (let i = 0; i < Math.min(rows, 100); i++) {
-      data.push(`${new Date(Date.now() - Math.random() * 86400000).toISOString()},Prometheus,High,CPU_USAGE,Customer Portal,prod-web-01,High CPU usage detected`);
+  async function downloadArtifact(artifact) {
+    if (!window.APIClient || !APIClient.reports || !APIClient.reports.downloadArtifact) {
+      toast('Artifact download API is unavailable', 'error');
+      return;
     }
-    return headers + '\n' + data.join('\n');
-  }
-
-  function generateMockReportHTML() {
-    return `<!DOCTYPE html>
-<html><head><title>Executive Summary Report</title></head>
-<body><h1>Executive Summary Report</h1>
-<p>This is a mock HTML report. In production, this would contain full analysis results.</p>
-</body></html>`;
+    toast(`Downloading ${artifact.fileName}...`, 'info');
+    try {
+      const blob = await APIClient.reports.downloadArtifact(artifact.id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = artifact.fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast(`Downloaded ${artifact.fileName}`, 'success');
+    } catch (error) {
+      console.warn('[Reports] Unable to download artifact.', error);
+      toast('Unable to download artifact', 'error');
+    }
   }
 
   function downloadBlob(content, fileName, mimeType) {
@@ -922,15 +692,7 @@ var Reports = (function() {
 
   function renderEvidenceTab(run, artifacts) {
     const evidenceArtifacts = artifacts.filter(a => a.type === 'EvidenceCSV');
-    const evidenceCount = evidenceArtifacts.reduce((sum, a) => sum + (a.rowsMock || 0), 0);
-
-    const mockEvidenceRows = [
-      { id: 'ev-001', incidentId: 'INC-1001', type: 'Log', source: 'SharePoint', collected: formatTimeAgo(Date.now() - 3600000) },
-      { id: 'ev-002', incidentId: 'INC-1001', type: 'Screenshot', source: 'SharePoint', collected: formatTimeAgo(Date.now() - 3500000) },
-      { id: 'ev-003', incidentId: 'INC-1002', type: 'Metric', source: 'SharePoint', collected: formatTimeAgo(Date.now() - 3400000) },
-      { id: 'ev-004', incidentId: 'INC-1002', type: 'Log', source: 'SharePoint', collected: formatTimeAgo(Date.now() - 3300000) },
-      { id: 'ev-005', incidentId: 'INC-1003', type: 'Trace', source: 'SharePoint', collected: formatTimeAgo(Date.now() - 3200000) }
-    ];
+    const evidenceCount = evidenceArtifacts.reduce((sum, a) => sum + (a.rows || 0), 0);
 
     return `
       <!-- Evidence Summary -->
@@ -979,31 +741,8 @@ var Reports = (function() {
         <div class="drawer-section-header">
           <h3 class="drawer-section-title">Evidence Preview (First 5 Items)</h3>
         </div>
-        <div style="overflow-x: auto;">
-          <table class="evidence-table">
-            <thead>
-              <tr>
-                <th>Evidence ID</th>
-                <th>Incident</th>
-                <th>Type</th>
-                <th>Source</th>
-                <th>Collected</th>
-                <th>Link</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${mockEvidenceRows.map(row => `
-                <tr>
-                  <td style="font-family: monospace; color: #666666;">${row.id}</td>
-                  <td style="font-family: monospace; font-weight: 600;">${row.incidentId}</td>
-                  <td>${chip(row.type, 'blue')}</td>
-                  <td>${row.source}</td>
-                  <td>${row.collected}</td>
-                  <td><span class="evidence-link" onclick="Reports.toast('SharePoint link placeholder', 'info')">View →</span></td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
+        <div class="drawer-section-body">
+          <div class="empty-state">Evidence previews are loaded from production artifacts only. Download the evidence CSV artifact when available.</div>
         </div>
       </div>
     `;
@@ -1077,6 +816,14 @@ var Reports = (function() {
     container.innerHTML = `
       <!-- Page Content -->
       <div style="padding: 24px;">
+        <div class="filters-card" style="margin-bottom: 16px; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+          <div>
+            <p style="margin:0; color:var(--kfh-gold); font-size:12px; font-weight:900; letter-spacing:0.08em; text-transform:uppercase;">Evidence & Reporting</p>
+            <h1 style="margin:4px 0 0; font-size:28px; font-weight:900; color:var(--text-primary);">Reports</h1>
+          </div>
+          <input id="reports-search" class="kfh-input" style="width:320px;" maxlength="120" placeholder="Search reports, runs, or notes" value="${esc(state.searchQuery)}">
+        </div>
+
         <!-- Filters (minimal) -->
         <div class="filters-card" style="margin-bottom: 16px;">
           <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
@@ -1176,7 +923,11 @@ var Reports = (function() {
   }
 
   function bindEvents() {
-    // In-page search removed to avoid duplicating the global header search.
+    document.getElementById('reports-search')?.addEventListener('input', e => {
+      state.searchQuery = e.target.value || '';
+      applyFilters();
+      render();
+    });
 
     // Time range UI removed; keep default state.timeRange and allow changing it only via code.
 
@@ -1200,29 +951,11 @@ var Reports = (function() {
 
     document.getElementById('drawer-overlay')?.addEventListener('click', closeDrawer);
 
-    // Wire global header search to this page when active.
-    const globalSearch = document.getElementById('global-search');
-    if (globalSearch) {
-      if (globalSearch._reportsHandler) {
-        globalSearch.removeEventListener('input', globalSearch._reportsHandler);
-      }
-      globalSearch._reportsHandler = (e) => {
-        if (window.Router && typeof window.Router.getCurrentPage === 'function' && window.Router.getCurrentPage() !== 'reports') return;
-        state.searchQuery = e.target.value || '';
-        applyFilters();
-        render();
-      };
-      globalSearch.addEventListener('input', globalSearch._reportsHandler);
-
-      if ((globalSearch.value || '') !== (state.searchQuery || '')) {
-        globalSearch.value = state.searchQuery || '';
-      }
-    }
   }
 
   // ===== INIT =====
-  function init() {
-    generateData();
+  async function init() {
+    await loadData();
     render();
     console.log('Reports module initialized with KFH Beyond Horizons design');
   }
@@ -1240,8 +973,8 @@ var Reports = (function() {
     generatePack: generateReportPack,
     exportIndexCSV,
     toast,
-    refresh: () => {
-      generateData();
+    refresh: async () => {
+      await loadData();
       render();
       toast('Reports refreshed', 'success');
     }

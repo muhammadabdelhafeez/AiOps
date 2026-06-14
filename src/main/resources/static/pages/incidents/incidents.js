@@ -86,124 +86,60 @@
   var CHART_COLORS = [COLORS.primary, COLORS.gold, COLORS.info, COLORS.high, '#8B5CF6', '#EC4899'];
 
   // ============= UTILITY FUNCTIONS =============
-  function rand(min, max) {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
-  }
-  function randomFloat(min, max) {
-    return +(Math.random() * (max - min) + min).toFixed(1);
-  }
-  function choice(arr) {
-    return arr[Math.floor(Math.random() * arr.length)];
-  }
   function uniq(arr) {
     return Array.from(new Set(arr));
   }
 
-  // ============= DATA GENERATION =============
-  function generateFingerprint(type) {
-    var pattern = choice(FINGERPRINT_PATTERNS);
-    if (type === 'exact') return 'FP-EXACT-' + pattern + '-' + rand(100, 999);
-    if (type === 'family') return 'FP-FAM-' + pattern + '-' + rand(100, 999);
-    return 'FP-EMB-' + pattern + '-' + rand(100, 999);
+
+  // Production data is loaded from /api/v1 through APIClient. Empty arrays preserve the page design.
+  var incidentsData = [];
+  var hourlyTrends = [];
+
+  function pageContent(response) {
+    return response && Array.isArray(response.content) ? response.content : Array.isArray(response) ? response : [];
   }
 
-  function generateIncidents(count) {
-    count = count || 150;
-    var incidents = [];
-    var now = Date.now();
-    var baseExact = [];
-    var baseFamily = [];
-    for (var i = 0; i < 15; i++) baseExact.push(generateFingerprint('exact'));
-    for (var j = 0; j < 20; j++) baseFamily.push(generateFingerprint('family'));
+  function normalizeIncident(row) {
+    var title = row.title || row.name || row.summary || 'Untitled incident';
+    var severity = String(row.severity || 'Low').toLowerCase();
+    var status = row.status || 'Open';
+    var lastSeen = Date.parse(row.lastEventAt || row.updatedAt || row.createdAt || row.timestamp || new Date().toISOString());
+    return {
+      id: row.incidentNumber || row.id || '',
+      title: title,
+      service: row.serviceName || row.service || row.applicationName || '-',
+      domain: row.businessDomain || row.domain || row.businessJourney || '-',
+      environment: row.environment || 'PROD',
+      severity: severity.charAt(0).toUpperCase() + severity.slice(1),
+      status: status,
+      classification: row.classification || 'NEW',
+      fingerprintExact: row.fingerprintExact || null,
+      fingerprintFamily: row.fingerprintFamily || null,
+      embeddingSimilarity: row.embeddingSimilarity || null,
+      confidence: Number(row.confidence || 0),
+      ownerTeam: row.ownerTeam || row.team || '-',
+      firstSeen: Date.parse(row.firstEventAt || row.createdAt || new Date().toISOString()),
+      lastSeen: isNaN(lastSeen) ? Date.now() : lastSeen,
+      occurrences15d: Number(row.occurrences15d || row.occurrenceCount || 1),
+      sources: Array.isArray(row.sources) ? row.sources : []
+    };
+  }
 
-    for (var k = 0; k < count; k++) {
-      var isRecurring = Math.random() > 0.4;
-      var classification = 'NEW';
-      var fingerprintExact = null;
-      var fingerprintFamily = null;
-      var embeddingSimilarity = null;
-      var confidence = 0;
-
-      if (isRecurring) {
-        var r = Math.random();
-        if (r < 0.4) {
-          classification = 'RECURRING_SURE';
-          fingerprintExact = choice(baseExact);
-          fingerprintFamily = fingerprintExact.replace('EXACT', 'FAM');
-          confidence = randomFloat(95, 99);
-        } else if (r < 0.7) {
-          classification = 'RECURRING_LIKELY';
-          fingerprintFamily = choice(baseFamily);
-          confidence = randomFloat(75, 94);
-        } else {
-          classification = 'POSSIBLE';
-          embeddingSimilarity = randomFloat(60, 74);
-          confidence = embeddingSimilarity;
-        }
+  function buildHourlyTrends(incidents) {
+    var buckets = {};
+    incidents.forEach(function(incident) {
+      var d = new Date(incident.lastSeen);
+      if (!isNaN(d.getTime())) {
+        var key = String(d.getHours()).padStart(2, '0') + ':00';
+        if (!buckets[key]) buckets[key] = { hour: key, total: 0, new: 0, recurring: 0, critical: 0, high: 0, medium: 0, low: 0 };
+        buckets[key].total++;
+        if (incident.classification === 'NEW') buckets[key].new++; else buckets[key].recurring++;
+        var severityKey = String(incident.severity || '').toLowerCase();
+        if (buckets[key][severityKey] !== undefined) buckets[key][severityKey]++;
       }
-
-      var severity = choice(SEVERITIES);
-      var service = choice(SERVICES);
-      var domain = choice(DOMAINS);
-      var env = choice(ENVIRONMENTS);
-      var status = choice(STATUSES);
-      var ownerTeam = choice(TEAMS);
-      var firstSeen = now - rand(0, 15 * 24 * 60 * 60 * 1000);
-      var lastSeen = now - rand(0, 2 * 60 * 60 * 1000);
-      var occurrences15d = classification === 'NEW' ? 1 : rand(2, 50);
-      var pattern = fingerprintExact || fingerprintFamily || 'NONE';
-      var patternPart = pattern.split('-')[2] || choice(FINGERPRINT_PATTERNS);
-      var sources = uniq([choice(SOURCES), choice(SOURCES), choice(SOURCES)].slice(0, rand(1, 3)));
-
-      incidents.push({
-        id: 'INC-' + String(k + 1).padStart(6, '0'),
-        title: choice(['Critical', 'High', 'Warning', 'Alert']) + ': ' + patternPart.replace(/_/g, ' ').toLowerCase() + ' on ' + service,
-        service: service,
-        domain: domain,
-        environment: env,
-        severity: severity,
-        status: status,
-        classification: classification,
-        fingerprintExact: fingerprintExact,
-        fingerprintFamily: fingerprintFamily,
-        embeddingSimilarity: embeddingSimilarity,
-        confidence: parseFloat(confidence),
-        ownerTeam: ownerTeam,
-        firstSeen: firstSeen,
-        lastSeen: lastSeen,
-        occurrences15d: occurrences15d,
-        sources: sources
-      });
-    }
-    return incidents.sort(function(a, b) { return b.lastSeen - a.lastSeen; });
+    });
+    return Object.keys(buckets).sort().map(function(key) { return buckets[key]; });
   }
-
-  function generateHourlyTrends(hours) {
-    hours = hours || 24;
-    var trends = [];
-    var now = new Date();
-    for (var i = hours - 1; i >= 0; i--) {
-      var time = new Date(now.getTime() - i * 60 * 60 * 1000);
-      var hour = String(time.getHours()).padStart(2, '0');
-      var total = rand(10, 80);
-      var newCount = rand(5, 30);
-      trends.push({
-        hour: hour + ':00',
-        total: total,
-        new: newCount,
-        recurring: total - newCount,
-        critical: rand(2, 15),
-        high: rand(5, 25),
-        medium: rand(10, 30),
-        low: rand(5, 15)
-      });
-    }
-    return trends;
-  }
-
-  // Generate data
-  var incidentsData = generateIncidents(150);
-  var hourlyTrends = generateHourlyTrends(24);
 
   // ============= KPI CARD COMPONENT =============
   function KpiCard(props) {
@@ -318,11 +254,11 @@
         criticalOpen: criticalOpen.length,
         new15d: new15d.length,
         recurring15d: recurring15d.length,
-        noisyGroups: rand(5, 15),
-        avgMTTA: rand(3, 8) + 'm',
-        avgMTTR: rand(20, 45) + 'm'
+        noisyGroups: 0,
+        avgMTTA: 'N/A',
+        avgMTTR: 'N/A'
       };
-    }, []);
+    }, [incidentsData.length]);
 
     // Calculate breakdowns
     var breakdowns = _useMemo(function() {
@@ -333,7 +269,7 @@
         return { name: src, value: incidentsData.filter(function(i) { return i.sources.indexOf(src) >= 0; }).length };
       }).filter(function(s) { return s.value > 0; });
       return { bySeverity: bySeverity, bySource: bySource };
-    }, []);
+    }, [incidentsData.length]);
 
     // Filter incidents
     var filteredIncidents = _useMemo(function() {
@@ -347,23 +283,26 @@
         }
         return true;
       });
-    }, [activeTab, severityFilter, search]);
-
-    // Event handlers for external controls
-    React.useEffect(function() {
-      var searchInput = document.getElementById('global-search');
-      if (searchInput) {
-        searchInput.addEventListener('input', function(e) {
-          setSearch(e.target.value);
-        });
-      }
-    }, []);
+    }, [activeTab, severityFilter, search, incidentsData.length]);
 
     // Tooltip style for Recharts
     var tooltipStyle = { backgroundColor: COLORS.surface, border: 'none', borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' };
 
     // ============= RENDER =============
-    return h('div', { style: { maxWidth: 1800, margin: '0 auto' } },
+    return h('div', { style: { maxWidth: 1800, margin: '0 auto', padding: '24px 32px 32px' } },
+      h('div', { className: 'kfh-card', style: { padding: 20, marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 } },
+        h('div', null,
+          h('p', { style: { margin: 0, color: COLORS.gold, fontSize: 12, fontWeight: 900, letterSpacing: '0.08em', textTransform: 'uppercase' } }, 'Incident Management'),
+          h('h1', { style: { margin: '4px 0 0', fontSize: 28, fontWeight: 900, color: COLORS.textPrimary } }, 'Incidents')
+        ),
+        h('input', {
+          className: 'kfh-input',
+          value: search,
+          onChange: function(e) { setSearch(e.target.value || ''); },
+          placeholder: 'Search incidents',
+          style: { width: 320 }
+        })
+      ),
       // KPI Strip
       h('div', { className: 'kpi-strip', style: { marginBottom: 24 } },
         h(KpiCard, { label: 'Total Open', value: kpis.totalOpen, icon: '📋', iconBg: COLORS.primaryLight, iconFg: COLORS.primary }),
@@ -822,7 +761,7 @@
           h('div', { style: { marginTop: 24, background: COLORS.surfaceBg, borderRadius: 12, padding: 16 } },
             h('h4', { style: { fontSize: 14, fontWeight: 700, color: COLORS.textPrimary, marginBottom: 8 } }, 'Pattern Analysis'),
             h('p', { style: { fontSize: 13, color: COLORS.textSecondary, margin: 0 } },
-              'This incident shows a recurring pattern. Similar incidents have occurred ' + rand(3, 8) + ' times in the past 30 days, typically resolving within ' + rand(15, 45) + ' minutes.'
+              'Pattern analysis will appear here when recurrence evidence is returned by the RCA and incident APIs.'
             )
           )
         );
@@ -939,12 +878,30 @@
   }
 
   // ============= MOUNT APPLICATION =============
+  function renderApp(root) {
+    if (root) root.render(h(IncidentsDashboard));
+    else ReactDOM.render(h(IncidentsDashboard), mountEl);
+  }
+
+  async function loadIncidents(root) {
+    if (!window.APIClient || !APIClient.incidents) return;
+    try {
+      var response = await APIClient.incidents.list({ page: 0, size: 100 });
+      incidentsData = pageContent(response).map(normalizeIncident);
+      hourlyTrends = buildHourlyTrends(incidentsData);
+      renderApp(root);
+    } catch (error) {
+      console.warn('[Incidents] Unable to load production incidents; rendering empty state.', error);
+    }
+  }
+
   try {
     var root = ReactDOM.createRoot(mountEl);
-    root.render(h(IncidentsDashboard));
+    renderApp(root);
+    loadIncidents(root);
   } catch (e) {
-    // Fallback for older ReactDOM
-    ReactDOM.render(h(IncidentsDashboard), mountEl);
+    renderApp(null);
+    loadIncidents(null);
   }
 
 })();

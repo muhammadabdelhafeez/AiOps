@@ -2,7 +2,7 @@
  * KFH AIOps Command Center - Connectors Module
  * Manage integrations and monitor data ingestion
  */
-const Connectors = (function() {
+var Connectors = (function() {
   'use strict';
 
   // State
@@ -35,10 +35,53 @@ const Connectors = (function() {
   const OWNER_TEAMS = ['Platform Ops', 'App Support', 'Network Ops', 'DevOps'];
 
   // Utilities
-  const randInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
-  const randChoice = arr => arr[Math.floor(Math.random() * arr.length)];
-  const genId = () => Math.random().toString(36).substr(2, 9);
+  const genId = () => (window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID() : `tmp-${Date.now()}`);
   const esc = s => s ? s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])) : '';
+
+  function pageContent(response) {
+    return response && Array.isArray(response.content) ? response.content : Array.isArray(response) ? response : [];
+  }
+
+  function normalizeConnector(row) {
+    const type = row.pluginType || row.type || 'UNKNOWN';
+    const enabled = row.enabled !== false;
+    const status = row.health || row.status || (enabled ? 'Healthy' : 'Disabled');
+    return {
+      id: String(row.id || row.connectorId || ''),
+      name: row.name || type,
+      type,
+      enabled,
+      environmentScope: row.environment || row.environmentScope || 'Prod',
+      status: String(status).charAt(0).toUpperCase() + String(status).slice(1).toLowerCase(),
+      lastSync: row.lastRunAt ? Date.parse(row.lastRunAt) : row.lastTestAt ? Date.parse(row.lastTestAt) : null,
+      nextSync: row.nextRunAt ? Date.parse(row.nextRunAt) : null,
+      lagMinutes: Number(row.lagMinutes || 0),
+      events24h: Number(row.events24h || row.eventCount24h || 0),
+      errors24h: Number(row.errors24h || row.errorCount24h || 0),
+      authMode: row.authMode || row.authenticationMode || 'Configured',
+      endpoints: Array.isArray(row.endpoints) ? row.endpoints : [],
+      mappings: row.mappings || { appField: '', assetField: '', severityMap: {} },
+      schedules: row.schedules || { intervalMin: row.intervalMin || 0 },
+      notes: row.notes || '',
+      ownerTeam: row.ownerTeam || row.team || '',
+      createdAt: row.createdAt ? Date.parse(row.createdAt) : Date.now(),
+      logs: []
+    };
+  }
+
+  async function loadConnectors() {
+    if (!window.APIClient || !APIClient.connectors) {
+      connectors = [];
+      return;
+    }
+    try {
+      const response = await APIClient.connectors.list();
+      connectors = pageContent(response).map(normalizeConnector);
+    } catch (error) {
+      console.warn('[Connectors] Unable to load production connectors; rendering empty state.', error);
+      connectors = [];
+    }
+  }
 
   function formatTime(timestamp) {
     if (!timestamp) return 'N/A';
@@ -80,78 +123,6 @@ const Connectors = (function() {
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${icons[name] || ''}</svg>`;
   }
 
-  // Data Generation
-  function generateConnectors() {
-    const types = ['SCOM', 'vROps', 'BMC', 'SolarWinds', 'Elastic', 'Azure', 'Syslog', 'SMTP', 'SharePoint', 'Teams'];
-
-    connectors = types.map((type, idx) => {
-      const enabled = Math.random() > 0.15;
-      const status = !enabled ? 'Disabled' : randChoice(['Healthy', 'Healthy', 'Healthy', 'Degraded', 'Down']);
-      const scope = randChoice(SCOPES);
-      const lagMinutes = status === 'Healthy' ? randInt(0, 3) : status === 'Degraded' ? randInt(5, 15) : randInt(30, 120);
-      const events24h = enabled && status !== 'Down' ? randInt(5000, 150000) : 0;
-      const errors24h = status === 'Healthy' ? randInt(0, 10) : status === 'Degraded' ? randInt(10, 50) : randInt(50, 200);
-      const lastSync = enabled ? Date.now() - randInt(60000, 3600000) : null;
-      const nextSync = enabled ? Date.now() + randInt(300000, 1800000) : null;
-
-      const endpoints = [];
-      if (scope === 'Prod' || scope === 'Both') {
-        endpoints.push({ env: 'Prod', url: `https://${type.toLowerCase()}-prod.kfh.com`, port: type === 'Syslog' ? 514 : type === 'SMTP' ? 587 : 443 });
-      }
-      if (scope === 'DR' || scope === 'Both') {
-        endpoints.push({ env: 'DR', url: `https://${type.toLowerCase()}-dr.kfh.com`, port: type === 'Syslog' ? 514 : type === 'SMTP' ? 587 : 443 });
-      }
-
-      return {
-        id: `conn-${String(idx + 1).padStart(3, '0')}`,
-        name: `${type} ${scope === 'Both' ? 'Prod/DR' : scope}`,
-        type,
-        enabled,
-        environmentScope: scope,
-        status,
-        lastSync,
-        nextSync,
-        lagMinutes,
-        events24h,
-        errors24h,
-        authMode: randChoice(AUTH_MODES),
-        endpoints,
-        mappings: {
-          appField: 'CI_Name',
-          assetField: 'Device_ID',
-          severityMap: { 'Critical': 'critical', 'Major': 'high', 'Minor': 'medium', 'Warning': 'low', 'Info': 'info' }
-        },
-        schedules: { intervalMin: randChoice([5, 10, 15, 30, 60]) },
-        notes: enabled ? '' : 'Disabled for maintenance',
-        ownerTeam: randChoice(OWNER_TEAMS),
-        createdAt: Date.now() - randInt(1, 180) * 24 * 60 * 60 * 1000
-      };
-    });
-  }
-
-  function generateLogs(connectorId) {
-    const levels = ['INFO', 'WARN', 'ERROR', 'DEBUG'];
-    const messages = [
-      'Connection established successfully',
-      'Authentication successful',
-      'Fetched 234 events from endpoint',
-      'Parsing event data',
-      'Mapped 234 events to platform schema',
-      'Stored 234 events in database',
-      'Connection timeout, retrying...',
-      'Failed to parse event: invalid format',
-      'Rate limit reached, backing off',
-      'Endpoint returned 503 Service Unavailable'
-    ];
-
-    return Array.from({ length: 50 }, (_, i) => ({
-      id: `log-${i + 1}`,
-      connectorId,
-      timestamp: Date.now() - randInt(0, 86400000),
-      level: randChoice(levels),
-      message: randChoice(messages)
-    })).sort((a, b) => b.timestamp - a.timestamp);
-  }
 
   // Stats
   function getKpis() {
@@ -410,7 +381,7 @@ const Connectors = (function() {
     const c = selectedConnector;
     const drawerContent = document.getElementById('drawer-content');
     const typeInfo = CONNECTOR_TYPES.find(t => t.value === c.type);
-    const logs = generateLogs(c.id);
+    const logs = Array.isArray(c.logs) ? c.logs : [];
     const currentTestRun = testRuns.find(tr => tr.connectorId === c.id && tr.result === 'running');
     const latestTestRun = testRuns.find(tr => tr.connectorId === c.id);
 
@@ -655,7 +626,7 @@ const Connectors = (function() {
           </select>
         </div>
         <div class="logs-container">
-          ${logs.map(log => `
+          ${logs.length === 0 ? '<div class="p-4 text-sm text-[#666666]">No connector logs returned by the API.</div>' : logs.map(log => `
             <div class="log-entry">
               <span class="log-time">${new Date(log.timestamp).toLocaleTimeString()}</span>
               <span class="log-level log-level-${log.level.toLowerCase()}">${log.level}</span>
@@ -790,65 +761,45 @@ const Connectors = (function() {
     renderDrawer();
   }
 
-  function toggleConnector(id, enabled) {
+  async function toggleConnector(id, enabled) {
     const c = connectors.find(c => c.id === id);
     if (c) {
-      c.enabled = enabled;
-      c.status = enabled ? 'Healthy' : 'Disabled';
-      c.lastSync = enabled ? Date.now() : null;
-      c.nextSync = enabled ? Date.now() + 300000 : null;
-      toast(`Connector ${enabled ? 'enabled' : 'disabled'}`, 'info');
-      render();
-      if (selectedConnector?.id === id) renderDrawer();
+      try {
+        await APIClient.connectors.toggle(id, enabled);
+        await loadConnectors();
+        toast(`Connector ${enabled ? 'enabled' : 'disabled'}`, 'info');
+        render();
+      } catch (error) {
+        toast('Unable to update connector status', 'error');
+      }
     }
   }
 
-  function runTest(connectorId) {
+  async function runTest(connectorId) {
     const c = connectors.find(c => c.id === connectorId);
     if (!c || !c.enabled) return;
-
     const testId = genId();
-    const steps = [
-      { name: 'Resolve Endpoint', status: 'queued', detail: '' },
-      { name: 'Auth Handshake', status: 'queued', detail: '' },
-      { name: 'Fetch Sample', status: 'queued', detail: '' },
-      { name: 'Parse Data', status: 'queued', detail: '' },
-      { name: 'Map Fields', status: 'queued', detail: '' },
-      { name: 'Store Sample', status: 'queued', detail: '' }
-    ];
-
-    const testRun = { id: testId, connectorId, startedAt: Date.now(), result: 'running', steps };
+    const testRun = { id: testId, connectorId, startedAt: Date.now(), result: 'running', steps: [] };
     testRuns.unshift(testRun);
-    toast('Test started...', 'info');
+    toast('Test requested...', 'info');
     if (selectedConnector?.id === connectorId) {
       drawerTab = 'health';
       renderDrawer();
     }
-
-    // Simulate test
-    let currentStep = 0;
-    const interval = setInterval(() => {
-      const tr = testRuns.find(t => t.id === testId);
-      if (!tr) { clearInterval(interval); return; }
-
-      if (currentStep < tr.steps.length) {
-        const passOrFail = Math.random() > 0.1 ? 'pass' : 'fail';
-        tr.steps[currentStep].status = passOrFail;
-        tr.steps[currentStep].detail = passOrFail === 'pass' ? `${tr.steps[currentStep].name} completed` : `${tr.steps[currentStep].name} failed`;
-        currentStep++;
-
-        if (currentStep >= tr.steps.length || passOrFail === 'fail') {
-          clearInterval(interval);
-          tr.result = passOrFail === 'fail' ? 'Fail' : 'Pass';
-          toast(`Test ${tr.result.toLowerCase()}ed`, tr.result === 'Pass' ? 'success' : 'error');
-        }
-
-        if (selectedConnector?.id === connectorId) renderDrawer();
-      }
-    }, 800);
+    try {
+      const result = await APIClient.connectors.test(connectorId);
+      testRun.result = result?.pass === false || result?.status === 'FAIL' ? 'Fail' : 'Pass';
+      testRun.steps = Array.isArray(result?.steps) ? result.steps : [];
+      toast(`Test ${testRun.result.toLowerCase()}ed`, testRun.result === 'Pass' ? 'success' : 'error');
+      if (selectedConnector?.id === connectorId) renderDrawer();
+    } catch (error) {
+      testRun.result = 'Fail';
+      toast('Connector test failed', 'error');
+      if (selectedConnector?.id === connectorId) renderDrawer();
+    }
   }
 
-  function addConnector() {
+  async function addConnector() {
     const name = document.getElementById('new-name')?.value;
     const type = document.getElementById('new-type')?.value;
     const scope = document.getElementById('new-scope')?.value;
@@ -860,45 +811,50 @@ const Connectors = (function() {
     }
 
     const newConnector = {
-      id: `conn-${Date.now()}`,
       name,
-      type,
       enabled: true,
-      environmentScope: scope,
-      status: 'Healthy',
-      lastSync: Date.now(),
-      nextSync: Date.now() + 300000,
-      lagMinutes: 0,
-      events24h: 0,
-      errors24h: 0,
-      authMode: document.getElementById('new-auth')?.value || 'ApiKey',
-      endpoints: [{ env: scope === 'Both' ? 'Prod' : scope, url, port: parseInt(document.getElementById('new-port')?.value) || 443 }],
-      mappings: { appField: 'CI_Name', assetField: 'Device_ID', severityMap: { 'Critical': 'critical', 'Major': 'high', 'Minor': 'medium', 'Warning': 'low', 'Info': 'info' } },
-      schedules: { intervalMin: parseInt(document.getElementById('new-interval')?.value) || 15 },
-      notes: document.getElementById('new-notes')?.value || '',
-      ownerTeam: document.getElementById('new-team')?.value || 'Platform Ops',
-      createdAt: Date.now()
+      attributes: {
+        pluginType: type,
+        environmentScope: scope,
+        endpointUrl: url,
+        port: parseInt(document.getElementById('new-port')?.value) || 443,
+        authMode: document.getElementById('new-auth')?.value || 'ApiKey',
+        intervalMin: parseInt(document.getElementById('new-interval')?.value) || 15,
+        notes: document.getElementById('new-notes')?.value || '',
+        ownerTeam: document.getElementById('new-team')?.value || 'Platform Ops'
+      }
     };
-
-    connectors.push(newConnector);
-    closeModal();
-    toast('Connector added successfully', 'success');
-    render();
+    try {
+      await APIClient.connectors.create(newConnector);
+      await loadConnectors();
+      closeModal();
+      toast('Connector added successfully', 'success');
+      render();
+    } catch (error) {
+      toast('Unable to create connector', 'error');
+    }
   }
 
-  function saveConnector() {
+  async function saveConnector() {
     if (!selectedConnector) return;
-
-    selectedConnector.name = document.getElementById('edit-name')?.value || selectedConnector.name;
-    selectedConnector.environmentScope = document.getElementById('edit-scope')?.value || selectedConnector.environmentScope;
-    selectedConnector.ownerTeam = document.getElementById('edit-team')?.value || selectedConnector.ownerTeam;
-    selectedConnector.authMode = document.getElementById('edit-auth')?.value || selectedConnector.authMode;
-    selectedConnector.schedules.intervalMin = parseInt(document.getElementById('edit-interval')?.value) || selectedConnector.schedules.intervalMin;
-    selectedConnector.notes = document.getElementById('edit-notes')?.value || '';
-
-    closeDrawer();
-    toast('Connector updated successfully', 'success');
-    render();
+    try {
+      await APIClient.connectors.update(selectedConnector.id, {
+        name: document.getElementById('edit-name')?.value || selectedConnector.name,
+        attributes: {
+          environmentScope: document.getElementById('edit-scope')?.value || selectedConnector.environmentScope,
+          ownerTeam: document.getElementById('edit-team')?.value || selectedConnector.ownerTeam,
+          authMode: document.getElementById('edit-auth')?.value || selectedConnector.authMode,
+          intervalMin: parseInt(document.getElementById('edit-interval')?.value) || selectedConnector.schedules.intervalMin,
+          notes: document.getElementById('edit-notes')?.value || ''
+        }
+      });
+      await loadConnectors();
+      closeDrawer();
+      toast('Connector updated successfully', 'success');
+      render();
+    } catch (error) {
+      toast('Unable to update connector', 'error');
+    }
   }
 
   function toast(msg, type) {
@@ -929,8 +885,8 @@ const Connectors = (function() {
   }
 
   // Init
-  function init() {
-    generateConnectors();
+  async function init() {
+    await loadConnectors();
     render();
     renderModal();
     console.log('Connectors module initialized');
@@ -948,7 +904,7 @@ const Connectors = (function() {
     runTest,
     addConnector,
     saveConnector,
-    refresh: () => { generateConnectors(); render(); toast('Connectors refreshed', 'success'); }
+    refresh: async () => { await loadConnectors(); render(); toast('Connectors refreshed', 'success'); }
   };
 })();
 

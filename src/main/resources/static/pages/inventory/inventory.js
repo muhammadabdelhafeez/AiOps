@@ -257,10 +257,7 @@ const CustomStyles = () => (
 );
 
 // ============= UTILITIES =============
-const generateId = () => Math.random().toString(36).substr(2, 9);
-const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
-const randomFloat = (min, max) => parseFloat((Math.random() * (max - min) + min).toFixed(1));
-const randomChoice = (arr) => arr[Math.floor(Math.random() * arr.length)];
+const generateId = () => (window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID() : String(Date.now()));
 
 // ============= CONSTANTS =============
 const ASSET_TYPES = ['Server', 'VM', 'DB', 'LoadBalancer', 'Firewall', 'Switch', 'Router', 'Storage', 'K8sCluster', 'Namespace', 'Pod', 'Service', 'URL', 'Queue'];
@@ -293,106 +290,37 @@ const getAssetIcon = (type) => {
   return iconMap[type] || Server;
 };
 
-// ============= DATA GENERATION =============
-const generateAssets = (count = 400) => {
-  const assets = [];
-  const now = Date.now();
+// ============= API DATA =============
+const pageContent = (response) => response && Array.isArray(response.content) ? response.content : Array.isArray(response) ? response : [];
+const normalizeAsset = (row) => ({
+  id: String(row.id || row.resourceId || generateId()),
+  type: row.type || row.resourceType || 'Server',
+  name: row.name || row.resourceName || 'Unnamed resource',
+  environment: row.environment || 'Production',
+  domain: row.businessDomain || row.domain || '',
+  ipOrHost: row.ipOrHost || row.hostname || row.ipAddress || '',
+  location: row.location || '',
+  platform: row.platform || row.os || '',
+  ownerTeam: row.ownerTeam || row.team || '',
+  tags: Array.isArray(row.tags) ? row.tags : [],
+  onboardedSources: Array.isArray(row.onboardedSources) ? row.onboardedSources : [],
+  healthScore: Number(row.healthScore || 0),
+  status: row.status || 'Unknown',
+  lastSeen: Date.parse(row.lastSeen || row.updatedAt || new Date().toISOString()),
+  dependencies: Array.isArray(row.dependencies) ? row.dependencies : [],
+  relatedAppIds: Array.isArray(row.relatedAppIds) ? row.relatedAppIds : [],
+  metrics: row.metrics || null,
+  openIncidents: row.openIncidents || { total: 0, critical: 0 },
+  topFingerprint: row.topFingerprint || null,
+  notes: row.notes || '',
+});
 
-  for (let i = 0; i < count; i++) {
-    const type = randomChoice(ASSET_TYPES);
-    const env = randomChoice(ENVIRONMENTS);
-    const domain = randomChoice(DOMAINS);
-    const platform = randomChoice(PLATFORMS);
-    const location = randomChoice(LOCATIONS);
-    const ownerTeam = randomChoice(TEAMS);
-    const healthScore = randomInt(0, 100);
-    const status = healthScore > 80 ? 'Good' : healthScore > 50 ? 'Degraded' : healthScore > 0 ? 'Critical' : 'Unknown';
-    const sourcesCount = randomInt(0, 4);
-    const onboardedSources = sourcesCount > 0
-      ? Array.from({ length: sourcesCount }, () => randomChoice(SOURCES)).filter((v, idx, a) => a.indexOf(v) === idx)
-      : [];
-    const tagsCount = randomInt(1, 5);
-    const tags = Array.from({ length: tagsCount }, () => randomChoice(TAG_POOL)).filter((v, idx, a) => a.indexOf(v) === idx);
-    const lastSeen = now - randomInt(0, 7 * 24 * 60 * 60 * 1000);
-    const criticalIncidents = status === 'Critical' ? randomInt(1, 3) : 0;
-    const totalIncidents = criticalIncidents + randomInt(0, 5);
-    const relatedAppIds = Array.from({ length: randomInt(1, 3) }, () => `app-${randomChoice(['cbs', 'mob', 'pay', 'crm', 'risk'])}-${randomInt(1, 5).toString().padStart(3, '0')}`);
-
-    const name = type === 'Server' ? `${env.slice(0, 3).toUpperCase()}-SRV-${String(i + 1).padStart(3, '0')}` :
-      type === 'VM' ? `${env.slice(0, 3).toUpperCase()}-VM-${String(i + 1).padStart(3, '0')}` :
-        type === 'DB' ? `${env.slice(0, 3).toUpperCase()}-DB-${randomChoice(['ORA', 'PG', 'MYSQL'])}-${String(i + 1).padStart(2, '0')}` :
-          type === 'Pod' ? `${domain.replace(/\s/g, '-').toLowerCase()}-pod-${generateId().slice(0, 6)}` :
-            type === 'Service' ? `${domain.replace(/\s/g, '-').toLowerCase()}-svc` :
-              `${type}-${String(i + 1).padStart(3, '0')}`;
-
-    const ipOrHost = ['Server', 'VM', 'DB', 'LoadBalancer'].includes(type)
-      ? `10.${randomInt(10, 250)}.${randomInt(1, 254)}.${randomInt(1, 254)}`
-      : (['URL', 'Service'].includes(type)
-        ? `${name.toLowerCase().replace(/[^a-z0-9]/g, '-')}.kfh.com`
-        : null);
-
-    const metrics = (type === 'Server' || type === 'VM') ? {
-      cpu: randomFloat(0, 100),
-      mem: randomFloat(0, 100),
-      disk: randomFloat(0, 100),
-    } : (type === 'DB') ? {
-      cpu: randomFloat(0, 100),
-      mem: randomFloat(0, 100),
-      qps: randomInt(10, 5000),
-    } : (type === 'Service' || type === 'URL') ? {
-      latency: randomInt(10, 2000),
-      qps: randomInt(100, 10000),
-    } : null;
-
-    assets.push({
-      id: `asset-${generateId()}`,
-      type,
-      name,
-      environment: env,
-      domain,
-      ipOrHost,
-      location,
-      platform,
-      ownerTeam,
-      tags,
-      onboardedSources,
-      healthScore,
-      status,
-      lastSeen,
-      dependencies: [],
-      relatedAppIds,
-      metrics,
-      openIncidents: { total: totalIncidents, critical: criticalIncidents },
-      topFingerprint: totalIncidents > 0 ? `FP-${randomChoice(['CPU', 'MEM', 'DISK', 'NET'])}-${randomInt(100, 999)}` : null,
-      notes: '',
-    });
-  }
-
-  return assets;
-};
-
-const generateConnectivity = (assets) => {
-  const edges = [];
-  const types = ['http', 'tcp', 'jdbc', 'amqp', 'grpc'];
-
-  assets.forEach(asset => {
-    const depCount = randomInt(0, 4);
-    for (let i = 0; i < depCount; i++) {
-      const target = randomChoice(assets);
-      if (target.id !== asset.id && !asset.dependencies.includes(target.id)) {
-        asset.dependencies.push(target.id);
-        edges.push({
-          from: asset.id,
-          to: target.id,
-          kind: randomChoice(types),
-          port: randomInt(8000, 9000),
-        });
-      }
-    }
-  });
-
-  return edges;
-};
+const normalizeEdge = (row) => ({
+  from: String(row.from || row.sourceId || ''),
+  to: String(row.to || row.targetId || ''),
+  kind: row.kind || row.relationshipType || 'depends_on',
+  port: row.port || null,
+});
 
 // ============= STORE & CONTEXT =============
 const StoreContext = createContext(null);
@@ -404,9 +332,33 @@ const useStore = () => {
 };
 
 const StoreProvider = ({ children }) => {
-  const [assets, setAssets] = useState(() => generateAssets(400));
-  const [connectivity, setConnectivity] = useState(() => generateConnectivity(assets));
+  const [assets, setAssets] = useState([]);
+  const [connectivity, setConnectivity] = useState([]);
   const [toasts, setToasts] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadInventory() {
+      if (!window.APIClient || !APIClient.inventory) {
+        if (!cancelled) { setAssets([]); setConnectivity([]); }
+        return;
+      }
+      try {
+        const [assetsResponse, topologyResponse] = await Promise.all([
+          APIClient.inventory.list({ page: 0, size: 500 }),
+          APIClient.inventory.topology ? APIClient.inventory.topology({ page: 0, size: 1000 }) : Promise.resolve([])
+        ]);
+        if (cancelled) return;
+        setAssets(pageContent(assetsResponse).map(normalizeAsset));
+        setConnectivity(pageContent(topologyResponse).map(normalizeEdge).filter(edge => edge.from && edge.to));
+      } catch (error) {
+        console.warn('[Inventory] Unable to load production inventory; rendering empty state.', error);
+        if (!cancelled) { setAssets([]); setConnectivity([]); }
+      }
+    }
+    loadInventory();
+    return () => { cancelled = true; };
+  }, []);
 
   const showToast = useCallback((message, type = 'info') => {
     const id = generateId();
@@ -1173,22 +1125,20 @@ const AssetDrawer = ({ asset, onClose, onUpdate }) => {
               <h3 className="text-sm font-bold mb-4" style={{ color: KFH.textMain }}>Open Incidents ({asset.openIncidents.total})</h3>
               {asset.openIncidents.total > 0 ? (
                 <div className="space-y-3">
-                  {Array.from({ length: asset.openIncidents.total }, (_, i) => (
-                    <div key={i} className="flex items-center gap-3 p-3 rounded-[16px]" style={{ background: KFH.offWhite }}>
-                      <AlertTriangle style={{ color: i < asset.openIncidents.critical ? KFH.critical : KFH.warning }} size={16} />
-                      <div className="flex-1">
-                        <div className="text-sm" style={{ color: KFH.textMain }}>
-                          {i < asset.openIncidents.critical ? 'Critical' : 'Warning'}: {randomChoice(['High CPU usage', 'Memory threshold exceeded', 'Disk space low', 'Service degraded', 'Connection timeout'])} on {asset.name}
-                        </div>
-                        <div className="text-xs" style={{ color: KFH.textMuted }}>
-                          {asset.topFingerprint} • {randomInt(1, 120)} minutes ago
-                        </div>
+                  <div className="flex items-center gap-3 p-3 rounded-[16px]" style={{ background: KFH.offWhite }}>
+                    <AlertTriangle style={{ color: asset.openIncidents.critical > 0 ? KFH.critical : KFH.warning }} size={16} />
+                    <div className="flex-1">
+                      <div className="text-sm" style={{ color: KFH.textMain }}>
+                        {asset.openIncidents.total} open production incident{asset.openIncidents.total === 1 ? '' : 's'} linked to {asset.name}
                       </div>
-                      <Button size="xs" variant="ghost" onClick={() => window.location.href = '../incidents/incidents.html'}>
-                        <Eye size={16} />
-                      </Button>
+                      <div className="text-xs" style={{ color: KFH.textMuted }}>
+                        {asset.openIncidents.critical} critical • open the incident page for tenant-scoped details
+                      </div>
                     </div>
-                  ))}
+                    <Button size="xs" variant="ghost" onClick={() => window.location.href = '../incidents/incidents.html'}>
+                      <Eye size={16} />
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <div className="text-center py-8" style={{ color: KFH.textMuted }}>
@@ -1326,8 +1276,8 @@ const AssetForm = ({ onSubmit, onCancel, editAsset = null }) => {
     e.preventDefault();
     const asset = {
       ...formData,
-      healthScore: randomInt(50, 100),
-      status: 'Good',
+      healthScore: 0,
+      status: 'Unknown',
       lastSeen: Date.now(),
       dependencies: [],
       relatedAppIds: [],

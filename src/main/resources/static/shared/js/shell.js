@@ -34,7 +34,7 @@ window.KFHShell = (function() {
         items: [
           { id: 'connectors', label: 'Connectors', icon: '🔌', href: '../connectors/connectors.html' },
           { id: 'schedules', label: 'Schedules', icon: '⏰', href: '../schedules/schedules.html' },
-          { id: 'users', label: 'Users & RBAC', icon: '👥', href: '../users/users.html' },
+          { id: 'users', label: 'User Management', icon: '👥', href: '../users/users.html' },
           { id: 'settings', label: 'Settings', icon: '⚙️', href: '../settings/settings.html' },
           { id: 'audit', label: 'Audit Logs', icon: '📋', href: '../audit/audit.html' }
         ]

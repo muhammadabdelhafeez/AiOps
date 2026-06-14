@@ -1,16 +1,17 @@
 # Backend Modules & Packages
 
 ## Entry points
-- `org.aiopsanalysis.AiOpsAnalysisApplication` — Spring Boot entry
-- `org.aiopsanalysis.SecurityConfig` — security configuration
+- `org.kfh.aiops.AiOpsApplication` — Spring Boot application entry point at the root package, using default component scanning for `org.kfh.aiops.*`
+- `org.kfh.aiops.ServletInitializer` — WAR deployment initializer for managed servlet containers
+- `org.aiopsanalysis.AiOpsAnalysisApplication` — deprecated launcher-only compatibility shim for older IDE run configurations; contains no Spring annotations or backend components
+- `org.kfh.aiops.platform.security.SecurityConfig` — security configuration
 
 ## Package map (high level)
-- `org.aiopsanalysis.controller` — REST controllers (HTTP)
-- `org.aiopsanalysis.service` — business logic (RBAC + audit + outbox)
-- `org.aiopsanalysis.repository` — persistence (tenant-scoped)
-- `org.aiopsanalysis.domain` — entities / domain models
-- `org.aiopsanalysis.dto` — request/response DTOs + validation
-- `org.aiopsanalysis.config` — integration configs (Neo4j, OpenAI, etc.)
+- `org.kfh.aiops.platform` — security, tenant/country context, audit, configuration, exceptions, observability
+- `org.kfh.aiops.commandcenter` — dashboard, alerts, applications, inventory, reports, schedules read/write API scaffolding
+- `org.kfh.aiops.incident` — incident API, lifecycle/service contracts, model types
+- `org.kfh.aiops.plugin` — connector API/service scaffolding
+- Future bounded contexts follow the enterprise package map: ingestion, normalization, index, topology, health, RCA, AI, notification
 
 ## Cross-cutting requirements
 - Every request must include `X-Tenant-Id` and `X-User-Id`.

@@ -73,94 +73,57 @@
 
   var CHART_COLORS = [COLORS.primary, COLORS.gold, COLORS.info, COLORS.high, '#8B5CF6'];
 
-  // ============= UTILITY FUNCTIONS =============
-  function rand(min, max) {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
-  }
-  function choice(arr) {
-    return arr[Math.floor(Math.random() * arr.length)];
-  }
 
-  // ============= DATA GENERATION =============
-  function generateAlerts() {
-    var now = Date.now();
-    var fifteenDaysAgo = now - 15 * 24 * 60 * 60 * 1000;
-    var templates = [
-      { title: 'CPU utilization above threshold', bias: 'high' },
-      { title: 'Memory usage critical', bias: 'critical' },
-      { title: 'Disk space low', bias: 'medium' },
-      { title: 'Service not responding', bias: 'critical' },
-      { title: 'Database connection pool exhausted', bias: 'high' }
-    ];
+  // Production data is loaded from /api/v1 through APIClient. Empty arrays preserve the page design.
+  var alertsData = [];
+  var hourlyData = [];
+  var sourceData = [];
+  var severityData = [];
 
-    var alerts = [];
-    for (var i = 0; i < 100; i++) {
-      var tpl = choice(templates);
-      var severity = tpl.bias === 'critical' ? 'critical' : (tpl.bias === 'high' ? choice(['high', 'critical']) : choice(SEVERITIES));
-      var ts = new Date(fifteenDaysAgo + Math.random() * (now - fifteenDaysAgo));
-      var source = choice(SOURCES);
-      var env = choice(ENVS);
-      var domain = choice(DOMAINS);
-      var noiseScore = rand(5, 95);
-      var correlated = Math.random() > 0.7;
-      var groupId = correlated ? 'group-' + rand(1, 20) : null;
-      
-      alerts.push({
-        id: 'alert-' + i,
-        ts: ts.toISOString(),
-        source: source,
-        severity: severity,
-        title: tpl.title,
-        deviceOrHost: 'srv-' + (i % 30),
-        domain: domain,
-        env: env,
-        appId: 'App-' + ((i % 7) + 1),
-        status: choice(STATUSES),
-        noiseScore: noiseScore,
-        alertGroupId: groupId,
-        correlationKeyExact: correlated && Math.random() > 0.6 ? 'exact-' + groupId : null,
-        correlationKeyFamily: correlated ? 'fam-' + groupId : null
-      });
-    }
-    return alerts.sort(function(a, b) { return new Date(b.ts) - new Date(a.ts); });
+  function pageContent(response) {
+    return response && Array.isArray(response.content) ? response.content : Array.isArray(response) ? response : [];
   }
 
-  function generateHourlyData(hours) {
-    hours = hours || 24;
-    var data = [];
-    var now = new Date();
-    for (var i = hours - 1; i >= 0; i--) {
-      var time = new Date(now.getTime() - i * 60 * 60 * 1000);
-      var hour = String(time.getHours()).padStart(2, '0');
-      data.push({
-        hour: hour + ':00',
-        value: rand(2, 12)
-      });
-    }
-    return data;
+  function normalizeAlert(row) {
+    var severity = String(row.severity || 'info').toLowerCase();
+    return {
+      id: String(row.id || row.eventId || row.alertId || ''),
+      ts: row.timestamp || row.ts || row.createdAt || new Date().toISOString(),
+      source: row.sourceSystem || row.source || row.name || 'Unknown',
+      severity: severity,
+      title: row.title || row.message || row.name || 'Untitled alert',
+      deviceOrHost: row.resourceName || row.resourceId || row.deviceOrHost || '-',
+      domain: row.businessDomain || row.domain || '-',
+      env: row.environment || row.env || 'PROD',
+      appId: row.applicationId || row.applicationName || row.appId || '-',
+      status: row.status || 'Open',
+      noiseScore: Number(row.noiseScore || 0),
+      alertGroupId: row.alertGroupId || row.groupId || null,
+      correlationKeyExact: row.correlationKeyExact || null,
+      correlationKeyFamily: row.correlationKeyFamily || null
+    };
   }
 
-  function generateSourceDistribution() {
-    return SOURCES.map(function(src) {
-      return { name: src, value: rand(10, 50) };
+  function buildHourlyData(alerts) {
+    var buckets = {};
+    alerts.forEach(function(alert) {
+      var d = new Date(alert.ts);
+      if (!isNaN(d.getTime())) {
+        var key = String(d.getHours()).padStart(2, '0') + ':00';
+        buckets[key] = (buckets[key] || 0) + 1;
+      }
     });
+    return Object.keys(buckets).sort().map(function(hour) { return { hour: hour, value: buckets[hour] }; });
   }
 
-  function generateSeverityDistribution() {
-    return [
-      { name: 'HIGH', value: rand(10, 40) },
-      { name: 'LOW', value: rand(5, 20) },
-      { name: 'CRITICAL', value: rand(5, 15) },
-      { name: 'INFO', value: rand(3, 10) },
-      { name: 'MEDIUM', value: rand(5, 15) }
-    ];
+  function countBy(alerts, keyFn) {
+    var counts = {};
+    alerts.forEach(function(alert) {
+      var key = keyFn(alert) || 'Unknown';
+      counts[key] = (counts[key] || 0) + 1;
+    });
+    return Object.keys(counts).map(function(key) { return { name: key, value: counts[key] }; });
   }
-
-  // Generate data
-  var alertsData = generateAlerts();
-  var hourlyData = generateHourlyData(24);
-  var sourceData = generateSourceDistribution();
-  var severityData = generateSeverityDistribution();
 
   // Generate Alert Groups from alerts data
   function generateAlertGroups() {
@@ -371,7 +334,7 @@
         correlated: correlated,
         groups: groups.length
       };
-    }, []);
+    }, [alertsData.length]);
 
     // Filter alerts
     var filteredAlerts = _useMemo(function() {
@@ -382,69 +345,10 @@
         }
         return true;
       });
-    }, [search]);
+    }, [search, alertsData.length]);
 
     // Tooltip style
     var tooltipStyle = { backgroundColor: COLORS.surface, border: 'none', borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' };
-
-    // ============= INJECT HEADER CONTROLS =============
-    // Add only page-specific controls (view toggle) to the main header
-    // Time filter, refresh, notifications are already in index.html header
-    React.useEffect(function() {
-      var headerRight = document.querySelector('.kfh-header-right');
-      if (!headerRight) return;
-
-      // Remove any existing page controls
-      var existingControls = document.getElementById('page-header-controls');
-      if (existingControls) existingControls.remove();
-
-      // Create controls container - only the view toggle (page-specific)
-      var controlsDiv = document.createElement('div');
-      controlsDiv.id = 'page-header-controls';
-      controlsDiv.style.cssText = 'display: flex; align-items: center; gap: 12px;';
-
-      // View toggle container (Raw Alerts / Alert Groups) - this is page-specific
-      var toggleDiv = document.createElement('div');
-      toggleDiv.style.cssText = 'display: flex; background: #F3F4F7; border-radius: 8px; padding: 3px;';
-
-      var rawBtn = document.createElement('button');
-      rawBtn.textContent = 'Raw Alerts';
-      rawBtn.className = 'alerts-view-btn';
-      rawBtn.setAttribute('data-view', 'raw');
-
-      var groupsBtn = document.createElement('button');
-      groupsBtn.textContent = 'Alert Groups';
-      groupsBtn.className = 'alerts-view-btn';
-      groupsBtn.setAttribute('data-view', 'groups');
-
-      function updateToggleStyles() {
-        var activeStyle = 'padding: 6px 14px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s;';
-        rawBtn.style.cssText = activeStyle + (view === 'raw' ? 'background: white; color: #1D1D1D; box-shadow: 0 1px 3px rgba(0,0,0,0.1);' : 'background: transparent; color: #666;');
-        groupsBtn.style.cssText = activeStyle + (view === 'groups' ? 'background: white; color: #1D1D1D; box-shadow: 0 1px 3px rgba(0,0,0,0.1);' : 'background: transparent; color: #666;');
-      }
-      updateToggleStyles();
-
-      rawBtn.onclick = function() { setView('raw'); };
-      groupsBtn.onclick = function() { setView('groups'); };
-
-      toggleDiv.appendChild(rawBtn);
-      toggleDiv.appendChild(groupsBtn);
-      controlsDiv.appendChild(toggleDiv);
-
-      // Insert before system status
-      var statusIndicator = headerRight.querySelector('.kfh-status-indicator');
-      if (statusIndicator) {
-        headerRight.insertBefore(controlsDiv, statusIndicator);
-      } else {
-        headerRight.insertBefore(controlsDiv, headerRight.firstChild);
-      }
-
-      // Cleanup on unmount
-      return function() {
-        var ctrl = document.getElementById('page-header-controls');
-        if (ctrl) ctrl.remove();
-      };
-    }, [view]);
 
     // ============= RENDER =============
     // Note: Sidebar and Header are provided by index.html
@@ -458,6 +362,33 @@
 
         // Content - starts immediately, no duplicate header
         h('div', { style: { flex: 1, overflowY: 'auto', padding: '24px 32px 32px', zIndex: 10, position: 'relative' } },
+          h('div', { className: 'kfh-card', style: { padding: 20, marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 } },
+            h('div', null,
+              h('p', { style: { margin: 0, color: COLORS.gold, fontSize: 12, fontWeight: 900, letterSpacing: '0.08em', textTransform: 'uppercase' } }, 'Telemetry Explorer'),
+              h('h1', { style: { margin: '4px 0 0', fontSize: 28, fontWeight: 900, color: COLORS.textPrimary } }, 'Alerts')
+            ),
+            h('div', { style: { display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', justifyContent: 'flex-end' } },
+              h('input', {
+                className: 'kfh-input',
+                value: search,
+                onChange: function(e) { setSearch(e.target.value || ''); },
+                placeholder: 'Search alerts or resources',
+                style: { width: 280 }
+              }),
+              h('div', { style: { display: 'flex', background: '#F3F4F7', borderRadius: 8, padding: 3 } },
+                h('button', {
+                  className: 'alerts-view-btn',
+                  style: { padding: '6px 14px', borderRadius: 6, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13, background: view === 'raw' ? 'white' : 'transparent', color: view === 'raw' ? COLORS.textPrimary : COLORS.textSecondary, boxShadow: view === 'raw' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' },
+                  onClick: function() { setView('raw'); }
+                }, 'Raw Alerts'),
+                h('button', {
+                  className: 'alerts-view-btn',
+                  style: { padding: '6px 14px', borderRadius: 6, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13, background: view === 'groups' ? 'white' : 'transparent', color: view === 'groups' ? COLORS.textPrimary : COLORS.textSecondary, boxShadow: view === 'groups' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' },
+                  onClick: function() { setView('groups'); }
+                }, 'Alert Groups')
+              )
+            )
+          ),
           // KPI Strip - all 7 KPIs in one row
           h('div', {
             style: { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 12, marginBottom: 24 }
@@ -807,7 +738,7 @@
           h('div', { style: { marginTop: 24, background: COLORS.surfaceBg, borderRadius: 12, padding: 16 } },
             h('h4', { style: { fontSize: 14, fontWeight: 700, color: COLORS.textPrimary, marginBottom: 8 } }, 'Pattern Analysis'),
             h('p', { style: { fontSize: 13, color: COLORS.textSecondary, margin: 0 } },
-              'This alert shows a recurring pattern. Similar alerts have occurred ' + rand(3, 8) + ' times in the past 30 days, typically resolving within ' + rand(15, 45) + ' minutes.'
+              'Pattern analysis will appear here when correlation evidence is returned by the alert/RCA APIs.'
             )
           )
         );
@@ -874,12 +805,33 @@
   }
 
   // ============= MOUNT APPLICATION =============
+  function renderApp(root) {
+    if (root) root.render(h(AlertsExplorer));
+    else ReactDOM.render(h(AlertsExplorer), mountEl);
+  }
+
+  async function loadAlerts(root) {
+    if (!window.APIClient || !APIClient.alerts) return;
+    try {
+      var response = await APIClient.alerts.list({ page: 0, size: 100 });
+      alertsData = pageContent(response).map(normalizeAlert);
+      hourlyData = buildHourlyData(alertsData);
+      sourceData = countBy(alertsData, function(alert) { return alert.source; });
+      severityData = countBy(alertsData, function(alert) { return alert.severity.toUpperCase(); });
+      alertGroupsData = generateAlertGroups();
+      renderApp(root);
+    } catch (error) {
+      console.warn('[Alerts] Unable to load production alerts; rendering empty state.', error);
+    }
+  }
+
   try {
     var root = ReactDOM.createRoot(mountEl);
-    root.render(h(AlertsExplorer));
+    renderApp(root);
+    loadAlerts(root);
   } catch (e) {
-    // Fallback for older ReactDOM
-    ReactDOM.render(h(AlertsExplorer), mountEl);
+    renderApp(null);
+    loadAlerts(null);
   }
 
 })();

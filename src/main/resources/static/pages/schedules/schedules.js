@@ -204,140 +204,37 @@ const RunStatus = {
   Canceled: 'Canceled'
 };
 
-// ============== MOCK DATA ==============
-const generateId = () => Math.random().toString(36).substr(2, 9);
-const now = new Date();
-
-const initialJobs = [
-  {
-    id: 'job-001',
-    name: 'Hourly Alert Analysis',
-    jobType: JobType.HourlyAnalysis,
-    enabled: true,
-    timezone: 'Asia/Kuwait',
-    cronOrInterval: '0 * * * *',
-    windowMinutes: 15,
-    scope: { env: Environment.Both, domain: 'Core Banking', appIds: ['APP-001', 'APP-002'] },
-    nextRunAt: new Date(now.getTime() + 25 * 60000).toISOString(),
-    lastRunAt: new Date(now.getTime() - 35 * 60000).toISOString(),
-    lastResult: JobResult.Success,
-    avgDurationSec: 142,
-    lastDurationSec: 138,
-    ownerTeam: 'Platform Ops',
-    priority: Priority.High,
-    errorRate7d: 2.1,
-    runs7d: 168,
-    notes: 'Primary analysis job for core banking alerts'
-  },
-  {
-    id: 'job-002',
-    name: 'ServiceNow Connector Sync',
-    jobType: JobType.ConnectorSync,
-    enabled: true,
-    timezone: 'Asia/Kuwait',
-    cronOrInterval: '*/15 * * * *',
-    windowMinutes: 5,
-    scope: { env: Environment.Prod, connectorIds: ['CONN-SNOW-001'] },
-    nextRunAt: new Date(now.getTime() + 8 * 60000).toISOString(),
-    lastRunAt: new Date(now.getTime() - 7 * 60000).toISOString(),
-    lastResult: JobResult.Success,
-    avgDurationSec: 45,
-    lastDurationSec: 42,
-    ownerTeam: 'Integration',
-    priority: Priority.High,
-    errorRate7d: 0.5,
-    runs7d: 672,
-    notes: 'Syncs incidents with ServiceNow'
-  },
-  {
-    id: 'job-003',
-    name: 'Daily Evidence Export',
-    jobType: JobType.EvidenceExport,
-    enabled: true,
-    timezone: 'Asia/Kuwait',
-    cronOrInterval: '0 6 * * *',
-    windowMinutes: 60,
-    scope: { env: Environment.Prod, domain: 'All' },
-    nextRunAt: new Date(now.getTime() + 12 * 3600000).toISOString(),
-    lastRunAt: new Date(now.getTime() - 12 * 3600000).toISOString(),
-    lastResult: JobResult.Success,
-    avgDurationSec: 1850,
-    lastDurationSec: 1720,
-    ownerTeam: 'Compliance',
-    priority: Priority.Med,
-    errorRate7d: 0,
-    runs7d: 7,
-    notes: 'Daily compliance evidence export for audit'
-  }
-];
-
-const generateLogLines = (status) => {
-  const lines = [
-    { level: 'INFO', timestamp: '00:00:00', message: 'Job started' },
-    { level: 'INFO', timestamp: '00:00:01', message: 'Initializing connections...' },
-    { level: 'INFO', timestamp: '00:00:02', message: 'Connected to data sources' },
-    { level: 'DEBUG', timestamp: '00:00:05', message: 'Fetching alert data...' },
-    { level: 'INFO', timestamp: '00:00:15', message: 'Processing batch 1 of 3' },
-    { level: 'INFO', timestamp: '00:00:30', message: 'Processing batch 2 of 3' },
-    { level: 'INFO', timestamp: '00:00:45', message: 'Processing batch 3 of 3' }
-  ];
-
-  if (status === RunStatus.Failed) {
-    lines.push(
-      { level: 'WARN', timestamp: '00:00:50', message: 'Connection timeout detected' },
-      { level: 'ERROR', timestamp: '00:00:55', message: 'Failed to complete processing: ETIMEDOUT' },
-      { level: 'INFO', timestamp: '00:00:56', message: 'Job failed - rolling back changes' }
-    );
-  } else {
-    lines.push(
-      { level: 'INFO', timestamp: '00:00:50', message: 'All batches processed successfully' },
-      { level: 'INFO', timestamp: '00:00:55', message: 'Job completed successfully' }
-    );
-  }
-
-  return lines;
-};
-
-const generateJobRuns = (jobId, count = 10) => {
-  const runs = [];
-  const statuses = [RunStatus.Success, RunStatus.Success, RunStatus.Success, RunStatus.Failed];
-  for (let i = 0; i < count; i++) {
-    const startedAt = new Date(now.getTime() - (i + 1) * 3600000);
-    const duration = Math.floor(Math.random() * 200) + 50;
-    const status = statuses[Math.floor(Math.random() * statuses.length)];
-    runs.push({
-      id: `run-${jobId}-${i}`,
-      jobId,
-      startedAt: startedAt.toISOString(),
-      endedAt: new Date(startedAt.getTime() + duration * 1000).toISOString(),
-      status,
-      summary: status === RunStatus.Success
-        ? `Processed ${Math.floor(Math.random() * 500) + 100} alerts successfully`
-        : 'Connection timeout to upstream service',
-      logLines: generateLogLines(status),
-      metrics: {
-        processedAlerts: Math.floor(Math.random() * 500) + 100,
-        createdIncidents: Math.floor(Math.random() * 10),
-        newCount: Math.floor(Math.random() * 50),
-        recurringCount: Math.floor(Math.random() * 100),
-        errors: status === RunStatus.Failed ? Math.floor(Math.random() * 5) + 1 : 0
-      }
-    });
-  }
-  return runs;
-};
+// ============== API DATA ==============
+const generateId = () => (window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID() : `tmp-${Date.now()}`);
+const pageContent = (response) => response && Array.isArray(response.content) ? response.content : Array.isArray(response) ? response : [];
+const normalizeJob = (row) => ({
+  id: String(row.id || row.scheduleId || generateId()),
+  name: row.name || 'Untitled schedule',
+  jobType: row.jobType || row.type || JobType.ConnectorSync,
+  enabled: row.enabled !== false,
+  timezone: row.timezone || 'Asia/Kuwait',
+  cronOrInterval: row.cronExpression || row.cronOrInterval || '',
+  windowMinutes: Number(row.windowMinutes || 0),
+  scope: row.scope || { env: row.environment || Environment.Prod },
+  nextRunAt: row.nextRunAt || null,
+  lastRunAt: row.lastRunAt || null,
+  lastResult: row.lastRunStatus || row.lastResult || JobResult.Never,
+  avgDurationSec: Number(row.avgDurationSec || 0),
+  lastDurationSec: Number(row.lastDurationSec || 0),
+  ownerTeam: row.ownerTeam || row.team || '',
+  priority: row.priority || Priority.Med,
+  errorRate7d: Number(row.errorRate7d || 0),
+  runs7d: Number(row.runs7d || 0),
+  notes: row.notes || ''
+});
 
 // ============== STORE ==============
 const StoreContext = createContext(null);
 const useStoreContext = () => useContext(StoreContext);
 
 const useStore = () => {
-  const [jobs, setJobs] = useState(initialJobs);
-  const [jobRuns, setJobRuns] = useState(() => {
-    const runs = {};
-    initialJobs.forEach(job => { runs[job.id] = generateJobRuns(job.id); });
-    return runs;
-  });
+  const [jobs, setJobs] = useState([]);
+  const [jobRuns, setJobRuns] = useState({});
   const [toasts, setToasts] = useState([]);
 
   const addToast = useCallback((message, type = 'success') => {
@@ -348,146 +245,58 @@ const useStore = () => {
     }, 4000);
   }, []);
 
-  const addJob = useCallback((job) => {
-    const newJob = { ...job, id: generateId() };
-    setJobs(prev => [...prev, newJob]);
-    setJobRuns(prev => ({ ...prev, [newJob.id]: [] }));
-    addToast(`Job "${job.name}" created successfully`);
-    return newJob;
-  }, [addToast]);
-
-  const updateJob = useCallback((id, updates) => {
-    setJobs(prev => prev.map(job => job.id === id ? { ...job, ...updates } : job));
-    addToast('Job updated successfully');
-  }, [addToast]);
-
-  const toggleJob = useCallback((id) => {
-    setJobs(prev => prev.map(job => {
-      if (job.id !== id) return job;
-      const enabled = !job.enabled;
-      const nextRunAt = enabled ? new Date(Date.now() + Math.random() * 3600000).toISOString() : null;
-      return { ...job, enabled, nextRunAt };
-    }));
+  const loadJobs = useCallback(async () => {
+    if (!window.APIClient || !APIClient.schedules) {
+      setJobs([]);
+      setJobRuns({});
+      return;
+    }
+    try {
+      const response = await APIClient.schedules.list();
+      const loadedJobs = pageContent(response).map(normalizeJob);
+      setJobs(loadedJobs);
+      const runsByJob = {};
+      await Promise.all(loadedJobs.map(async (job) => {
+        try {
+          runsByJob[job.id] = pageContent(await APIClient.schedules.getRuns(job.id, { page: 0, size: 20 }));
+        } catch (error) {
+          runsByJob[job.id] = [];
+        }
+      }));
+      setJobRuns(runsByJob);
+    } catch (error) {
+      console.warn('[Schedules] Unable to load production schedules; rendering empty state.', error);
+      setJobs([]);
+      setJobRuns({});
+    }
   }, []);
 
-  const runJobNow = useCallback((jobId) => {
-    return new Promise(resolve => {
-      const runId = generateId();
-      const startedAt = new Date().toISOString();
-      const queuedRun = {
-        id: runId,
-        jobId,
-        startedAt,
-        endedAt: null,
-        status: RunStatus.Queued,
-        summary: 'Job queued for execution',
-        logLines: [{ level: 'INFO', timestamp: '00:00:00', message: 'Job queued' }],
-        metrics: { processedAlerts: 0, createdIncidents: 0, newCount: 0, recurringCount: 0, errors: 0 }
-      };
+  useEffect(() => { loadJobs(); }, [loadJobs]);
 
-      setJobRuns(prev => ({
-        ...prev,
-        [jobId]: [queuedRun, ...(prev[jobId] || [])]
-      }));
+  const addJob = useCallback(async (job) => {
+    const created = await APIClient.schedules.create({ name: job.name, enabled: job.enabled, attributes: job });
+    await loadJobs();
+    addToast(`Job "${job.name}" created successfully`);
+    return normalizeJob(created || job);
+  }, [addToast, loadJobs]);
 
-      setTimeout(() => {
-        setJobRuns(prev => ({
-          ...prev,
-          [jobId]: prev[jobId].map(run => run.id === runId
-            ? {
-              ...run,
-              status: RunStatus.Running,
-              summary: 'Job is running...',
-              logLines: [
-                ...run.logLines,
-                { level: 'INFO', timestamp: '00:00:01', message: 'Job started' },
-                { level: 'INFO', timestamp: '00:00:02', message: 'Initializing...' }
-              ]
-            }
-            : run)
-        }));
-      }, 400);
+  const updateJob = useCallback(async (id, updates) => {
+    await APIClient.schedules.update(id, { name: updates.name, enabled: updates.enabled, attributes: updates });
+    await loadJobs();
+    addToast('Job updated successfully');
+  }, [addToast, loadJobs]);
 
-      setTimeout(() => {
-        setJobRuns(prev => ({
-          ...prev,
-          [jobId]: prev[jobId].map(run => run.id === runId
-            ? {
-              ...run,
-              logLines: [
-                ...run.logLines,
-                { level: 'INFO', timestamp: '00:00:05', message: 'Connecting to data sources...' },
-                { level: 'DEBUG', timestamp: '00:00:08', message: 'Fetching alert data...' }
-              ]
-            }
-            : run)
-        }));
-      }, 1200);
+  const toggleJob = useCallback(async (id) => {
+    await APIClient.schedules.toggle(id);
+    await loadJobs();
+  }, [loadJobs]);
 
-      setTimeout(() => {
-        setJobRuns(prev => ({
-          ...prev,
-          [jobId]: prev[jobId].map(run => run.id === runId
-            ? {
-              ...run,
-              logLines: [
-                ...run.logLines,
-                { level: 'INFO', timestamp: '00:00:15', message: 'Processing batch 1/3...' },
-                { level: 'INFO', timestamp: '00:00:25', message: 'Processing batch 2/3...' }
-              ]
-            }
-            : run)
-        }));
-      }, 2200);
-
-      setTimeout(() => {
-        const success = Math.random() > 0.15;
-        const endedAt = new Date().toISOString();
-        const metrics = {
-          processedAlerts: Math.floor(Math.random() * 500) + 100,
-          createdIncidents: Math.floor(Math.random() * 10),
-          newCount: Math.floor(Math.random() * 50),
-          recurringCount: Math.floor(Math.random() * 100),
-          errors: success ? 0 : Math.floor(Math.random() * 5) + 1
-        };
-
-        setJobRuns(prev => ({
-          ...prev,
-          [jobId]: prev[jobId].map(run => run.id === runId
-            ? {
-              ...run,
-              status: success ? RunStatus.Success : RunStatus.Failed,
-              endedAt,
-              summary: success
-                ? `Processed ${metrics.processedAlerts} alerts successfully`
-                : 'Job failed: Connection timeout',
-              logLines: [
-                ...run.logLines,
-                { level: 'INFO', timestamp: '00:00:35', message: 'Processing batch 3/3...' },
-                success
-                  ? { level: 'INFO', timestamp: '00:00:45', message: 'All batches completed' }
-                  : { level: 'ERROR', timestamp: '00:00:40', message: 'Connection timeout to upstream service' },
-                { level: 'INFO', timestamp: '00:00:50', message: success ? 'Job completed successfully' : 'Job failed' }
-              ],
-              metrics
-            }
-            : run)
-        }));
-
-        setJobs(prev => prev.map(job => job.id === jobId
-          ? {
-            ...job,
-            lastRunAt: endedAt,
-            lastResult: success ? JobResult.Success : JobResult.Failed,
-            lastDurationSec: Math.floor((new Date(endedAt) - new Date(startedAt)) / 1000)
-          }
-          : job));
-
-        addToast(success ? 'Job completed successfully' : 'Job failed', success ? 'success' : 'error');
-        resolve({ success, runId });
-      }, 3800);
-    });
-  }, [addToast]);
+  const runJobNow = useCallback(async (jobId) => {
+    const result = await APIClient.schedules.run(jobId);
+    await loadJobs();
+    addToast('Job run requested', 'success');
+    return result;
+  }, [addToast, loadJobs]);
 
   return {
     jobs,

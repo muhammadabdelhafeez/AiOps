@@ -50,8 +50,8 @@ static/
 │   │   ├── utils.js        # Utility functions
 │   │   └── router.js       # SPA navigation
 │   └── components/
-│       ├── sidebar.js      # Navigation sidebar
-│       └── header.js       # Top header bar
+│       ├── sidebar.js      # Navigation/sidebar patterns
+│       └── header.js       # Legacy/shared header component; SPA shell uses page-owned headers
 └── pages/
     ├── dashboard/          # Operations overview
     ├── incidents/          # Incident management
@@ -79,9 +79,14 @@ static/
 - Admin
   - Connectors
   - Schedules
-  - Users & RBAC
+  - User Management
   - Settings
   - Audit Logs
+
+## Global shell controls
+- The sidebar menu includes a KFH Group country switcher for enabled countries (`KW`, `BH`, `EG`). Switching country updates the active tenant/user/country headers and reloads the current page data under that scope.
+- The SPA shell no longer renders a global top header. Each page owns its title, search, filters, refresh, and action buttons so the body remains dedicated to page-specific operations.
+- Users without `COUNTRY_GLOBAL_VIEW` or `*` remain limited to their signed-in country; backend country guards remain authoritative.
 
 ## Page relationships (how users move)
 Dashboard → (Incidents, Alert Explorer, Applications, Reports)
@@ -227,6 +232,13 @@ Files:
 ### Admin: Schedules
 Purpose:
 - Configure job schedules, access control, platform policies.
+
+### Admin: User Management
+Purpose:
+- Create and manage sign-in user profiles for the selected country/environment scope.
+- The page is intentionally simple: compact page header, create-user action, search, country filter, role filter, summary cards, and a single login-user table.
+- Roles, policies, and audit-log management are no longer embedded as tabs on this page; audit remains available from the dedicated Audit Logs page.
+- The create-user modal shows the active country and environment; payload scope is informational only and the backend derives persisted country/environment from `TenantContext`.
 
 ### Settings (Admin)
 Purpose:
