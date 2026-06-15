@@ -127,7 +127,26 @@ class IdentityJdbcRepositoryTest {
         assertEquals(updatedUser, result);
         verify(passwordEncoder).encode("New-Strong-Password-123");
         verify(jdbcTemplate, times(1)).update(org.mockito.ArgumentMatchers.contains("password_hash = COALESCE"),
-                eq("operator1"), eq("NOC Operator"), eq(null), eq(null), eq("encoded-new-password"), eq(TENANT_ID), eq(userId));
+                eq("operator1"), eq("NOC Operator"), eq(null), eq(null), eq(null), eq("encoded-new-password"), eq(TENANT_ID), eq(userId));
+    }
+
+    @Test
+    void shouldUpdateUserCountryWithoutHashingPasswordWhenPasswordNotSubmitted() {
+        var jdbcTemplate = org.mockito.Mockito.mock(JdbcTemplate.class);
+        var passwordEncoder = org.mockito.Mockito.mock(PasswordEncoder.class);
+        var repository = org.mockito.Mockito.spy(new IdentityJdbcRepository(jdbcTemplate, passwordEncoder));
+        var userId = UUID.randomUUID();
+        var updatedUser = Map.<String, Object>of("id", userId.toString(), "username", "operator1", "countryCode", "BH");
+        doReturn(Optional.of(updatedUser)).when(repository).findUser(TENANT_ID, userId);
+
+        var result = repository.updateUser(TENANT_ID, userId, "NOC Operator", Map.of(
+                "username", "operator1",
+                "countryCode", "BH"));
+
+        assertEquals(updatedUser, result);
+        verify(passwordEncoder, never()).encode(anyString());
+        verify(jdbcTemplate, times(1)).update(org.mockito.ArgumentMatchers.contains("country_code = COALESCE"),
+                eq("operator1"), eq("NOC Operator"), eq(null), eq("BH"), eq(null), eq(null), eq(TENANT_ID), eq(userId));
     }
 
     @Test

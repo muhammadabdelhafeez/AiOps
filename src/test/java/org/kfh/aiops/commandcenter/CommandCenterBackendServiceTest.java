@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import java.util.List;
@@ -131,6 +132,41 @@ class CommandCenterBackendServiceTest {
 
         assertEquals("ahmed", updated.get("username"));
         verify(repository).updateUser(any(UUID.class), eq(userId), eq("Ahmed Salem"), any());
+    }
+
+    @Test
+    void shouldUpdateUserCountryWhenNewCountryIsAllowed() {
+        var repository = mock(IdentityJdbcRepository.class);
+        var service = new IdentityAdminService(readModel, audit, guard, repository);
+        var userId = UUID.randomUUID();
+        when(repository.findUser(any(UUID.class), eq(userId)))
+                .thenReturn(Optional.of(Map.of("id", userId.toString(), "countryCode", "KW")));
+        when(repository.updateUser(any(UUID.class), eq(userId), eq("Ahmed Salem"), any()))
+                .thenReturn(Map.of("id", userId.toString(), "username", "ahmed", "countryCode", "BH", "status", "ACTIVE"));
+
+        var updated = service.updateUser(ctx("KW", Set.of("IDENTITY_READ", "IDENTITY_WRITE", "COUNTRY_GLOBAL_VIEW")), userId,
+                new UiWriteRequest("Ahmed Salem", null, null, "Active", true,
+                        Map.of("username", "ahmed", "email", "92338@kfh.com", "countryCode", "BH", "roleIds", List.of("ADMIN"))));
+
+        assertEquals("BH", updated.get("countryCode"));
+        verify(repository).updateUser(any(UUID.class), eq(userId), eq("Ahmed Salem"),
+                argThat(fields -> "BH".equals(fields.get("countryCode"))
+                        && List.of("COUNTRY_ADMIN").equals(fields.get("roleIds"))));
+    }
+
+    @Test
+    void shouldDenyUserCountryUpdateWhenNewCountryIsNotAllowed() {
+        var repository = mock(IdentityJdbcRepository.class);
+        var service = new IdentityAdminService(readModel, audit, guard, repository);
+        var userId = UUID.randomUUID();
+        when(repository.findUser(any(UUID.class), eq(userId)))
+                .thenReturn(Optional.of(Map.of("id", userId.toString(), "countryCode", "KW")));
+
+        assertThrows(ForbiddenAccessException.class, () -> service.updateUser(ctx("KW", Set.of("IDENTITY_READ", "IDENTITY_WRITE")), userId,
+                new UiWriteRequest("Ahmed Salem", null, null, "Active", true,
+                        Map.of("username", "ahmed", "countryCode", "BH", "roleIds", List.of("OPERATOR")))));
+
+        verify(repository, never()).updateUser(any(UUID.class), eq(userId), anyString(), any());
     }
 
     @Test

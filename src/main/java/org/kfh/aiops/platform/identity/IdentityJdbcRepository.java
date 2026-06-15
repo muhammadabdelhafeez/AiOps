@@ -165,6 +165,7 @@ public class IdentityJdbcRepository {
         var username = string(fields.get("username"));
         var email = string(fields.get("email"));
         var status = string(fields.get("status"));
+        var countryCode = optionalNormalized(fields.get("countryCode"));
         var passwordHash = optionalPasswordHash(fields);
         Boolean active = status == null ? null : (!"DISABLED".equalsIgnoreCase(status) && !"FALSE".equalsIgnoreCase(status));
         jdbcTemplate.update("""
@@ -172,10 +173,11 @@ public class IdentityJdbcRepository {
                 SET username = COALESCE(?, username),
                     display_name = COALESCE(?, display_name),
                     email = COALESCE(?, email),
+                    country_code = COALESCE(?, country_code),
                     is_active = COALESCE(?, is_active),
                     password_hash = COALESCE(?, password_hash)
                 WHERE tenant_id = ? AND user_id = ?
-                """, blankToNull(username), blankToNull(name), blankToNull(email), active, passwordHash, tenantId, userId);
+                """, blankToNull(username), blankToNull(name), blankToNull(email), countryCode, active, passwordHash, tenantId, userId);
         var roleToken = firstRoleToken(fields);
         if (roleToken != null && !roleToken.isBlank()) {
             jdbcTemplate.update("DELETE FROM identity.user_roles WHERE tenant_id = ? AND user_id = ?", tenantId, userId);
@@ -392,6 +394,11 @@ public class IdentityJdbcRepository {
 
     private static String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value;
+    }
+
+    private static String optionalNormalized(Object value) {
+        var raw = string(value);
+        return raw == null || raw.isBlank() ? null : normalize(raw);
     }
 
     private static String normalize(String value) {

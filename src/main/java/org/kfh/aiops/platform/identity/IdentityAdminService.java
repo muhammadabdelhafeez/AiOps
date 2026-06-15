@@ -59,7 +59,10 @@ public class IdentityAdminService {
         var existing = user(ctx, id);
         ctx.requirePermission("IDENTITY_WRITE");
         var fields = UiQuerySupport.fields(request);
-        canonicalizeRole(fields, String.valueOf(existing.get("countryCode")));
+        var requestedCountry = requestedCountry(fields, existing);
+        countryAccessGuard.requireAccess(ctx, requestedCountry);
+        fields.put("countryCode", requestedCountry);
+        canonicalizeRole(fields, requestedCountry);
         var updated = identityJdbcRepository.updateUser(ctx.tenantId(), id, UiQuerySupport.name(request, null), fields);
         audit(ctx, "USER_UPDATED", id);
         return updated;
@@ -157,6 +160,13 @@ public class IdentityAdminService {
         var role = canonicalRole(firstRoleToken(fields), countryCode);
         fields.put("roleIds", List.of(role));
         fields.put("roles", List.of(role));
+    }
+
+    private static String requestedCountry(Map<String, Object> fields, Map<String, Object> existing) {
+        var requested = string(fields.get("countryCode"));
+        return requested == null || requested.isBlank()
+                ? String.valueOf(existing.get("countryCode")).toUpperCase(Locale.ROOT)
+                : requested.toUpperCase(Locale.ROOT);
     }
 
     @SuppressWarnings("unchecked")

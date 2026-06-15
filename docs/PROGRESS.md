@@ -105,6 +105,47 @@ Legend: 🟢 Done · 🟡 In progress · 🔴 Blocked · ⚪ Not started
 
 > Newest entries on top. Append your entry above the previous one.
 
+### 2026-06-15 — Edit User country group without password fields
+- **Phase:** Phase 1
+- **Module(s):** `frontend/users`, `platform.identity`, `docs`
+- **Type:** feature | fix | security | test | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Updated the User Management Edit User popup to remove password fields and add a Country selector so authorized admins can move users between country groups. Backend update now persists `country_code` changes with service-layer access checks for both current and destination country scopes, while password changes remain isolated to the dedicated reset-password endpoint.
+- **Files touched:**
+  - `src/main/resources/static/pages/users/users.js`
+  - `src/main/java/org/kfh/aiops/platform/identity/IdentityAdminService.java`
+  - `src/main/java/org/kfh/aiops/platform/identity/IdentityJdbcRepository.java`
+  - `src/test/java/org/kfh/aiops/commandcenter/CommandCenterBackendServiceTest.java`
+  - `src/test/java/org/kfh/aiops/platform/identity/IdentityJdbcRepositoryTest.java`
+  - `docs/API_CONTRACTS.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** `PUT /api/v1/users/{id}` now accepts `attributes.countryCode` for authorized country-group changes; password updates remain on `PATCH /api/v1/users/{id}/password`.
+- **Tests added/updated:** `CommandCenterBackendServiceTest`, `IdentityJdbcRepositoryTest`; focused User Management tests and full `mvnw.cmd verify` passed with 62 tests.
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/RUNBOOKS.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (Bean Validation)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Browser-test `index.html#users` after deployment by editing a user from `KW` to another authorized country group and verifying sign-in uses the new country.
+- **Author:** copilot-agent
+- **Correlation:** user-request-2026-06-14-edit-user-country-no-password
+
 ### 2026-06-14 — Fix User Management 409 integrity failures
 - **Phase:** Phase 1
 - **Module(s):** `platform.identity`, `frontend/audit`, `db/migration`, `docs`

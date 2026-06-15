@@ -317,6 +317,7 @@ var Users = (function() {
     if (!user) return '';
     const current = scope();
     const selectedRoleChoice = getUserRoleChoices(user)[0] || defaultRoleChoiceForCountry(user.countryCode);
+    const selectedCountryCode = countryByCode(user.countryCode || current.countryCode).code;
     return `
       <div class="user-create-overlay" onclick="Users.closeEditUserModal()">
         <form id="edit-user-form" class="user-create-modal" onclick="event.stopPropagation()">
@@ -327,10 +328,9 @@ var Users = (function() {
             <label>Email<input name="email" required type="email" maxlength="160" value="${esc(user.email)}"></label>
             <label>Status<select name="status"><option value="Active" ${user.status === 'Active' ? 'selected' : ''}>Active</option><option value="Disabled" ${user.status !== 'Active' ? 'selected' : ''}>Disabled</option></select></label>
             <label>Role<select name="roleId" required>${ROLE_CHOICES.map(role => `<option value="${esc(role.id)}" ${selectedRoleChoice === role.id ? 'selected' : ''}>${esc(role.name)}</option>`).join('')}</select></label>
-            <label>New Password (optional)<input name="password" type="password" minlength="12" maxlength="128" autocomplete="new-password" placeholder="Leave blank to keep current password"></label>
-            <label>Confirm New Password<input name="confirmPassword" type="password" minlength="12" maxlength="128" autocomplete="new-password" placeholder="Required only when changing password"></label>
+            <label>Country<select name="countryCode" required>${countryOptions(true).map(country => `<option value="${esc(country.code)}" ${selectedCountryCode === country.code ? 'selected' : ''}>${esc(country.name || country.code)}</option>`).join('')}</select></label>
           </div>
-          <div class="user-create-scope"><span>Environment: <strong>${esc(user.environment || current.environment)}</strong></span></div>
+          <div class="user-create-scope"><span>Password changes are handled by the separate <strong>Reset Password</strong> action.</span><span>Environment: <strong>${esc(user.environment || current.environment)}</strong></span></div>
           <div class="user-create-actions"><button type="button" onclick="Users.closeEditUserModal()" class="users-secondary-action">Cancel</button><button type="submit" class="users-primary-action" ${isUpdatingUser ? 'disabled' : ''}>${isUpdatingUser ? 'Saving...' : 'Save Changes'}</button></div>
         </form>
       </div>
@@ -488,30 +488,20 @@ var Users = (function() {
     const user = users.find(item => item.id === editUserId);
     if (!user) return;
     const form = event.currentTarget;
-    form.confirmPassword.setCustomValidity('');
     if (!form.reportValidity()) return;
-    if (form.password.value || form.confirmPassword.value) {
-      if (form.password.value !== form.confirmPassword.value) {
-        form.confirmPassword.setCustomValidity('Password and Confirm Password must match');
-        form.confirmPassword.reportValidity();
-        return;
-      }
-    }
-    const roleToken = scopedRoleToken(form.roleId.value, user.countryCode);
+    const editCountry = countryByCode(form.countryCode.value);
+    const roleToken = scopedRoleToken(form.roleId.value, editCountry.code);
     const payload = {
       name: form.displayName.value.trim(),
       status: form.status.value,
       attributes: {
         username: form.username.value.trim(),
         email: form.email.value.trim(),
+        countryCode: editCountry.code,
         roleIds: [roleToken],
         roles: [roleToken]
       }
     };
-    if (form.password.value) {
-      payload.attributes.password = form.password.value;
-      payload.attributes.passwordSet = true;
-    }
     isUpdatingUser = true;
     render();
     try {
@@ -521,7 +511,9 @@ var Users = (function() {
       isUpdatingUser = false;
       toast('User updated successfully', 'success');
       render();
-      openDrawer(user.id);
+      if (!countryFilter || countryFilter === ALL_COUNTRIES || countryFilter === user.countryCode) {
+        openDrawer(user.id);
+      }
     } catch (error) {
       console.warn('[Users] API update unavailable.', error);
       isUpdatingUser = false;

@@ -90,9 +90,9 @@ If missing: 400/401 (implementation choice) with standard error response.
   - Missing required identity fields such as `attributes.username` or `attributes.password` return a validation problem response. Duplicate usernames in the same tenant/country scope return `409 CONFLICT`; database integrity conflicts return a safe problem response and never include SQL details or password data. Framework status exceptions are preserved so expected operational failures do not collapse into generic `500 INTERNAL_ERROR` responses.
 - PATCH `/api/v1/users/{id}/toggle`
 - PUT `/api/v1/users/{id}`
-  - Requires `IDENTITY_WRITE` and tenant/country access to the existing user.
-  - Updates username, display name, email, active/disabled status, and a single role assignment in PostgreSQL. The request uses the same generic UI write shape as create and may include `attributes.password` to update the password; if omitted/blank, the current BCrypt password hash is preserved.
-  - Role changes replace existing `identity.user_roles` rows for that user and then assign the submitted `attributes.roleIds[0]`, `attributes.roles[0]`, or `attributes.roleId`.
+  - Requires `IDENTITY_WRITE` and tenant/country access to the existing user. If `attributes.countryCode` changes the user's country group, the service also requires access to the requested destination country; moving a user to or from `ALL` requires `*` or `COUNTRY_GLOBAL_VIEW`.
+  - Updates username, display name, email, active/disabled status, country group, and a single role assignment in PostgreSQL. The User Management edit form does not submit password fields; password changes use the dedicated `PATCH /api/v1/users/{id}/password` endpoint.
+  - Role changes replace existing `identity.user_roles` rows for that user and then assign the submitted `attributes.roleIds[0]`, `attributes.roles[0]`, or `attributes.roleId`. Submitted UI role aliases are canonicalized against the destination country group, so `Admin` maps to `GLOBAL_ADMIN` for `ALL` and `COUNTRY_ADMIN` for physical countries.
 - PATCH `/api/v1/users/{id}/password`
   - Requires `IDENTITY_WRITE` and tenant/country access to the existing user.
   - Request body uses the generic UI write shape with `attributes.password`. The password is BCrypt-hashed in `identity.users.password_hash`, is not logged, and is not returned in the response.
