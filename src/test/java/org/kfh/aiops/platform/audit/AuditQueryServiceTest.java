@@ -2,7 +2,11 @@ package org.kfh.aiops.platform.audit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -42,6 +46,27 @@ class AuditQueryServiceTest {
                 .containsEntry("action", "CONNECTOR_TEST_REQUESTED")
                 .containsEntry("entityType", "Connector")
                 .containsEntry("result", "Success");
+    }
+
+    @Test
+    void shouldReturnPersistedAuditActivityBeforeInMemoryFallback() {
+        var readModel = new CommandCenterReadModel();
+        var ctx = context(TENANT_ID, "KW");
+        readModel.appendAudit(ctx, "MEMORY_ONLY", "Memory", "memory-1");
+        var repository = mock(AuditActivityRepository.class);
+        when(repository.list(ctx)).thenReturn(List.of(Map.of(
+                "id", UUID.randomUUID().toString(),
+                "tenantId", TENANT_ID.toString(),
+                "countryCode", "KW",
+                "environment", "PROD",
+                "action", "DATABASE_AUDIT",
+                "entityType", "Audit")));
+        var service = new AuditQueryService(readModel, repository);
+
+        var page = service.list(ctx, 0, 100);
+
+        assertThat(page.content()).hasSize(1);
+        assertThat(page.content().getFirst()).containsEntry("action", "DATABASE_AUDIT");
     }
 
     @Test

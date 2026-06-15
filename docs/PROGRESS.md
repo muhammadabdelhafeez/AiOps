@@ -105,6 +105,48 @@ Legend: 🟢 Done · 🟡 In progress · 🔴 Blocked · ⚪ Not started
 
 > Newest entries on top. Append your entry above the previous one.
 
+### 2026-06-15 — Persist Audit Activity in PostgreSQL
+- **Phase:** Phase 1
+- **Module(s):** `platform.audit`, `commandcenter.support`, `docs`
+- **Type:** feature | fix | security | test | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Added a PostgreSQL-backed audit activity repository that writes secret-safe activity rows into `identity.audit_log` and updated Audit Activity reads to prefer persisted rows before using the in-memory fallback. Audit rows now survive browser refresh and webserver restart in datasource-backed mode.
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/platform/audit/AuditActivityRepository.java`
+  - `src/main/java/org/kfh/aiops/platform/audit/LoggingAuditService.java`
+  - `src/main/java/org/kfh/aiops/platform/audit/AuditQueryService.java`
+  - `src/test/java/org/kfh/aiops/platform/audit/AuditActivityRepositoryTest.java`
+  - `src/test/java/org/kfh/aiops/platform/audit/AuditQueryServiceTest.java`
+  - `docs/API_CONTRACTS.md`
+  - `docs/DATABASE_SCHEMA.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A; uses existing `identity.audit_log` from `V1__init_aiops_schema.sql`.
+- **API changes:** `GET /api/v1/audit` behavior now reads durable PostgreSQL audit rows first; endpoint shape unchanged.
+- **Tests added/updated:** `AuditActivityRepositoryTest`, `AuditQueryServiceTest`; focused audit persistence tests and full `mvnw.cmd verify` passed with 64 tests.
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/DATABASE_SCHEMA.md`, `docs/RUNBOOKS.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (Bean Validation)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Browser-test `index.html#audit` after restart by performing sign-in/settings/user actions, restarting the server, and confirming rows remain visible for the same tenant/country/environment.
+- **Author:** copilot-agent
+- **Correlation:** user-request-2026-06-15-persist-audit-activity
+
 ### 2026-06-15 — Edit User country group without password fields
 - **Phase:** Phase 1
 - **Module(s):** `frontend/users`, `platform.identity`, `docs`

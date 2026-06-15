@@ -44,7 +44,7 @@ If missing: 400/401 (implementation choice) with standard error response.
 - The current implementation uses an in-memory command-center read model as a Phase 1 scaffold; it returns summarized incidents/alerts/resources/evidence references only and does **not** store raw telemetry in PostgreSQL or Neo4j.
 - All endpoints require `X-Tenant-Id` and `X-User-Id` UUID headers through `TenantContext`; `X-Correlation-Id` is propagated when provided.
 - Service methods enforce RBAC permission checks. Until enterprise identity/JWT is wired, `TenantContextResolver` grants scaffold requests `*` permissions unless an `X-Permissions` header is supplied.
-- Write endpoints call `AuditService.recordWrite(...)`; the active adapter is `LoggingAuditService` plus the in-memory audit activity view. The audit activity view is API-backed only and must not include seeded/demo audit rows. Authentication success/failure, bootstrap identity provisioning, settings update/test, and normal operator write actions append visible audit activity with secret-safe metadata only.
+- Write endpoints call `AuditService.recordWrite(...)`; the active adapter persists secret-safe activity rows to PostgreSQL `identity.audit_log` and also emits structured logs. The audit activity view is API-backed only and must not include seeded/demo audit rows. Authentication success/failure, bootstrap identity provisioning, settings update/test, and normal operator write actions append visible audit activity with secret-safe metadata only.
 - The static shell supports a sidebar KFH Group country switcher. Switching country updates `X-Tenant-Id`, `X-User-Id`, `X-Country-Code`, and `X-Environment` headers before reloading page data; backend services still enforce country access and deny cross-country reads without `COUNTRY_GLOBAL_VIEW` or `*`.
 
 ### Auth
@@ -325,7 +325,7 @@ Implemented frontend-aligned connector endpoints in this scaffold:
 ### Audit
 - Implemented path prefix: `/api/v1/audit`
 - GET `/api/v1/audit?page=&size=`
-- Returns tenant-scoped, country-aware application activity rows only. `X-Country-Code: ALL` requires `COUNTRY_GLOBAL_VIEW` or `*`; physical country scopes return only matching country/environment activity.
+- Returns tenant-scoped, country-aware application activity rows from PostgreSQL `identity.audit_log` first, with the Phase 1 in-memory read model used only as a fallback. Rows survive browser refresh and webserver restart when datasource-backed mode is running. `X-Country-Code: ALL` requires `COUNTRY_GLOBAL_VIEW` or `*`; physical country scopes return only matching country/environment activity.
 - Activity rows include successful/failed sign-ins (`LOGIN_SUCCEEDED`, `LOGIN_FAILED`), settings changes/tests, identity/user actions, connector/schedule/application/inventory/report/incident/alert writes, and bootstrap admin provisioning when it changes state. Passwords, tokens, API keys, connector secrets, and raw request bodies must not be returned.
 - GET `/api/v1/audit/{id}`
 - Detail reads are scoped by tenant, country, and environment; unauthorized or out-of-scope IDs return not found.

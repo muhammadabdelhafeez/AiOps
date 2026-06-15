@@ -5,15 +5,22 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-/** Temporary audit adapter until the JPA-backed identity.audit_log adapter is added. */
+/** Secret-safe audit adapter backed by PostgreSQL identity.audit_log. */
 @Service
 public class LoggingAuditService implements AuditService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(LoggingAuditService.class);
 
+    private final AuditActivityRepository auditActivityRepository;
+
+    public LoggingAuditService(AuditActivityRepository auditActivityRepository) {
+        this.auditActivityRepository = auditActivityRepository;
+    }
+
     @Override
     public void recordWrite(TenantContext ctx, String action, String entityType,
             String entityId, Object beforeState, Object afterState) {
+        auditActivityRepository.recordWrite(ctx, action, entityType, entityId, beforeState, afterState);
         LOGGER.info("audit action={} entityType={} entityId={} tenantId={} userId={} countryCode={} correlationId={}",
                 action, entityType, entityId, ctx.tenantId(), ctx.userId(), ctx.countryCode(), ctx.correlationId());
     }

@@ -76,21 +76,16 @@ Predefined Phase 1 local roles: `GLOBAL_ADMIN`, `COUNTRY_ADMIN`, `NOC_OPERATOR`,
 ### identity.audit_log
 | Column | Type | Notes |
 |--------|------|-------|
-| id | UUID PK | |
+| audit_id | UUID PK | |
 | tenant_id | UUID NOT NULL | |
-| country_code | CHAR(2) | |
-| user_id | UUID | nullable for system actions |
-| correlation_id | VARCHAR(64) NOT NULL | |
-| action | VARCHAR(80) NOT NULL | e.g. `CONNECTOR_UPDATED` |
-| entity_type | VARCHAR(80) NOT NULL | |
-| entity_id | VARCHAR(120) | |
-| before_state | JSONB | secret-stripped |
-| after_state | JSONB | secret-stripped |
-| ip_address | INET | |
-| user_agent | TEXT | |
-| created_at | TIMESTAMPTZ NOT NULL | |
+| at | TIMESTAMPTZ NOT NULL | |
+| actor_user_id | UUID | nullable; details also store the caller userId as text because bootstrap/system users may not have FK rows |
+| action | TEXT NOT NULL | e.g. `CONNECTOR_UPDATED` |
+| entity_type | TEXT NOT NULL | |
+| entity_id | TEXT NOT NULL | |
+| details | JSONB | secret-stripped metadata including `userId`, `countryCode`, `environment`, `correlationId`, `result`, `severity`, `message`, `beforeState`, and `afterState` |
 
-Index: `(tenant_id, created_at DESC)`, `(correlation_id)`.
+Index: `(tenant_id, at DESC)`. Audit Activity APIs filter country/environment from `details` and never store passwords, tokens, API keys, connector secrets, or raw request bodies.
 
 ---
 
