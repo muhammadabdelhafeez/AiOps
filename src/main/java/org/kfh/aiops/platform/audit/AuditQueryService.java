@@ -8,10 +8,15 @@ import org.kfh.aiops.platform.country.CountryAccessGuard;
 import org.kfh.aiops.platform.exception.NotFoundException;
 import org.kfh.aiops.platform.tenant.TenantContext;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class AuditQueryService {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(AuditQueryService.class);
 
     private final CommandCenterReadModel readModel;
     private final AuditActivityRepository auditActivityRepository;
@@ -40,9 +45,14 @@ public class AuditQueryService {
         ctx.requirePermission("AUDIT_READ");
         requireGlobalPermissionForAllCountryScope(ctx);
         if (auditActivityRepository != null) {
-            var persisted = auditActivityRepository.find(ctx, id);
-            if (persisted.isPresent()) {
-                return persisted.get();
+            try {
+                var persisted = auditActivityRepository.find(ctx, id);
+                if (persisted.isPresent()) {
+                    return persisted.get();
+                }
+            } catch (DataAccessException ex) {
+                LOGGER.warn("audit persistence detail read unavailable tenantId={} countryCode={} environment={} correlationId={} errorType={}",
+                        ctx.tenantId(), ctx.countryCode(), ctx.environment(), ctx.correlationId(), ex.getClass().getSimpleName());
             }
         }
         var row = readModel.findAudit(ctx, id);
@@ -62,7 +72,13 @@ public class AuditQueryService {
         if (auditActivityRepository == null) {
             return java.util.List.of();
         }
-        return auditActivityRepository.list(ctx);
+        try {
+            return auditActivityRepository.list(ctx);
+        } catch (DataAccessException ex) {
+            LOGGER.warn("audit persistence list unavailable tenantId={} countryCode={} environment={} correlationId={} errorType={}",
+                    ctx.tenantId(), ctx.countryCode(), ctx.environment(), ctx.correlationId(), ex.getClass().getSimpleName());
+            return java.util.List.of();
+        }
     }
 }
 

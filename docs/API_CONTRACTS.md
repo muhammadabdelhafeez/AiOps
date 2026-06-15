@@ -325,7 +325,7 @@ Implemented frontend-aligned connector endpoints in this scaffold:
 ### Audit
 - Implemented path prefix: `/api/v1/audit`
 - GET `/api/v1/audit?page=&size=`
-- Returns tenant-scoped, country-aware application activity rows from PostgreSQL `identity.audit_log` first, with the Phase 1 in-memory read model used only as a fallback. Rows survive browser refresh and webserver restart when datasource-backed mode is running. `X-Country-Code: ALL` requires `COUNTRY_GLOBAL_VIEW` or `*`; physical country scopes return only matching country/environment activity.
+- Returns tenant-scoped, country-aware application activity rows from PostgreSQL `identity.audit_log` first, with the Phase 1 in-memory read model used only as a degraded fallback if the persisted audit store is temporarily unavailable. Rows survive browser refresh and webserver restart when datasource-backed mode is running. `X-Country-Code: ALL` requires `COUNTRY_GLOBAL_VIEW` or `*`; physical country scopes return only matching country/environment activity.
 - Activity rows include successful/failed sign-ins (`LOGIN_SUCCEEDED`, `LOGIN_FAILED`), settings changes/tests, identity/user actions, connector/schedule/application/inventory/report/incident/alert writes, and bootstrap admin provisioning when it changes state. Passwords, tokens, API keys, connector secrets, and raw request bodies must not be returned.
 - GET `/api/v1/audit/{id}`
 - Detail reads are scoped by tenant, country, and environment; unauthorized or out-of-scope IDs return not found.

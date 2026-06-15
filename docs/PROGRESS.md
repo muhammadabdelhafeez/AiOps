@@ -105,6 +105,48 @@ Legend: 🟢 Done · 🟡 In progress · 🔴 Blocked · ⚪ Not started
 
 > Newest entries on top. Append your entry above the previous one.
 
+### 2026-06-15 — Repair Audit Activity database fallback
+- **Phase:** Phase 1
+- **Module(s):** `platform.audit`, `db/migration`, `docs`
+- **Type:** fix | migration | security | test | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Fixed `GET /api/v1/audit` returning HTTP 500 when the persisted audit table is missing, incompatible, or temporarily unavailable. Added a Flyway repair migration for `identity.audit_log`, read fallback to the in-memory audit view, and write-degraded handling so normal app actions are not broken by audit persistence errors.
+- **Files touched:**
+  - `src/main/resources/db/migration/V6__repair_audit_log_activity_schema.sql`
+  - `src/main/java/org/kfh/aiops/platform/audit/AuditQueryService.java`
+  - `src/main/java/org/kfh/aiops/platform/audit/LoggingAuditService.java`
+  - `src/test/java/org/kfh/aiops/platform/audit/AuditQueryServiceTest.java`
+  - `src/test/java/org/kfh/aiops/platform/audit/LoggingAuditServiceTest.java`
+  - `docs/API_CONTRACTS.md`
+  - `docs/DATABASE_SCHEMA.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** `V6__repair_audit_log_activity_schema.sql`
+- **API changes:** No endpoint shape change; `/api/v1/audit` now degrades to in-memory rows instead of returning 500 when audit persistence is unavailable.
+- **Tests added/updated:** `AuditQueryServiceTest`, `LoggingAuditServiceTest`; focused degraded audit tests and full `mvnw.cmd verify` passed with 67 tests.
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/DATABASE_SCHEMA.md`, `docs/RUNBOOKS.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (Bean Validation)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Restart the datasource-backed dev server so Flyway applies `V6`; then validate `index.html#audit` before and after restart.
+- **Author:** copilot-agent
+- **Correlation:** user-request-2026-06-15-audit-500-db-fallback
+
 ### 2026-06-15 — Persist Audit Activity in PostgreSQL
 - **Phase:** Phase 1
 - **Module(s):** `platform.audit`, `commandcenter.support`, `docs`

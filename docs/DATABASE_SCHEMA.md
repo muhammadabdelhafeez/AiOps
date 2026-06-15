@@ -85,7 +85,7 @@ Predefined Phase 1 local roles: `GLOBAL_ADMIN`, `COUNTRY_ADMIN`, `NOC_OPERATOR`,
 | entity_id | TEXT NOT NULL | |
 | details | JSONB | secret-stripped metadata including `userId`, `countryCode`, `environment`, `correlationId`, `result`, `severity`, `message`, `beforeState`, and `afterState` |
 
-Index: `(tenant_id, at DESC)`. Audit Activity APIs filter country/environment from `details` and never store passwords, tokens, API keys, connector secrets, or raw request bodies.
+Index: `(tenant_id, at DESC)` plus `V6__repair_audit_log_activity_schema.sql` expression index support for tenant/country/environment activity reads. Audit Activity APIs filter country/environment from `details` and never store passwords, tokens, API keys, connector secrets, or raw request bodies.
 
 ---
 

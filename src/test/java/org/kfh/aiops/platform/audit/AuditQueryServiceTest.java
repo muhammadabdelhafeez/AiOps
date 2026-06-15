@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.kfh.aiops.commandcenter.support.CommandCenterReadModel;
 import org.kfh.aiops.platform.exception.NotFoundException;
 import org.kfh.aiops.platform.tenant.TenantContext;
+import org.springframework.dao.DataAccessResourceFailureException;
 
 class AuditQueryServiceTest {
 
@@ -67,6 +68,36 @@ class AuditQueryServiceTest {
 
         assertThat(page.content()).hasSize(1);
         assertThat(page.content().getFirst()).containsEntry("action", "DATABASE_AUDIT");
+    }
+
+    @Test
+    void shouldFallbackToInMemoryAuditWhenPersistedListFails() {
+        var readModel = new CommandCenterReadModel();
+        var ctx = context(TENANT_ID, "KW");
+        readModel.appendAudit(ctx, "MEMORY_FALLBACK", "Audit", "memory-1");
+        var repository = mock(AuditActivityRepository.class);
+        when(repository.list(ctx)).thenThrow(new DataAccessResourceFailureException("audit table unavailable"));
+        var service = new AuditQueryService(readModel, repository);
+
+        var page = service.list(ctx, 0, 100);
+
+        assertThat(page.content()).hasSize(1);
+        assertThat(page.content().getFirst()).containsEntry("action", "MEMORY_FALLBACK");
+    }
+
+    @Test
+    void shouldFallbackToInMemoryAuditDetailWhenPersistedDetailFails() {
+        var readModel = new CommandCenterReadModel();
+        var ctx = context(TENANT_ID, "KW");
+        readModel.appendAudit(ctx, "MEMORY_DETAIL", "Audit", "memory-1");
+        var auditId = UUID.fromString(String.valueOf(readModel.audit(ctx).getFirst().get("id")));
+        var repository = mock(AuditActivityRepository.class);
+        when(repository.find(ctx, auditId)).thenThrow(new DataAccessResourceFailureException("audit table unavailable"));
+        var service = new AuditQueryService(readModel, repository);
+
+        var row = service.get(ctx, auditId);
+
+        assertThat(row).containsEntry("action", "MEMORY_DETAIL");
     }
 
     @Test
