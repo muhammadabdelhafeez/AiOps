@@ -23,6 +23,7 @@ This folder is the source of truth for project documentation.
 
 ## Roadmap
 - [Roadmap](./ROADMAP.md)
+- [Architecture & Maintainability Review](./ARCHITECTURE_REVIEW.md) — code-quality verdict + prioritized cleanup plan (Tier 0/1/2)
 - [Architecture Decision Records (ADRs)](./adr/README.md)
 
 ## Generated docs (do not edit)
