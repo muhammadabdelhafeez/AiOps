@@ -5,7 +5,7 @@ This file is a concise, agent-facing progress snapshot for GitHub Copilot/AI ass
 - **Canonical full history:** `docs/PROGRESS.md`
 - **Routing rules:** `.github/INDEX.md`
 - **Global implementation rules:** `.github/copilot-instructions.md`
-- **Last synced:** 2026-06-29
+- **Last synced:** 2026-06-30
 
 > Keep this file short and current. Append newest entries at the top of the Change Log. Do not store secrets, passwords, raw payloads, tokens, or PII here.
 
@@ -23,12 +23,16 @@ This file is a concise, agent-facing progress snapshot for GitHub Copilot/AI ass
 | Phase 3 — Neo4j banking flow graph | ⚪ Not started | Relationship/topology traversal pending |
 | Phase 4 — RCA evidence builder + causal scoring | ⚪ Not started | Evidence-first causal scoring pending |
 | Phase 5 — AI Router | ⚪ Not started | DeepSeek/Azure routing pending |
-| Phase 6 — Redis hot state/cache | ⚪ Not started | Hot health/cache behavior pending |
+| Phase 6 — Redis hot state/cache | 🟡 In progress | Runtime Redis client (`platform.redis`, Lettuce, DB 0) + fingerprint dedup (`SET NX EX`, fail-open) landed (Part D); ingestion wiring + dashboard health tile pending |
 | Phase 7 — Worker extraction | ⚪ Not started | Future extraction after modular monolith matures |
 
 ---
 
 ## Recent Completed Work
+
+### 2026-06-30 — Part D: runtime Redis client + fingerprint dedup (Phase 6 start)
+- **Summary:** Added `org.kfh.aiops.platform.redis` (RedisSettingsResolver + RedisConnectionProvider [Lettuce, DB 0, TLS/AUTH], RedisKeys, RedisHealthProbe, RedisErrors) consuming the Settings-stored encrypted Redis row per (tenant, country, env), and `normalization.fingerprint.FingerprintDedupService` (causal funnel Stage 2 `SET NX EX`, fail-open degraded mode). 15 new unit tests pass; `mvn compile` green. No new endpoints/migrations. Connection details come from Settings, not `spring.data.redis.*`.
+- **Important files:** `org.kfh.aiops.platform.redis.*`, `org.kfh.aiops.normalization.fingerprint.FingerprintDedupService`, `SettingsService.resolveRedisConnection`.
 
 ### 2026-06-29 — Fix invalid Settings tenant/user header fallback in SPA
 - **Summary:** Fixed the shared browser configuration module so UUID session validation is reachable again. The Settings SPA now preserves valid default tenant/user IDs and fails closed when session storage is corrupt, preventing repeated malformed `/api/v1/settings` requests that triggered `MISSING_OR_INVALID_CONTEXT` for `X-Tenant-Id`.

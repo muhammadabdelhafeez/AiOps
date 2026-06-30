@@ -10,6 +10,7 @@ This folder is the source of truth for project documentation.
 - [Security (OWASP)](./SECURITY.md)
 - [API Contracts](./API_CONTRACTS.md)
 - [Runbooks](./RUNBOOKS.md)
+- [Redis Setup on RHEL](./REDIS_SETUP_RHEL.md) — step-by-step Redis install/config for the dev/prod server
 - [UI Pages](./UI_PAGES.md)
 
 ## System flows & diagrams
@@ -23,6 +24,7 @@ This folder is the source of truth for project documentation.
 
 ## Roadmap
 - [Roadmap](./ROADMAP.md)
+- [Architecture & Maintainability Review](./ARCHITECTURE_REVIEW.md) — code-quality verdict + prioritized cleanup plan (Tier 0/1/2)
 - [Architecture Decision Records (ADRs)](./adr/README.md)
 
 ## Generated docs (do not edit)

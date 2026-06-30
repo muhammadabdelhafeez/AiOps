@@ -852,6 +852,37 @@ public class SettingsService {
         return secret.isEmpty() ? Optional.empty() : Optional.of(secretCipherService.decrypt(secret));
     }
 
+    /**
+     * Resolves the active Redis server for this tenant/country/environment from
+     * {@code infrastructure.connections} and returns a decrypted, secret-bearing view for
+     * server-side runtime use only (never returned by an API). The first enabled REDIS connection
+     * in scope wins. Returned keys: {@code name, host, port, username, password (plaintext),
+     * tlsEnabled, healthIndicatorEnabled}.
+     */
+    public Optional<Map<String, Object>> resolveRedisConnection(TenantContext ctx) {
+        var section = asMap(privateSettings(ctx).get("infrastructure"));
+        if (!(section.get("connections") instanceof Iterable<?> iterable)) {
+            return Optional.empty();
+        }
+        for (var item : iterable) {
+            var connector = asMap(item);
+            if (!"REDIS".equalsIgnoreCase(safe(connector.get("type"))) || Boolean.FALSE.equals(connector.get("enabled"))) {
+                continue;
+            }
+            var resolved = new LinkedHashMap<String, Object>();
+            resolved.put("name", safe(connector.get("name")));
+            resolved.put("host", safe(connector.get("endpoint")));
+            resolved.put("port", connector.get("port"));
+            resolved.put("username", safe(connector.get("username")));
+            resolved.put("tlsEnabled", connector.get("tlsEnabled"));
+            resolved.put("healthIndicatorEnabled", connector.get("redisHealthIndicatorEnabled"));
+            var secret = asMap(connector.get("secretSecret"));
+            resolved.put("password", secret.isEmpty() ? "" : secretCipherService.decrypt(secret));
+            return Optional.of(resolved);
+        }
+        return Optional.empty();
+    }
+
     private static Map<String, Map<String, Object>> existingAzureIntegrations(Map<String, Object> existingAzure) {
         var indexed = new LinkedHashMap<String, Map<String, Object>>();
         var integrations = existingAzure.get("integrations");

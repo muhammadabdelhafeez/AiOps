@@ -240,7 +240,7 @@ Validation:
 | 0 Ingestion Gateway | `org.kfh.aiops.ingestion` | ❌ to build |
 | 0 Connectors (collect → queue) | `org.kfh.aiops.plugin` | 🟡 connectivity testers only |
 | 1 Normalization + enrichment | `org.kfh.aiops.normalization` | ❌ to build |
-| 2 Fingerprint + dedup | `org.kfh.aiops.normalization.fingerprint` | ❌ to build |
+| 2 Fingerprint + dedup | `org.kfh.aiops.normalization.fingerprint` | 🟡 dedup service built (`FingerprintDedupService`: Redis `SET NX EX`, country/env keys, fail-open degraded mode) + runtime Redis client (`platform.redis`); ingestion wiring pending |
 | 3 Custom Index Engine | `org.kfh.aiops.index` | ❌ to build (properties only) |
 | 4 Topology + blast radius | `org.kfh.aiops.topology` | ❌ to build (driver tester only) |
 | 5 Business impact filter | `org.kfh.aiops.rca.service` | ❌ to build |
