@@ -27,6 +27,3 @@ This folder is the source of truth for project documentation.
 
 ## Generated docs (do not edit)
 - `./generated/` — generated references (OpenAPI, dependency graphs, etc.)
-
-## Archive
-- [`./archive/`](./archive/README.md) — historical progress logs and point-in-time assessments (not current source of truth).

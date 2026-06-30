@@ -109,23 +109,32 @@ Every backend task must consider:
 Graphify Task Prompt — KFH Causal AIOps Platform
 
 Before starting:
-1. Read the always-load files in this order:
+1. Orient with Graphify FIRST. A knowledge graph of the codebase lives in `graphify-out/`.
+   Before grepping or reading source files, query it to locate the impacted code:
+   - `graphify query "<question>"`   → scoped subgraph for the area you're touching
+   - `graphify explain "<symbol>"`   → a class/method/file and its neighbors
+   - `graphify path "<A>" "<B>"`     → how two nodes relate
+   The graph is code-only (AST), so it tells you WHERE code is, not WHY it exists. Use it to
+   find impacted code fast, then read the design docs below for intent. (Graphify CLI is the
+   pipx package `graphifyy`; if `graphify` isn't on PATH, invoke it from the pipx bin dir.)
+2. Read the always-load files in this order:
    - `.github/copilot-instructions.md`
    - `.github/INDEX.md`
    - `docs/AI_CODING_ASSISTANT_KNOWLEDGE_GRAPH.md`
    - `.github/PROGRESS.md`
-   - the active `docs/PROGRESS-*.md` volume
-2. Use the Graphify knowledge graph and `.github/INDEX.md` routing table to load only the detailed docs required for the task type.
-3. Identify the impacted graph nodes before editing: module/page, data source, table/schema, API contract, RBAC permission, tenant/country/environment scope, audit/outbox need, and operational runbook impact.
-4. Enforce the platform invariants: OWASP A01-A10, tenant and country isolation, service-layer RBAC, audit for writes, safe structured logging, SSRF protection for outbound URLs, no secrets/PII/raw payloads in logs or prompts, deterministic incident lifecycle, and custom-index-only telemetry search.
-5. When schema or persistence is involved, follow `docs/DATABASE_SCHEMA.md` and add a Flyway `V{n}__*.sql` migration when needed.
-6. When generating code, follow `docs/CODE_TEMPLATES.md`, package boundaries, constructor injection, DTO/entity separation, tests, and the Definition of Done.
+   - the active `docs/PROGRESS-*.md` volume (the highest-numbered one)
+3. Use the Graphify graph and the `.github/INDEX.md` routing table to load only the detailed docs required for the task type.
+4. Identify the impacted graph nodes before editing: module/page, data source, table/schema, API contract, RBAC permission, tenant/country/environment scope, audit/outbox need, and operational runbook impact.
+5. Enforce the platform invariants: OWASP A01-A10, tenant and country isolation, service-layer RBAC, audit for writes, safe structured logging, SSRF protection for outbound URLs, no secrets/PII/raw payloads in logs or prompts, deterministic incident lifecycle, and custom-index-only telemetry search.
+6. When schema or persistence is involved, follow `docs/DATABASE_SCHEMA.md` and add a Flyway `V{n}__*.sql` migration when needed.
+7. When generating code, follow `docs/CODE_TEMPLATES.md`, package boundaries, constructor injection, DTO/entity separation, tests, and the Definition of Done.
 
 After completion:
 1. Validate the targeted change with diagnostics, tests, or docs-only checks as appropriate.
-2. Append a newest-on-top entry to the active `docs/PROGRESS-*.md` file.
-3. Update `.github/PROGRESS.md` for recent/high-impact work or agent-routing/status changes.
-4. Update the authoritative docs that match the change:
+2. If any code changed, refresh the knowledge graph: run `graphify update .` (AST-only, no API cost) so future queries stay accurate. (`graphify-out/` is gitignored and rebuilt per machine — do not commit it.)
+3. Append a newest-on-top entry to the active `docs/PROGRESS-*.md` file.
+4. Update `.github/PROGRESS.md` for recent/high-impact work or agent-routing/status changes.
+5. Update the authoritative docs that match the change:
    - `docs/SERVICES_CORE.md` or `docs/SERVICES_SUPPORT.md` for new/changed classes or endpoints
    - `docs/API_CONTRACTS.md` for public or inter-service API changes
    - `docs/DATABASE_SCHEMA.md` for schema changes
