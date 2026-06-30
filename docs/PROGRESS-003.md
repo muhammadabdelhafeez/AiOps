@@ -70,6 +70,25 @@ Legend: 🟢 Done  🟡 In progress  🔴 Blocked  ⚪ Not started
 
 > Newest entries on top. Append your entry above the previous one.
 
+### 2026-06-30 — Tier 0 architecture cleanup: remove dead `app.css` + `shell.js`
+- **Phase:** 1
+- **Module(s):** frontend (static SPA styling + shared js)
+- **Type:** refactor
+- **Country/Tenant scope:** ALL
+- **Summary:** Architecture/maintainability review (backend Java, frontend JS, CSS) graded the codebase ~C/C+ — good security and layering intent, but real tech debt (untyped `Map<String,Object>` domain model, two competing UI paradigms, CSS token bypass). First safe cleanup: deleted the 505 KB root `app.css` (never served by Spring, no HTML link, carried a stale conflicting brand palette `#00634A` vs live `#128754`) and the unreferenced legacy `shell.js` (emoji sidebar + hardcoded fake user, contradicting the hash-router SPA). Both confirmed unreferenced before removal.
+- **Files touched:**
+  - `app.css` (deleted)
+  - `src/main/resources/static/shared/js/shell.js` (deleted)
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** N/A (no runtime/page/test referenced either file)
+- **Docs updated:** docs/PROGRESS-003.md
+- **Security / OWASP checklist:**
+  - [x] No secrets / PII / tokens logged or returned (removed files only)
+- **Follow-ups / TODO:** Remaining Tier 0 item (de-duplicate copy-pasted JS helpers `esc`/`pageContent`/`toast`/`icons` into `shared/js` + Java `isSecretLike`/`normalize`/`firstNonBlank` into one util) requires a build/run to verify and should be done on a JDK-equipped machine. Tier 1: introduce typed domain model, split `SettingsService`/`ConnectorService`, break `platform↔commandcenter` package cycle.
+- **Author:** claude-code
+- **Correlation:** commit ba998b4
+
 ### 2026-06-30 — Docs realigned to Causal Funnel architecture (master design `docs/CAUSAL_PIPELINE.md`)
 
 - **Phase:** Phase 1 (docs)
