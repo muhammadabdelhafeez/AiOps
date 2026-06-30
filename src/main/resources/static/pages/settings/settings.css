@@ -1297,7 +1297,7 @@
 
 .settings-page-shell .database-connector-row .azure-connector-actions {
   justify-content: flex-end !important;
-  flex-wrap: wrap !important;
+  flex-wrap: nowrap !important;
   gap: 8px !important;
   min-height: 38px !important;
 }
@@ -1309,6 +1309,26 @@
 
 .settings-page-shell .database-connector-row .azure-connector-actions .settings-btn:first-child {
   min-width: 132px !important;
+}
+
+/* Redis / Kafka / SharePoint / Teams connector lists have 5 columns (no Country cell,
+   unlike Azure rows), so give them a matching 5-column grid and keep Test / Edit / Remove
+   on one row, right-aligned (modern inline action group). */
+.settings-page-shell .connector-list-5col .azure-connector-list-head,
+.settings-page-shell .connector-list-5col .azure-connector-row {
+  grid-template-columns: minmax(200px, 1.2fr) minmax(140px, 0.8fr) minmax(180px, 1fr) minmax(160px, 0.9fr) minmax(300px, auto) !important;
+}
+
+.settings-page-shell .connector-list-5col .azure-connector-actions {
+  justify-content: flex-end !important;
+  flex-wrap: nowrap !important;
+  gap: 8px !important;
+  min-height: 38px !important;
+}
+
+.settings-page-shell .connector-list-5col .azure-connector-actions .settings-btn {
+  flex: 0 0 auto !important;
+  white-space: nowrap !important;
 }
 
 .settings-page-shell .ai-country-multiselect {

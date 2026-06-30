@@ -720,7 +720,7 @@ var Settings = (function() {
       return `<div class="settings-empty-connectors">${esc(emptyText)}</div>`;
     }
     return `
-      <div class="azure-connector-list">
+      <div class="azure-connector-list connector-list-5col">
         <div class="azure-connector-list-head">
           <span>Connector</span>
           <span>Type / Scope</span>

@@ -70,6 +70,22 @@ Legend: 🟢 Done  🟡 In progress  🔴 Blocked  ⚪ Not started
 
 > Newest entries on top. Append your entry above the previous one.
 
+### 2026-06-30 — Settings: Test/Edit/Remove actions side-by-side for Redis/Kafka/SharePoint/Teams
+- **Phase:** 1
+- **Module(s):** frontend/settings (static SPA)
+- **Type:** fix
+- **Country/Tenant scope:** ALL
+- **Summary:** Infrastructure (Redis/Kafka), SharePoint, and Teams connector rows shared the 6-column grid built for Azure rows (which have an extra Country cell), so their 5 cells pushed the actions into the narrow 5th column and the Test/Edit/Remove buttons wrapped onto two lines. Tagged the connector list `connector-list-5col` and gave it a matching 5-column grid + non-wrapping, right-aligned action group (mirrors the database list). Database actions also switched wrap→nowrap for a consistent modern inline group.
+- **Files touched:**
+  - `src/main/resources/static/pages/settings/settings.js` (add `connector-list-5col` class)
+  - `src/main/resources/static/pages/settings/settings.css` (5-col grid + nowrap actions)
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** N/A (CSS/markup only; visual verification needed in browser)
+- **Docs updated:** docs/PROGRESS-003.md
+- **Follow-ups / TODO:** Verify rendering in the running SPA (hard-refresh); consider the broader frontend Tier-2 cleanup (giant settings.js, CSS token sweep) per docs/ARCHITECTURE_REVIEW.md.
+- **Author:** claude-code
+
 ### 2026-06-30 — Part D: runtime Redis client + fingerprint dedup (Phase 6 start)
 - **Phase:** 6 (also unblocks Phase 4 Stage 2)
 - **Module(s):** platform.redis (new), normalization.fingerprint (new), platform.config (SettingsService)
