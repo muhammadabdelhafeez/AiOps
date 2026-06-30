@@ -24,6 +24,12 @@ The platform handles **100,000 alerts every 20 minutes** with **1–3 Azure Open
 3. Resilience4j circuit-breaker state on `azure-openai`, `deepseek`, `neo4j`. Open CB → events queue up; correct underlying issue or temporarily widen `failure-rate-threshold`.
 4. Custom Index Engine shard lag: `kfh.index.write-batch-size` × shard count vs ingestion rate.
 
+### Redis (runtime hot state) — configure & verify
+1. Configure the server in **Settings → Servers & Index → Add Server → Redis Server**: host = the **private IP** the backend can reach (not `localhost` — the test's SSRF guard blocks loopback/metadata), port, password; leave **Username blank** unless the server uses an ACL user; enable **TLS** only if the server presents a JVM-trusted cert. Use **Test & Save** — a green result means the backend reached Redis (`PING` → `PONG`).
+2. The runtime client (`RedisConnectionProvider`) reads this saved, encrypted row per `(tenant, country, environment)` — **not** `spring.data.redis.*` (bootstrap fallback only). Logical **DB 0 only**; isolation is by key prefix `dedup:{country}:{env}:…` / `health:{country}:{env}:…`.
+3. Tunables: `kfh.dedup.window-seconds` (default 600; keep 120–600 per §12), `kfh.redis.command-timeout-ms`, `kfh.redis.connect-timeout-ms`.
+4. **Degraded mode:** if Redis is unconfigured or unreachable, `FingerprintDedupService` fails **open** — every event is treated as new and a secret-safe WARN is logged — so ingestion is never blocked. Expect more duplicate alerts until Redis is restored; no data loss.
+
 ### Forbidden operational moves
 - ❌ Do **not** raise `kfh.ai.router.azure.daily-call-budget-per-tenant` above the contracted Azure TPM (you will burn quota for the whole tenant).
 - ❌ Do **not** point Redis at a logical DB > 0 for "country isolation" — always key-prefix on DB 0.

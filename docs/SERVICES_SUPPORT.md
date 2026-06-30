@@ -34,6 +34,19 @@ Update this file whenever a new support/cross-cutting class or endpoint is added
 | `CountryRegistry` | Allowed country codes (KW/BH/EG/…); enabled flags. |  Implemented |
 | `CountryAccessGuard` | Enforces "Kuwait users must not see Bahrain/Egypt unless permitted". |  Implemented |
 
+## 3a. platform.redis (`org.kfh.aiops.platform.redis`) — runtime Redis (Part D)
+
+| Class | Responsibility | Status |
+|-------|----------------|--------|
+| `RedisConnectionSettings` | Typed, immutable view of a Redis server resolved from Settings (no DB index — DB 0 only). | Implemented |
+| `RedisSettingsResolver` | Loads + decrypts the active `infrastructure` REDIS row for `(tenant, country, env)` via `SettingsService.resolveRedisConnection`. | Implemented |
+| `RedisConnectionProvider` | Pools Lettuce connections per server (TLS/AUTH, DB 0); password never in cache key; closed on shutdown. | Implemented |
+| `RedisKeys` | Country/environment-scoped key builder (`dedup:*`, `health:*`); rejects `:`/control chars. | Implemented |
+| `RedisHealthProbe` | Tenant-scoped Redis reachability check (PING) for the Dashboard System Health tile; secret-safe, never throws. | Implemented |
+| `RedisErrors` | Secret-safe scrubbing of Redis client exception messages for logs/UI. | Implemented |
+
+> Connection details come from `config.integration_settings` (Settings → Servers & Index → Redis), **not** `spring.data.redis.*` (bootstrap fallback only). Secrets are decrypted server-side via `SecretCipherService` and never logged or returned by an API. First consumer: `normalization.fingerprint.FingerprintDedupService`.
+
 ## 4. platform.audit (`org.kfh.aiops.platform.audit`)
 
 | Class | Responsibility | Status |
