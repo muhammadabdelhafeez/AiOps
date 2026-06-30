@@ -451,7 +451,7 @@
   background: #F3F4F6;
   padding: 4px 8px;
   border-radius: 4px;
-  font-family: var(--font-mono);
+  font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 11px;
   color: #6B7280;
 }
@@ -530,14 +530,25 @@
 }
 
 .settings-modal {
+  --settings-modal-height-gap: 48px;
+  --settings-modal-viewport-height: 100vh;
   background: white;
   border-radius: 16px;
   box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
   width: 100%;
   max-width: 480px;
+  max-height: calc(var(--settings-modal-viewport-height) - var(--settings-modal-height-gap));
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
   transform: scale(0.95) translateY(20px);
   transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@supports (height: 100dvh) {
+  .settings-modal {
+    --settings-modal-viewport-height: 100dvh;
+  }
 }
 
 .settings-modal-overlay.open .settings-modal {
@@ -550,6 +561,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex: 0 0 auto;
 }
 
 .settings-modal-title {
@@ -572,6 +584,10 @@
 
 .settings-modal-body {
   padding: 24px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .settings-modal-footer {
@@ -581,6 +597,7 @@
   justify-content: flex-end;
   gap: 12px;
   background: #F9FAFB;
+  flex: 0 0 auto;
 }
 
 /* ============================================
@@ -700,4 +717,1057 @@
   accent-color: var(--kfh-primary);
   border-radius: 4px;
   cursor: pointer;
+}
+
+/* ============================================
+   Enterprise Settings Console Redesign
+   Scoped with stronger selectors because global parity CSS loads last.
+   ============================================ */
+.settings-page-shell {
+  min-height: 100%;
+  background:
+    radial-gradient(circle at 10% 0%, rgba(18, 135, 84, 0.08), transparent 26%),
+    linear-gradient(180deg, #f7faf8 0%, #eef4f1 100%) !important;
+  color: #17231f;
+}
+
+.settings-page-shell .settings-header {
+  position: relative !important;
+  top: auto !important;
+  z-index: 1 !important;
+  margin: 0 0 8px !important;
+  padding: 8px 10px !important;
+  border: 1px solid rgba(15, 23, 42, 0.07) !important;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.97), rgba(239, 247, 243, 0.94)) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.06) !important;
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+}
+
+.settings-page-shell .settings-header::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 94% 0%, rgba(18, 135, 84, 0.10), transparent 20%),
+    linear-gradient(90deg, rgba(18, 135, 84, 0.04), transparent 48%);
+  pointer-events: none;
+}
+
+.settings-page-shell .settings-hero,
+.settings-page-shell .settings-summary-grid,
+.settings-page-shell .settings-tabs,
+.settings-page-shell .unsaved-bar {
+  position: relative;
+  z-index: 1;
+}
+
+.settings-page-shell .settings-hero {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(560px, auto);
+  gap: 14px;
+  align-items: center;
+}
+
+.settings-page-shell .settings-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #0E6B42;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 3px;
+}
+
+.settings-page-shell .settings-eyebrow::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #7de3bd;
+  box-shadow: 0 0 0 5px rgba(125, 227, 189, 0.16);
+}
+
+.settings-page-shell .settings-title {
+  color: #17231f !important;
+  font-size: 22px !important;
+  font-weight: 950 !important;
+  letter-spacing: -0.045em !important;
+  line-height: 1.05 !important;
+  margin: 0 !important;
+}
+
+.settings-page-shell .settings-subtitle {
+  max-width: 720px;
+  color: #5e6f66 !important;
+  font-size: 11px !important;
+  line-height: 1.45 !important;
+  margin: 4px 0 0 !important;
+}
+
+.settings-page-shell .settings-hero-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.settings-page-shell .settings-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 760px;
+}
+
+
+.settings-page-shell .settings-search {
+  min-width: min(100%, 520px);
+}
+
+.settings-page-shell .settings-search-input,
+.settings-page-shell .settings-input,
+.settings-page-shell .deployment-input {
+  min-height: 38px !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  border: 1px solid #dbe7e1 !important;
+  border-radius: 13px !important;
+  color: #10251d !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03) !important;
+}
+
+.settings-page-shell .settings-search-input {
+  width: 520px !important;
+  min-height: 44px !important;
+  padding-left: 44px !important;
+  background: #ffffff !important;
+  border-color: rgba(15, 23, 42, 0.08) !important;
+  color: #17231f !important;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04) !important;
+  font-size: 14px !important;
+  font-weight: 650 !important;
+}
+
+.settings-page-shell .settings-search-input::placeholder {
+  color: #7c8a82 !important;
+}
+
+.settings-page-shell .settings-search-icon {
+  color: #7c8a82 !important;
+  left: 16px !important;
+}
+
+.settings-page-shell .settings-search-input:focus,
+.settings-page-shell .settings-input:focus,
+.settings-page-shell .deployment-input:focus {
+  border-color: #128754 !important;
+  box-shadow: 0 0 0 4px rgba(18, 135, 84, 0.14) !important;
+  outline: none !important;
+}
+
+.settings-page-shell .settings-summary-grid {
+  display: none !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin: 26px 0 20px;
+}
+
+.settings-page-shell .settings-summary-card {
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.11);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(10px);
+}
+
+.settings-page-shell .settings-summary-primary {
+  background: rgba(226, 247, 221, 0.16);
+}
+
+.settings-page-shell .settings-summary-secure {
+  background: rgba(14, 107, 66, 0.26);
+}
+
+.settings-page-shell .settings-summary-warning {
+  background: rgba(245, 158, 11, 0.16);
+}
+
+.settings-page-shell .settings-summary-value {
+  color: #ffffff;
+  font-size: 26px;
+  font-weight: 850;
+  letter-spacing: -0.04em;
+}
+
+.settings-page-shell .settings-summary-label {
+  margin-top: 4px;
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.settings-page-shell .settings-summary-hint {
+  margin-top: 4px;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.settings-page-shell .settings-tabs {
+  display: grid !important;
+  gap: 6px !important;
+  padding: 6px !important;
+  margin: 0 !important;
+  border: 1px solid rgba(15, 23, 42, 0.07) !important;
+  border-radius: 18px !important;
+  background: rgba(255, 255, 255, 0.74) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72) !important;
+  overflow: visible !important;
+}
+
+.settings-page-shell .settings-tab {
+  min-height: 52px !important;
+  width: 100% !important;
+  padding: 8px 10px !important;
+  border: 1px solid transparent !important;
+  border-radius: 14px !important;
+  color: #5e6f66 !important;
+  background: transparent !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  display: grid !important;
+  grid-template-columns: 34px minmax(0, 1fr) !important;
+  gap: 10px !important;
+  align-items: center !important;
+  text-align: left !important;
+  white-space: normal;
+}
+
+.settings-page-shell .settings-tab:hover {
+  color: #0E6B42 !important;
+  background: rgba(232, 245, 239, 0.78) !important;
+  border-color: rgba(18, 135, 84, 0.12) !important;
+  transform: translateX(2px);
+}
+
+.settings-page-shell .settings-tab.active {
+  color: #0E6B42 !important;
+  background: linear-gradient(135deg, #ffffff, #e8f5ef) !important;
+  border-color: rgba(18, 135, 84, 0.18) !important;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.07) !important;
+}
+
+.settings-page-shell .settings-tab-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  background: #eef7f2;
+  color: #128754;
+}
+
+.settings-page-shell .settings-tab.active .settings-tab-icon {
+  background: #128754;
+  color: #ffffff;
+}
+
+.settings-page-shell .settings-tab-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.settings-page-shell .settings-tab-label {
+  color: inherit;
+  font-size: 13px;
+  font-weight: 850;
+  line-height: 1.1;
+}
+
+.settings-page-shell .settings-tab-hint {
+  color: #7c8a82;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.settings-page-shell .settings-tab.active .settings-tab-hint {
+  color: #4b6b5e;
+}
+
+.settings-page-shell .unsaved-bar {
+  background: rgba(255, 251, 235, 0.96) !important;
+  border-color: rgba(245, 158, 11, 0.28) !important;
+  border-radius: 14px !important;
+}
+
+.settings-page-shell .settings-content {
+  display: grid !important;
+  grid-template-columns: 260px minmax(0, 1fr) !important;
+  gap: 10px !important;
+  align-items: start !important;
+  padding: 8px 0 18px !important;
+  overflow: visible !important;
+}
+
+.settings-page-shell .settings-local-sidebar {
+  position: sticky;
+  top: 10px;
+  padding: 8px;
+  border: 1px solid rgba(15, 23, 42, 0.07);
+  border-radius: 22px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(247, 251, 248, 0.90));
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.06);
+}
+
+.settings-page-shell .settings-menu-head {
+  padding: 6px 6px 8px;
+}
+
+.settings-page-shell .settings-menu-kicker {
+  color: #0E6B42;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.settings-page-shell .settings-menu-title {
+  margin-top: 3px;
+  color: #17231f;
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+}
+
+.settings-page-shell .settings-menu-searching {
+  display: inline-flex;
+  margin-top: 9px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #e8f5ef;
+  color: #0E6B42;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.settings-page-shell .settings-section-toolbar {
+  display: none !important;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 4px 0 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(15, 23, 42, 0.07);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.045);
+}
+
+.settings-page-shell .settings-section {
+  max-width: 1320px !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+}
+
+.settings-page-shell .settings-section-title {
+  color: #0E6B42 !important;
+  font-size: 12px !important;
+  font-weight: 850 !important;
+  letter-spacing: 0.18em !important;
+  margin: 0 !important;
+}
+
+.settings-page-shell .settings-section-hint {
+  margin: 5px 0 0;
+  color: #64766d;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.settings-page-shell .settings-section-save {
+  white-space: nowrap;
+}
+
+.settings-page-shell .settings-card,
+.settings-page-shell [class$="-card"].settings-card {
+  position: relative;
+  overflow: hidden !important;
+  border: 1px solid rgba(14, 107, 66, 0.12) !important;
+  border-radius: 18px !important;
+  background: rgba(255, 255, 255, 0.94) !important;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.055) !important;
+}
+
+.settings-page-shell .settings-card:hover {
+  box-shadow: 0 22px 48px rgba(15, 23, 42, 0.10) !important;
+}
+
+.settings-page-shell .settings-card-header {
+  padding: 12px 16px !important;
+  border-bottom: 1px solid #edf3f0 !important;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdfc 100%) !important;
+}
+
+.settings-page-shell .settings-card-title {
+  color: #10251d !important;
+  font-size: 17px !important;
+  font-weight: 850 !important;
+  letter-spacing: -0.02em;
+}
+
+.settings-page-shell .settings-card-subtitle {
+  margin: 4px 0 0 !important;
+  color: #64766d !important;
+  font-size: 12px !important;
+  line-height: 1.35 !important;
+}
+
+.settings-page-shell .settings-card-body {
+  padding: 14px 16px !important;
+}
+
+.settings-page-shell .settings-system-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+}
+
+.settings-page-shell .grid.grid-cols-2,
+.settings-page-shell .grid.grid-cols-3,
+.settings-page-shell .grid.grid-cols-4 {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+.settings-page-shell .settings-system-toggle {
+  justify-content: space-between !important;
+  min-height: 38px !important;
+  padding: 8px 10px !important;
+  border: 1px solid #dbe7e1 !important;
+  border-radius: 13px !important;
+  background: #ffffff !important;
+}
+
+.settings-page-shell .azure-integration-list {
+  display: grid !important;
+  gap: 12px !important;
+}
+
+.settings-page-shell .azure-connector-list {
+  display: grid !important;
+  gap: 8px !important;
+}
+
+.settings-page-shell .settings-empty-connectors {
+  padding: 12px !important;
+  border: 1px dashed #cbd8d2 !important;
+  border-radius: 16px !important;
+  background: #f8fbf9 !important;
+  color: #64766d !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  text-align: center !important;
+}
+
+.settings-page-shell .settings-ownership-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+}
+
+.settings-page-shell .settings-ownership-box {
+  padding: 14px !important;
+  border: 1px solid #dfece6 !important;
+  border-radius: 16px !important;
+  background: #f8fbf9 !important;
+}
+
+.settings-page-shell .settings-ownership-box h4 {
+  margin: 0 0 5px !important;
+  color: #10251d !important;
+  font-size: 13px !important;
+  font-weight: 900 !important;
+}
+
+.settings-page-shell .settings-ownership-box p,
+.settings-page-shell .settings-ownership-box li {
+  color: #64766d !important;
+  font-size: 11px !important;
+  line-height: 1.45 !important;
+}
+
+.settings-page-shell .settings-ownership-box ul {
+  display: grid !important;
+  gap: 4px !important;
+  margin: 10px 0 0 !important;
+  padding-left: 16px !important;
+}
+
+.settings-page-shell .azure-connector-list-head,
+.settings-page-shell .azure-connector-row {
+  display: grid !important;
+  grid-template-columns: minmax(200px, 1.25fr) minmax(140px, 0.8fr) minmax(140px, 0.75fr) minmax(200px, 1.1fr) minmax(140px, 0.75fr) minmax(260px, auto) !important;
+  gap: 12px !important;
+  align-items: center !important;
+}
+
+.settings-page-shell .azure-connector-list-head {
+  padding: 0 14px 6px !important;
+  color: #64766d !important;
+  font-size: 10px !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.10em !important;
+  text-transform: uppercase !important;
+}
+
+.settings-page-shell .azure-connector-row {
+  padding: 12px 14px !important;
+  border: 1px solid #dfece6 !important;
+  border-radius: 16px !important;
+  background: linear-gradient(180deg, #ffffff, #f8fbf9) !important;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.045) !important;
+  min-height: 66px !important;
+  transform: none !important;
+}
+
+.settings-page-shell .azure-connector-row.disabled {
+  opacity: 0.68 !important;
+}
+
+.settings-page-shell .azure-connector-main,
+.settings-page-shell .azure-connector-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+}
+
+.settings-page-shell .azure-connector-copy,
+.settings-page-shell .azure-connector-model,
+.settings-page-shell .azure-connector-country,
+.settings-page-shell .azure-connector-status {
+  display: grid !important;
+  gap: 3px !important;
+  min-width: 0 !important;
+  min-height: 38px !important;
+  align-content: center !important;
+}
+
+.settings-page-shell .azure-connector-copy strong,
+.settings-page-shell .azure-connector-model strong,
+.settings-page-shell .azure-connector-country strong {
+  color: #10251d !important;
+  font-size: 13px !important;
+  font-weight: 900 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.settings-page-shell .azure-connector-copy span,
+.settings-page-shell .azure-connector-model span,
+.settings-page-shell .azure-connector-country span,
+.settings-page-shell .azure-connector-status small,
+.settings-page-shell .azure-connector-endpoint {
+  color: #64766d !important;
+  font-size: 11px !important;
+  line-height: 1.35 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.settings-page-shell .azure-connector-actions {
+  justify-content: flex-end !important;
+  flex-wrap: wrap !important;
+}
+
+.settings-page-shell .database-connector-list .azure-connector-list-head,
+.settings-page-shell .database-connector-list .database-connector-row {
+  grid-template-columns: minmax(220px, 1.15fr) minmax(120px, 0.62fr) minmax(160px, 0.8fr) minmax(220px, 0.9fr) 300px !important;
+}
+
+.settings-page-shell .database-connector-row .azure-connector-actions {
+  justify-content: flex-end !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  min-height: 38px !important;
+}
+
+.settings-page-shell .database-connector-row .azure-connector-actions .settings-btn {
+  flex: 0 0 auto !important;
+  white-space: nowrap !important;
+}
+
+.settings-page-shell .database-connector-row .azure-connector-actions .settings-btn:first-child {
+  min-width: 132px !important;
+}
+
+.settings-page-shell .ai-country-multiselect {
+  min-height: 116px !important;
+  padding: 8px !important;
+}
+
+.settings-page-shell .azure-modal-help {
+  display: block !important;
+  margin-top: 6px !important;
+  color: #64766d !important;
+  font-size: 11px !important;
+  line-height: 1.35 !important;
+}
+
+.settings-page-shell .azure-integration-card {
+  display: grid !important;
+  gap: 14px !important;
+}
+
+.settings-page-shell .azure-integration-card-top,
+.settings-page-shell .azure-integration-test-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+}
+
+.settings-page-shell .azure-integration-title-wrap,
+.settings-page-shell .azure-integration-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  min-width: 0 !important;
+}
+
+.settings-page-shell .azure-integration-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  border-radius: 12px;
+  background: #e8f5ef;
+  color: #128754;
+}
+
+.settings-page-shell .azure-integration-meta,
+.settings-page-shell .azure-integration-test-message {
+  margin: 3px 0 0 !important;
+  color: #64766d !important;
+  font-size: 11px !important;
+  line-height: 1.35 !important;
+}
+
+.settings-page-shell .azure-integration-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+}
+
+.settings-page-shell .azure-integration-wide {
+  grid-column: span 2 !important;
+}
+
+.settings-page-shell .azure-integration-test-row {
+  padding-top: 12px !important;
+  border-top: 1px solid rgba(15, 23, 42, 0.07) !important;
+}
+
+.settings-page-shell .azure-integration-test-message {
+  flex: 1 1 auto !important;
+}
+
+.settings-page-shell .settings-btn:disabled {
+  cursor: not-allowed !important;
+  opacity: 0.48 !important;
+}
+
+.settings-page-shell .settings-modal-wide {
+  max-width: 960px !important;
+  width: min(100%, 960px) !important;
+}
+
+.settings-page-shell .settings-modal-subtitle {
+  margin: 4px 0 0 !important;
+  color: #64766d !important;
+  font-size: 12px !important;
+  line-height: 1.35 !important;
+}
+
+.settings-page-shell .azure-modal-body {
+  padding: 18px 22px 20px !important;
+}
+
+.settings-page-shell .azure-modal-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  align-items: start !important;
+  column-gap: 16px !important;
+  row-gap: 14px !important;
+}
+
+.settings-page-shell .azure-modal-grid .settings-form-group {
+  min-width: 0 !important;
+}
+
+.settings-page-shell .settings-infra-modal-section {
+  align-items: center !important;
+  color: #0E6B42 !important;
+  display: flex !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.10em !important;
+  min-height: 28px !important;
+  text-transform: uppercase !important;
+}
+
+.settings-page-shell .azure-modal-wide-field,
+.settings-page-shell .azure-modal-enabled,
+.settings-page-shell .azure-modal-note,
+.settings-page-shell .azure-modal-test-result {
+  grid-column: 1 / -1 !important;
+}
+
+.settings-page-shell .azure-modal-grid .ai-country-multiselect {
+  min-height: 104px !important;
+}
+
+.settings-page-shell .azure-modal-enabled {
+  justify-content: space-between !important;
+  padding: 10px 12px !important;
+  border: 1px solid #dfece6 !important;
+  border-radius: 14px !important;
+  background: #f8fbf9 !important;
+}
+
+.settings-page-shell .azure-modal-note {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 8px !important;
+  margin-top: 12px !important;
+  padding: 10px 12px !important;
+  border: 1px solid rgba(18, 135, 84, 0.16) !important;
+  border-radius: 14px !important;
+  background: #e8f5ef !important;
+  color: #0E6B42 !important;
+  font-size: 12px !important;
+  font-weight: 750 !important;
+}
+
+.settings-page-shell .azure-modal-test-result > div {
+  display: grid !important;
+  gap: 3px !important;
+}
+
+.settings-page-shell .settings-subsection {
+  background: linear-gradient(180deg, #f8fbf9, #f2f7f4) !important;
+  border: 1px solid #dfece6 !important;
+  border-radius: 18px !important;
+  padding: 16px !important;
+}
+
+.settings-page-shell .settings-subsection-title {
+  color: #10251d !important;
+  font-size: 15px !important;
+  font-weight: 850 !important;
+}
+
+.settings-page-shell .settings-subsection-title svg {
+  color: #128754 !important;
+}
+
+.settings-page-shell .settings-label {
+  color: #50645b !important;
+  font-size: 11px !important;
+  font-weight: 850 !important;
+  letter-spacing: 0.08em !important;
+}
+
+.settings-page-shell .deployment-box {
+  border: 1px solid #dfece6 !important;
+  border-radius: 16px !important;
+  background: #ffffff !important;
+  padding: 12px !important;
+}
+
+.settings-page-shell .settings-chip {
+  border-radius: 999px !important;
+  padding: 5px 11px !important;
+  font-size: 10px !important;
+  font-weight: 850 !important;
+}
+
+.settings-page-shell .settings-chip-active,
+.settings-page-shell .settings-chip-healthy {
+  background: #e2f7dd !important;
+  color: #0E6B42 !important;
+}
+
+.settings-page-shell .settings-chip-default {
+  background: #edf3f0 !important;
+  color: #50645b !important;
+}
+
+.settings-page-shell .settings-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 18px !important;
+}
+
+.settings-page-shell .teams-table-wrapper {
+  border: 1px solid #dfece6 !important;
+  border-radius: 18px !important;
+}
+
+.settings-page-shell .teams-table thead {
+  background: #f3f8f5 !important;
+}
+
+.settings-page-shell .teams-table th {
+  color: #50645b !important;
+}
+
+.settings-page-shell .teams-table tbody tr:hover {
+  background: #f7fbf8 !important;
+}
+
+.settings-page-shell .teams-webhook-code {
+  background: #edf3f0 !important;
+  border-radius: 10px !important;
+  color: #50645b !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace !important;
+}
+
+.settings-page-shell .teams-test-bar {
+  border: 1px solid rgba(18, 135, 84, 0.18) !important;
+  background: linear-gradient(135deg, rgba(226, 247, 221, 0.90), rgba(232, 245, 239, 0.72)) !important;
+  border-radius: 16px !important;
+}
+
+.settings-page-shell .settings-btn {
+  min-height: 38px !important;
+  border-radius: 12px !important;
+  padding: 8px 13px !important;
+  font-weight: 800 !important;
+  box-shadow: none !important;
+  transform: none !important;
+  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease !important;
+}
+
+.settings-page-shell .settings-btn:hover,
+.settings-page-shell .settings-btn-primary:hover,
+.settings-page-shell .settings-btn-outline:hover,
+.settings-page-shell .settings-btn-ghost:hover {
+  transform: none !important;
+}
+
+.settings-page-shell .settings-btn-primary {
+  background: linear-gradient(135deg, #128754, #0E6B42) !important;
+  border: 1px solid #128754 !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 22px rgba(18, 135, 84, 0.22) !important;
+}
+
+.settings-page-shell .settings-btn-primary:hover {
+  background: linear-gradient(135deg, #0E6B42, #0A5535) !important;
+}
+
+.settings-page-shell .settings-btn-outline {
+  background: rgba(255, 255, 255, 0.96) !important;
+  border: 1px solid #dbe7e1 !important;
+  color: #0E6B42 !important;
+}
+
+.settings-page-shell .settings-btn-outline:hover,
+.settings-page-shell .settings-btn-ghost:hover {
+  background: #e8f5ef !important;
+}
+
+.settings-page-shell .settings-toggle {
+  background: #cbd8d2 !important;
+}
+
+.settings-page-shell .settings-toggle.active {
+  background: linear-gradient(135deg, #128754, #0E6B42) !important;
+}
+
+.settings-page-shell .settings-modal {
+  border-radius: 24px !important;
+  border: 1px solid rgba(255, 255, 255, 0.55) !important;
+  box-shadow: 0 34px 80px rgba(0, 35, 26, 0.28) !important;
+}
+
+.settings-page-shell .settings-toast,
+.settings-toast {
+  border-radius: 16px !important;
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.18) !important;
+}
+
+.settings-page-shell .settings-card,
+.settings-page-shell .animate-fade-in {
+  animation: none !important;
+  transform: none !important;
+}
+
+.settings-page-shell .settings-card {
+  contain: layout paint !important;
+}
+
+.settings-page-shell .azure-modal-test-result {
+  min-height: 74px !important;
+}
+
+.settings-page-shell .azure-modal-test-result-placeholder {
+  visibility: hidden !important;
+}
+
+@media (max-width: 1100px) {
+  .settings-page-shell .settings-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-page-shell .settings-content {
+    grid-template-columns: 1fr !important;
+  }
+
+  .settings-page-shell .settings-local-sidebar {
+    position: relative;
+    top: auto;
+  }
+
+  .settings-page-shell .settings-tabs {
+    grid-template-columns: repeat(6, minmax(140px, 1fr)) !important;
+    overflow-x: auto !important;
+  }
+
+  .settings-page-shell .settings-tab {
+    min-width: 140px !important;
+  }
+
+  .settings-page-shell .settings-actions {
+    justify-content: flex-start;
+    max-width: none;
+  }
+
+  .settings-page-shell .settings-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-page-shell .settings-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .settings-page-shell .azure-integration-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .settings-page-shell .settings-system-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .settings-page-shell .azure-connector-list-head {
+    display: none !important;
+  }
+
+  .settings-page-shell .azure-connector-row {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  .settings-page-shell .azure-connector-actions {
+    justify-content: flex-start !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .settings-modal-overlay {
+    padding: 12px;
+  }
+
+  .settings-modal {
+    --settings-modal-height-gap: 24px;
+  }
+
+  .settings-page-shell .settings-header,
+  .settings-page-shell .settings-content {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  .settings-page-shell .settings-summary-grid,
+  .settings-page-shell .settings-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .settings-page-shell .settings-tabs {
+    grid-template-columns: 1fr !important;
+  }
+
+  .settings-page-shell .settings-tab {
+    min-width: 0 !important;
+  }
+
+  .settings-page-shell .settings-search,
+  .settings-page-shell .settings-search-input {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .settings-page-shell .settings-section-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .settings-page-shell .settings-section-save {
+    width: 100%;
+  }
+
+  .settings-page-shell .azure-integration-card-top,
+  .settings-page-shell .azure-integration-actions,
+  .settings-page-shell .azure-integration-test-row {
+    align-items: stretch !important;
+    flex-direction: column !important;
+  }
+
+  .settings-page-shell .azure-integration-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .settings-page-shell .azure-integration-wide {
+    grid-column: auto !important;
+  }
+
+  .settings-page-shell .azure-modal-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .settings-page-shell .settings-ownership-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .settings-page-shell .settings-system-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .settings-page-shell .grid.grid-cols-2,
+  .settings-page-shell .grid.grid-cols-3,
+  .settings-page-shell .grid.grid-cols-4 {
+    grid-template-columns: 1fr !important;
+  }
+
+  .settings-page-shell .azure-connector-main,
+  .settings-page-shell .azure-connector-actions {
+    align-items: stretch !important;
+    flex-direction: column !important;
+  }
+
+  .settings-page-shell .azure-connector-actions .settings-btn {
+    width: 100% !important;
+  }
 }

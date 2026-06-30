@@ -34,14 +34,15 @@ window.Sidebar = (function() {
   function render() {
     const session = KFHConfig.getSession();
     const navItems = KFHConfig.NAV_ITEMS;
+    const assetBasePath = window.location.pathname.includes('/pages/') ? '../../' : '';
 
     return `
       <!-- Logo Area -->
       <div class="p-6 border-b" style="border-color: rgba(255,255,255,0.1);">
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center" 
-               style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.1);">
-            <span class="text-white font-bold text-xl">K</span>
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center p-1.5 overflow-hidden"
+               style="background: rgba(255,255,255,0.96); border: 1px solid rgba(255,255,255,0.16); box-shadow: 0 10px 24px rgba(0,0,0,0.16);">
+            <img src="${assetBasePath}images/kfh-logo.png" alt="KFH logo" loading="eager" decoding="async" class="w-full h-full object-contain">
           </div>
           <div>
             <div class="font-bold text-lg tracking-tight text-white leading-tight">KFH AIOps</div>

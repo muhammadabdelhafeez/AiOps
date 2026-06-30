@@ -3,8 +3,10 @@
 > Catalog of **core business services and endpoints** for the KFH Causal AIOps Platform.
 > Update this file whenever a new core class or REST endpoint is added/changed.
 > Support / cross-cutting services live in `docs/SERVICES_SUPPORT.md`.
+>
+> **Architecture authority:** [`docs/CAUSAL_PIPELINE.md`](./CAUSAL_PIPELINE.md). The funnel mapping below (Stage 0 → Stage 8) is the single source of truth for what each service does and what its inputs/outputs are. Core principle: **code finds the root cause, AI explains it** — AI only ever receives an `EvidencePack` (≤ 3 KB), never raw telemetry.
 
-Core scope = the modules that directly serve the product goal (ingestion → normalization → index → topology → health → RCA → AI → incident lifecycle → command center).
+Core scope = the modules that directly serve the product goal (ingestion → normalization → fingerprint → index → topology → health → causal RCA → AI router → incident lifecycle → command center).
 
 ---
 
@@ -40,9 +42,15 @@ When you add or change a core class/endpoint:
 | `PluginRegistry` | Discovers & registers plugin beans by `pluginType()`. | 🟢 Implemented |
 | `PluginScheduler` | Runs plugin `collect()` per schedule with retry/CB/timeout. | ⚪ Not implemented |
 | `SCOMConnectorPlugin` … `OpenTelemetryConnectorPlugin` | 13 source connectors. | ⚪ Not implemented |
-| `ConnectorController`, `ConnectorService` | Frontend-aligned connector CRUD/toggle/test/log endpoints; strips plaintext secrets. | 🟡 Phase 1 scaffold (in-memory) |
+| `ConnectorController`, `ConnectorService` | Frontend-aligned connector CRUD/toggle/test/log endpoints; strips plaintext secrets and persists secret-safe live-test failure messages, including heartbeat Java exception details. | 🟡 Phase 1 scaffold |
+| `ConnectorCatalogService`, `ConnectorTypeMetadataDto`, `ConnectorFieldSchemaDto` | Serves Add Connector type metadata for BMC, AppDynamics, vROps, and SCOM, including secure-default `verifySsl` connector TLS certificate verification fields. | 🟢 Implemented |
+| `ConnectorEndpointGuard` | Shared connector SSRF guard that supports public/private KFH hybrid BMC/AppDynamics/vROps endpoints while blocking metadata, localhost, loopback, link-local, and multicast targets. | 🟢 Implemented |
+| `ConnectorTlsSupport`, `ConnectorTlsWebClientFactory` | Shared connector TLS helpers and WebClient factory that keep JVM certificate verification enabled by default and provide an explicit per-connector relaxed certificate-validation client for governed dev/hybrid tests. | 🟢 Implemented |
+| `BmcConnectorConfigValidator` | Validates BMC Helix country/environment scope, HTTPS base URL, safe relative endpoints, bounded collection settings, and required access-key secrets while returning only secret-safe metadata. | 🟢 Implemented for BMC configuration |
+| `HttpAppDynamicsConnectorLiveTester` | Performs AppDynamics controller application-discovery readiness checks, honors `verifySsl`, and returns compact redacted HTTP/Java/PKIX failure details for failed tests. | 🟢 Implemented for AppDynamics live testing |
+| `ScomConnectorConfigValidator`, `PowerShellScomConnectorLiveTester` | Validate SCOM WinRM/PowerShell connector profiles and run a bounded secret-safe OperationsManager readiness probe; domain-qualified credentials are precomputed in Java and passed as `KFH_AIOPS_SCOM_QUALIFIED_USERNAME` so PowerShell never concatenates `$domain` and `$username`. | 🟢 Implemented for SCOM live testing |
 
-**Endpoints:** `GET/POST/PUT/DELETE /api/v1/connectors`, `PATCH /api/v1/connectors/{id}/toggle`, `POST /api/v1/connectors/{id}/test`, `GET /api/v1/connectors/{id}/logs`.
+**Endpoints:** `GET/POST/PUT/DELETE /api/v1/connectors`, `GET /api/v1/connectors/types`, `PATCH /api/v1/connectors/{id}/toggle`, `POST /api/v1/connectors/{id}/test`, `GET /api/v1/connectors/{id}/logs`.
 
 ### 3. normalization (`org.kfh.aiops.normalization`)
 

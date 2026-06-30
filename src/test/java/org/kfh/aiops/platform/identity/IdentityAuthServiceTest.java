@@ -1,12 +1,16 @@
 package org.kfh.aiops.platform.identity;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -15,6 +19,7 @@ import org.kfh.aiops.commandcenter.support.CommandCenterReadModel;
 import org.kfh.aiops.platform.audit.AuditService;
 import org.kfh.aiops.platform.exception.ForbiddenAccessException;
 import org.kfh.aiops.platform.tenant.TenantContext;
+import org.mockito.ArgumentCaptor;
 
 class IdentityAuthServiceTest {
 
@@ -35,7 +40,36 @@ class IdentityAuthServiceTest {
         org.assertj.core.api.Assertions.assertThat(readModel.audit(context(response)).getFirst())
                 .containsEntry("action", "LOGIN_SUCCEEDED")
                 .containsEntry("entityType", "Security")
+                .containsEntry("entityId", "AUTHENTICATION")
+                .containsEntry("actorName", "Operator")
+                .containsEntry("targetName", "Authentication")
                 .containsEntry("result", "Success");
+    }
+
+    @Test
+    void shouldPersistReadableLoginAuditMetadataWhenCredentialsMatch() {
+        var repository = org.mockito.Mockito.mock(IdentityJdbcRepository.class);
+        var audit = org.mockito.Mockito.mock(AuditService.class);
+        var request = request();
+        var response = response();
+        when(repository.signIn(request)).thenReturn(Optional.of(response));
+        var bootstrap = bootstrap(null);
+        var readModel = new CommandCenterReadModel();
+
+        new IdentityAuthService(repository, bootstrap, properties(), audit, readModel).signIn(request);
+
+        var afterState = ArgumentCaptor.forClass(Object.class);
+        verify(audit).recordWrite(any(TenantContext.class), eq("LOGIN_SUCCEEDED"), eq("Security"),
+                eq("AUTHENTICATION"), isNull(), afterState.capture());
+        org.assertj.core.api.Assertions.assertThat(afterState.getValue())
+                .isInstanceOf(Map.class)
+                .asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
+                .containsEntry("actorName", "Operator")
+                .containsEntry("actorUsername", "operator")
+                .containsEntry("targetName", "Authentication")
+                .containsEntry("targetType", "Security")
+                .containsEntry("message", "Login succeeded for Operator")
+                .doesNotContainKeys("password", "passwordHash");
     }
 
     @Test

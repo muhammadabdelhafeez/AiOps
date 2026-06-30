@@ -58,8 +58,42 @@ var Audit = (function() {
     return String(action || 'UNKNOWN').replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
   }
 
+  function firstNonEmpty(...values) {
+    return values.map(value => String(value ?? '').trim()).find(value => value.length > 0) || '';
+  }
+
+  function isLoginAction(action) {
+    return String(action || '').startsWith('LOGIN_');
+  }
+
+  function isUuidLike(value) {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || '').trim());
+  }
+
+  function isGenericLoginMessage(message) {
+    return /^LOGIN_(SUCCEEDED|FAILED) on Security [0-9a-f-]{36}$/i.test(String(message || '').trim());
+  }
+
   function normalizeAuditEvent(row) {
     const timestamp = row.createdAt || row.timestamp || row.updatedAt || new Date().toISOString();
+    const details = parseDetails(row);
+    const action = row.action || 'UNKNOWN';
+    const loginAction = isLoginAction(action);
+    const actorSource = (row.actorSource || details.actorSource || '').toString().toLowerCase();
+    const isSystemActor = actorSource === 'system';
+    const actorName = firstNonEmpty(
+      row.actorName, row.userName, details.actorName, details.displayName, details.username,
+      isSystemActor ? 'System' : '', row.actorUsername, details.actorUsername,
+      'System');
+    const rawTargetId = firstNonEmpty(row.targetId, row.entityId);
+    const targetId = loginAction && isUuidLike(rawTargetId) ? 'AUTHENTICATION' : rawTargetId;
+    const defaultLoginMessage = action === 'LOGIN_FAILED'
+      ? `Login failed${actorName ? ` for ${actorName}` : ''}`
+      : `Login succeeded${actorName ? ` for ${actorName}` : ''}`;
+    const rawMessage = firstNonEmpty(row.message, row.detail);
+    const message = loginAction && isGenericLoginMessage(rawMessage)
+      ? defaultLoginMessage
+      : firstNonEmpty(rawMessage, loginAction ? defaultLoginMessage : `${normalizeAction(action)} ${row.entityType || 'activity'}`);
     return {
       id: String(row.id || row.eventId || row.auditId || cryptoFallbackId()),
       ts: Date.parse(timestamp),
@@ -68,16 +102,18 @@ var Audit = (function() {
       countryCode: row.countryCode || '',
       environment: row.environment || '',
       category: row.category || row.entityType || 'Application',
-      action: row.action || 'UNKNOWN',
-      actionLabel: normalizeAction(row.action),
-      actorUserId: row.userId || row.actorUserId || '',
-      actorName: row.actorName || row.userName || row.userId || 'Application user',
+      action,
+      actionLabel: normalizeAction(action),
+      actorUserId: firstNonEmpty(row.actorUserId, details.actorUserId, row.userId),
+      actorUsername: firstNonEmpty(row.actorUsername, details.actorUsername, ''),
+      actorSource: actorSource || (isSystemActor ? 'system' : 'user'),
+      actorName,
       result: row.result || 'Success',
       severity: row.severity || 'Info',
-      targetType: row.entityType || row.targetType || 'Application',
-      targetId: row.entityId || row.targetId || '',
-      message: row.message || row.detail || `${normalizeAction(row.action)} ${row.entityType || 'activity'}`,
-      details: parseDetails(row),
+      targetType: firstNonEmpty(row.targetType, details.targetType, row.entityType, 'Application'),
+      targetId,
+      message,
+      details,
       ip: row.ipAddress || '',
       correlationId: row.correlationId || '',
       sessionId: row.sessionId || ''
@@ -291,7 +327,7 @@ var Audit = (function() {
                 </td>
                 <td>
                   <div class="audit-actor-name">${esc(event.actorName)}</div>
-                  <div class="audit-actor-team">${esc(event.actorUserId || 'System')}</div>
+                  <div class="audit-actor-team">${esc(event.actorSource === 'system' ? 'System' : (event.actorUsername || event.actorUserId || 'System'))}</div>
                 </td>
                 <td>
                   <div class="audit-target-type">${esc(event.targetType || '-')}</div>
@@ -371,7 +407,7 @@ var Audit = (function() {
         <div class="drawer-info-grid">
           ${drawerInfo('Timestamp', fullTime(event.ts))}
           ${drawerInfo('Action', event.actionLabel)}
-          ${drawerInfo('Actor', event.actorName, event.actorUserId || 'System')}
+          ${drawerInfo('Actor', event.actorName, event.actorSource === 'system' ? 'System' : (event.actorUsername || event.actorUserId || 'System'))}
           ${drawerInfo('Target', event.targetType || '-', event.targetId || '-')}
           ${drawerInfo('Country / Env', `${event.countryCode || '-'} / ${event.environment || '-'}`)}
           ${drawerInfo('Correlation ID', event.correlationId || '-')}
@@ -396,12 +432,9 @@ var Audit = (function() {
   }
 
   function bindEvents() {
-    document.getElementById('audit-search')?.addEventListener('input', event => {
-      state.ui.searchQuery = event.target.value;
+    KFHUtils.bindLiveSearch('audit-search', function(value) {
+      state.ui.searchQuery = value;
       render();
-      const input = document.getElementById('audit-search');
-      input?.focus();
-      if (input) input.selectionStart = input.selectionEnd = state.ui.searchQuery.length;
     });
     document.getElementById('date-range')?.addEventListener('change', event => { state.ui.dateRange = event.target.value; render(); });
     document.getElementById('category-filter')?.addEventListener('change', event => { state.ui.category = event.target.value; render(); });

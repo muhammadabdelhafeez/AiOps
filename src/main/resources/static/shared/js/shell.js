@@ -54,7 +54,7 @@ window.KFHShell = (function() {
       <!-- Logo Area -->
       <div class="kfh-sidebar-logo">
         <div class="kfh-sidebar-logo-icon">
-          <span>K</span>
+          <img src="${window.location.pathname.includes('/pages/') ? '../../' : ''}images/kfh-logo.png" alt="KFH logo" loading="eager" decoding="async">
         </div>
         <div class="kfh-sidebar-logo-text">
           <div class="kfh-sidebar-logo-title">KFH AIOps</div>

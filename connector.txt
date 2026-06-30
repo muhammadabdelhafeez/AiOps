@@ -1,0 +1,2033 @@
+# Integration Redevelopment Guide — BMC, SCOM, AppDynamics, vROps, EMCO, Lansweeper, and AI Analysis
+
+**Last updated:** 2026-06-17
+**Purpose:** This guide explains how to rebuild the current multi-source infrastructure analysis system on another server/system. It consolidates connector configuration, API URLs, request formats, authentication requirements, data fields, and the AI model pipeline.
+
+> Security note: this guide intentionally uses environment-variable names and placeholders. Do **not** hard-code API keys, passwords, access secrets, webhook URLs, or client secrets in source code or Markdown.
+
+---
+
+## 1. Target Architecture
+
+```text
+┌────────────────────┐
+│ Scheduler / Runner │
+└─────────┬──────────┘
+          │
+          ├── BMC Helix REST API
+          ├── VMware vROps / Aria Operations REST API
+          ├── Microsoft SCOM via WinRM + PowerShell
+          ├── AppDynamics Controller REST API
+          ├── EMCO Ping Monitor SQL Server
+          └── Lansweeper Excel exports via WinRM + PowerShell
+          │
+          ▼
+┌─────────────────────────┐
+│ Normalize DTOs / Events │
+└─────────┬───────────────┘
+          ▼
+┌─────────────────────────┐
+│ Deduplicate + Correlate │
+└─────────┬───────────────┘
+          ▼
+┌──────────────────────────────┐
+│ Azure OpenAI / AI Model Flow │
+│ Stage 1 + Stage 2 + Merge    │
+└─────────┬────────────────────┘
+          ▼
+┌──────────────────────────────┐
+│ Markdown / HTML / Teams      │
+│ Incident Analysis Report     │
+└──────────────────────────────┘
+```
+
+Recommended implementation stack if rebuilding similarly:
+
+- Java 17+
+- Spring Boot
+- Spring WebFlux `WebClient`
+- Jackson JSON
+- Apache POI for Excel parsing
+- Microsoft SQL Server JDBC driver
+- PowerShell / WinRM for SCOM and Lansweeper
+- Azure OpenAI Responses API and Chat Completions API
+
+Current Maven dependencies are declared in `pom.xml`:
+
+```xml
+<dependency>
+  <groupId>org.springframework.boot</groupId>
+  <artifactId>spring-boot-starter</artifactId>
+</dependency>
+<dependency>
+  <groupId>org.springframework.boot</groupId>
+  <artifactId>spring-boot-starter-webflux</artifactId>
+</dependency>
+<dependency>
+  <groupId>com.fasterxml.jackson.core</groupId>
+  <artifactId>jackson-databind</artifactId>
+</dependency>
+<dependency>
+  <groupId>com.microsoft.sqlserver</groupId>
+  <artifactId>mssql-jdbc</artifactId>
+  <version>12.10.2.jre11</version>
+</dependency>
+<dependency>
+  <groupId>org.apache.poi</groupId>
+  <artifactId>poi-ooxml</artifactId>
+  <version>5.4.1</version>
+</dependency>
+```
+
+---
+
+## 2. Secret and Environment Variable Strategy
+
+Use environment variables for all secrets. These are the variables used by the current system:
+
+```powershell
+BMC_ANALYSIS_BMC_ACCESS_KEY
+BMC_ANALYSIS_BMC_ACCESS_SECRET_KEY
+
+BMC_ANALYSIS_AZURE_OPENAI_API_KEY
+BMC_ANALYSIS_AZURE_OPENAI_SECONDARY_API_KEY
+BMC_ANALYSIS_AZURE_OPENAI_REASONING_API_KEY
+BMC_ANALYSIS_AZURE_OPENAI_REASONING_SECONDARY_API_KEY
+BMC_ANALYSIS_AZURE_OPENAI_REASONING_TERTIARY_API_KEY
+BMC_ANALYSIS_AZURE_OPENAI_REASONING_QUATERNARY_API_KEY
+
+BMC_ANALYSIS_VROPS_USERNAME
+BMC_ANALYSIS_VROPS_PASSWORD
+
+BMC_ANALYSIS_SCOM_USERNAME
+BMC_ANALYSIS_SCOM_PASSWORD
+
+BMC_ANALYSIS_APPDYNAMICS_USERNAME
+BMC_ANALYSIS_APPDYNAMICS_PASSWORD
+
+BMC_ANALYSIS_EMCO_KFH_USERNAME
+BMC_ANALYSIS_EMCO_KFH_PASSWORD
+BMC_ANALYSIS_EMCO_CCTV_USERNAME
+BMC_ANALYSIS_EMCO_CCTV_PASSWORD
+
+BMC_ANALYSIS_LANSWEEPER_SERVER_USERNAME
+BMC_ANALYSIS_LANSWEEPER_SERVER_PASSWORD
+```
+
+Example setup on Windows PowerShell:
+
+```powershell
+[Environment]::SetEnvironmentVariable('BMC_ANALYSIS_BMC_ACCESS_KEY', '<bmc-access-key>', 'User')
+[Environment]::SetEnvironmentVariable('BMC_ANALYSIS_BMC_ACCESS_SECRET_KEY', '<bmc-access-secret>', 'User')
+[Environment]::SetEnvironmentVariable('BMC_ANALYSIS_AZURE_OPENAI_API_KEY', '<azure-openai-key>', 'User')
+[Environment]::SetEnvironmentVariable('BMC_ANALYSIS_SCOM_USERNAME', '<domain-user>', 'User')
+[Environment]::SetEnvironmentVariable('BMC_ANALYSIS_SCOM_PASSWORD', '<password>', 'User')
+```
+
+Close and reopen the terminal/IDE after setting user or machine variables.
+
+---
+
+## 3. Common Configuration Template
+
+Create `application.properties` or equivalent config in the new system.
+
+```properties
+spring.application.name=BMC Analysis
+spring.main.web-application-type=none
+
+bmc.runner.enabled=true
+
+# Enable or disable connectors independently
+vrops.enabled=false
+scom.enabled=false
+appdynamics.enabled=false
+emco.enabled=false
+lansweeper.server.enabled=false
+
+# AI processing
+azure.openai.enable-parallel-processing=true
+azure.openai.enable-hybrid-mode=true
+```
+
+Connector failure should not stop the complete workflow. The current runner continues with working tools and only fails the full run if AI analysis cannot be generated after data collection.
+
+---
+
+## 4. BMC Helix Integration
+
+### 4.1 Configuration
+
+Current properties:
+
+```properties
+bmc.base-url=https://kfh-itom.onbmc.com
+bmc.access-key=${BMC_ANALYSIS_BMC_ACCESS_KEY:}
+bmc.access-secret-key=${BMC_ANALYSIS_BMC_ACCESS_SECRET_KEY:}
+bmc.login-endpoint=/ims/api/v1/access_keys/login
+bmc.events-endpoint=/events-service/api/v1.0/events/msearch
+bmc.minutes-back=60
+bmc.max-events=500
+```
+
+### 4.2 Authentication Request
+
+**Method:** `POST`
+**URL:**
+
+```text
+{bmc.base-url}/ims/api/v1/access_keys/login
+```
+
+**Headers:**
+
+```http
+Content-Type: application/json
+Accept: application/json
+```
+
+**Body:**
+
+```json
+{
+  "access_key": "${BMC_ANALYSIS_BMC_ACCESS_KEY}",
+  "access_secret_key": "${BMC_ANALYSIS_BMC_ACCESS_SECRET_KEY}"
+}
+```
+
+**Expected response fields:**
+
+```json
+{
+  "json_web_token": "<jwt-token>",
+  "user_id": "<user>",
+  "tenant_name": "<tenant>"
+}
+```
+
+### 4.3 Event Search Request
+
+**Method:** `POST`
+**URL:**
+
+```text
+{bmc.base-url}/events-service/api/v1.0/events/msearch
+```
+
+**Headers:**
+
+```http
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer <json_web_token>
+```
+
+**Body:**
+
+```json
+{
+  "size": 100,
+  "query": {
+    "bool": {
+      "filter": [
+        {
+          "range": {
+            "creation_time": {
+              "gte": "now-60m",
+              "lte": "now"
+            }
+          }
+        },
+        {
+          "query_string": {
+            "analyze_wildcard": true,
+            "query": "!severity:OK"
+          }
+        }
+      ]
+    }
+  },
+  "sort": {
+    "creation_time": {
+      "order": "desc",
+      "unmapped_type": "boolean"
+    }
+  },
+  "script_fields": {}
+}
+```
+
+For pagination, add `search_after` from the last hit sort token:
+
+```json
+{
+  "search_after": ["<last-sort-token>"]
+}
+```
+
+### 4.4 Important BMC Fields to Normalize
+
+Typical fields used by the analysis:
+
+```text
+_source.source_hostname
+_source.source_address
+_source._service_name
+_source.alert_name
+_source.msg
+_source.class
+_source.status
+_source.priority
+_source.mc_object
+_source.severity
+_source.creation_time
+_source.modification_time
+```
+
+### 4.5 Development Notes
+
+- Deduplicate by event `_id` when available.
+- If `_id` is missing, use index + sort + source hash.
+- Fetch both open and closed alerts from the time window.
+- Keep full BMC `msg`; do not truncate before AI analysis.
+
+---
+
+## 5. VMware vROps / Aria Operations Integration
+
+### 5.1 Configuration
+
+```properties
+vrops.enabled=true
+vrops.host=<vrops-host-or-ip>
+vrops.username=${BMC_ANALYSIS_VROPS_USERNAME:}
+vrops.password=${BMC_ANALYSIS_VROPS_PASSWORD:}
+vrops.page-size=1000
+vrops.max-pages=200
+vrops.workers=12
+vrops.hours=1
+vrops.verify-ssl=true
+vrops.auth-source=KFH AD
+```
+
+Current default host in this project:
+
+```text
+10.2.243.66
+```
+
+Base API URL:
+
+```text
+https://{vrops.host}/suite-api/api
+```
+
+### 5.2 Token Acquire Request
+
+**Method:** `POST`
+**URL:**
+
+```text
+https://{vrops.host}/suite-api/api/auth/token/acquire
+```
+
+**Headers:**
+
+```http
+Content-Type: application/json
+Accept: application/json
+```
+
+**Body:**
+
+```json
+{
+  "username": "${BMC_ANALYSIS_VROPS_USERNAME}",
+  "authSource": "KFH AD",
+  "password": "${BMC_ANALYSIS_VROPS_PASSWORD}"
+}
+```
+
+**Expected response:**
+
+```json
+{
+  "token": "<vrops-token>",
+  "expiresAt": "<timestamp>"
+}
+```
+
+### 5.3 Alerts Request
+
+**Method:** `GET`
+**URL:**
+
+```text
+https://{vrops.host}/suite-api/api/alerts?page=0&pageSize=1000&_no_links=true
+```
+
+**Headers:**
+
+```http
+Accept: application/json
+Authorization: vRealizeOpsToken <vrops-token>
+```
+
+### 5.4 Resource Enrichment Request
+
+After fetching alerts, collect unique resource IDs and enrich them.
+
+**Method:** `GET`
+**URL:**
+
+```text
+https://{vrops.host}/suite-api/api/resources/{resourceId}?_no_links=true
+```
+
+**Headers:**
+
+```http
+Accept: application/json
+Authorization: vRealizeOpsToken <vrops-token>
+```
+
+### 5.5 Important vROps Fields to Normalize
+
+```text
+id
+alertDefinitionName
+alertDefinitionId
+resourceId
+resourceKey.name
+resourceKey.adapterKindKey
+resourceKey.resourceKindKey
+criticality
+status
+startTimeUTC
+updateTimeUTC
+cancelTimeUTC
+alertImpact
+alertType
+subType
+resourceHealth
+resourceHealthValue
+```
+
+### 5.6 Development Notes
+
+- vROps times are UTC epoch milliseconds.
+- Current logic filters by time window using `startTimeUTC` and optionally `cancelTimeUTC` / `updateTimeUTC`.
+- Stop pagination when pages are empty or older than the time window.
+- Cache or save token if desired; renew before expiry.
+
+---
+
+## 6. Microsoft SCOM Integration
+
+SCOM is not consumed through a REST API in the current project. It uses PowerShell Remoting / WinRM to execute SCOM cmdlets on the management server.
+
+### 6.1 Configuration
+
+```properties
+scom.enabled=true
+scom.management-server=<scom-management-server-fqdn>
+scom.username=${BMC_ANALYSIS_SCOM_USERNAME:}
+scom.password=${BMC_ANALYSIS_SCOM_PASSWORD:}
+scom.domain=<domain>
+scom.hours-back=1
+scom.connection-timeout-seconds=60
+scom.verify-ssl=true
+scom.winrm-port=5986
+scom.use-https=true
+scom.auth-method=Kerberos
+```
+
+Current default server in this project:
+
+```text
+dcvscoap12.corp.kfh.kw
+```
+
+WinRM URL shape:
+
+```text
+https://{scom.management-server}:5986/wsman
+```
+
+If using non-HTTPS WinRM:
+
+```text
+http://{scom.management-server}:5985/wsman
+```
+
+### 6.2 Local PowerShell Invocation Pattern
+
+The Java process starts `powershell.exe` and runs `Invoke-Command`.
+
+```powershell
+$ErrorActionPreference = 'Stop'
+$secPass = ConvertTo-SecureString '<password>' -AsPlainText -Force
+$cred = New-Object System.Management.Automation.PSCredential('<domain>\<username>', $secPass)
+$startLocal = (Get-Date).AddHours(-4) # configured hours + timezone buffer
+
+$result = Invoke-Command `
+  -ComputerName '<scom-management-server>' `
+  -Port 5986 `
+  -UseSSL `
+  -Credential $cred `
+  -Authentication Kerberos `
+  -ScriptBlock {
+    param([datetime]$startUtcInner)
+
+    Import-Module OperationsManager -ErrorAction Stop | Out-Null
+    New-SCOMManagementGroupConnection -ComputerName $env:COMPUTERNAME | Out-Null
+
+    $alerts = @(
+      Get-SCOMAlert |
+      Where-Object { $_.TimeRaised -ge $startUtcInner } |
+      Select-Object `
+        Id, Name, Severity, Priority, Category, ResolutionState, `
+        @{Name='MonitoringObjectName'; Expression = {$_.MonitoringObjectDisplayName}}, `
+        MonitoringObjectPath, NetbiosComputerName, TimeRaised, TimeResolved, LastModified, Description
+    )
+
+    $alerts | Sort-Object TimeRaised -Descending
+  } `
+  -ArgumentList $startLocal
+
+if ($null -eq $result -or $result.Count -eq 0) {
+  Write-Output '[]'
+} else {
+  $result | ConvertTo-Json -Depth 10 -Compress
+}
+```
+
+### 6.3 Important SCOM Fields to Normalize
+
+```text
+Id
+Name
+Severity
+Priority
+Category
+ResolutionState
+MonitoringObjectName
+MonitoringObjectPath
+NetbiosComputerName
+TimeRaised
+TimeResolved
+LastModified
+Description
+```
+
+### 6.4 Development Notes
+
+- SCOM may return alert times in local time; the current code over-fetches by +3 hours and filters precisely in Java.
+- Deduplicate by `Id` because SCOM alerts can update multiple times within the same window.
+- Strip non-printable control characters from PowerShell JSON before parsing.
+- Required server setup:
+  - WinRM enabled on management server.
+  - User has permission to run SCOM PowerShell cmdlets.
+  - `OperationsManager` PowerShell module is installed on the SCOM server.
+  - Kerberos/WinRM SPNs and firewall rules are correct.
+
+---
+
+## 7. AppDynamics Integration
+
+### 7.1 Configuration
+
+```properties
+appdynamics.enabled=true
+appdynamics.controller=https://<appd-controller>/controller
+appdynamics.username=${BMC_ANALYSIS_APPDYNAMICS_USERNAME:}
+appdynamics.password=${BMC_ANALYSIS_APPDYNAMICS_PASSWORD:}
+appdynamics.duration-minutes=60
+appdynamics.timeout-seconds=120
+appdynamics.max-workers=15
+appdynamics.verify-ssl=true
+appdynamics.fetch-errors=true
+appdynamics.fetch-violations=true
+appdynamics.fetch-slow-transactions=true
+```
+
+Current default controller in this project:
+
+```text
+https://appd.corp.kfh.kw/controller
+```
+
+### 7.2 Authentication
+
+Current implementation uses HTTP Basic authentication.
+
+**Header:**
+
+```http
+Authorization: Basic base64(username:password)
+Accept: application/json
+```
+
+### 7.3 List Applications
+
+**Method:** `GET`
+**URL:**
+
+```text
+{appdynamics.controller}/rest/applications?output=JSON
+```
+
+**Response fields used:**
+
+```json
+[
+  {
+    "id": 123,
+    "name": "Application Name"
+  }
+]
+```
+
+### 7.4 Request Snapshots — Errors
+
+**Method:** `GET`
+**URL:**
+
+```text
+{appdynamics.controller}/rest/applications/{appId}/request-snapshots?time-range-type=BEFORE_NOW&duration-in-mins=60&output=JSON
+```
+
+Filter snapshots where:
+
+```text
+userExperience == ERROR OR errorOccurred == true
+```
+
+### 7.5 Health Rule Violations
+
+**Method:** `GET`
+**URL:**
+
+```text
+{appdynamics.controller}/rest/applications/{appId}/problems/healthrule-violations?time-range-type=BEFORE_NOW&duration-in-mins=60&output=JSON
+```
+
+The response may be either an array or an object containing `policy-violations`.
+
+### 7.6 Request Snapshots — Slow Transactions
+
+**Method:** `GET`
+**URL:**
+
+```text
+{appdynamics.controller}/rest/applications/{appId}/request-snapshots?time-range-type=BEFORE_NOW&duration-in-mins=60&output=JSON
+```
+
+Filter snapshots where `userExperience` is one of:
+
+```text
+SLOW
+VERY_SLOW
+STALL
+```
+
+### 7.7 Important AppDynamics Fields to Normalize
+
+```text
+Application ID
+Application Name
+Alert ID / Snapshot ID
+Violation ID
+Violation Name
+Alert Type: ERROR / VIOLATION / SLOW_TRANSACTION / DB_CALL / REMOTE_SERVICE
+Severity
+Status
+Start Time
+End Time
+Description
+Affected Entity Name
+Affected Entity Type
+Business Transaction ID
+Business Transaction Name
+Tier ID
+Tier Name
+URL
+Deep Link URL
+Time Taken
+Error Details
+Error Summary
+Stack Trace
+```
+
+### 7.8 Mandatory Reporting Rule for AppDynamics Event IDs
+
+When AppDynamics appears in correlation maps, root-cause chains, or correlated alert chains, always include the AppDynamics event identifier.
+
+Preferred output format:
+
+```text
+[AppDynamics 20:55] KFHOnline/CardTokenManagement — /getTokensByPan transaction errors increased (Event ID: 724991837)
+```
+
+If the source data has no ID:
+
+```text
+[AppDynamics 20:55] KFHOnline/CardTokenManagement — /getTokensByPan transaction errors increased (Event ID: Not specified in alert data)
+```
+
+---
+
+## 8. EMCO Ping Monitor Integration
+
+EMCO is consumed from SQL Server databases, not REST.
+
+### 8.1 Configuration
+
+```properties
+emco.enabled=true
+emco.sql-server=<sql-server-host>
+emco.sql-port=11433
+emco.kfh-database=EMCO_KFH_PROD
+emco.kfh-username=${BMC_ANALYSIS_EMCO_KFH_USERNAME:}
+emco.kfh-password=${BMC_ANALYSIS_EMCO_KFH_PASSWORD:}
+emco.cctv-database=EMCO_CCTV_PROD
+emco.cctv-username=${BMC_ANALYSIS_EMCO_CCTV_USERNAME:}
+emco.cctv-password=${BMC_ANALYSIS_EMCO_CCTV_PASSWORD:}
+emco.minutes-back=60
+emco.connection-timeout-seconds=30
+emco.query-timeout-seconds=120
+emco.encrypt=true
+emco.trust-server-certificate=false
+```
+
+Current default SQL server in this project:
+
+```text
+DCVSAMDB01:11433
+```
+
+### 8.2 JDBC URL
+
+```text
+jdbc:sqlserver://{emco.sql-server}:{emco.sql-port};databaseName={database};encrypt={true|false};trustServerCertificate={true|false};loginTimeout={seconds}
+```
+
+Example:
+
+```text
+jdbc:sqlserver://DCVSAMDB01:11433;databaseName=EMCO_KFH_PROD;encrypt=true;trustServerCertificate=false;loginTimeout=30
+```
+
+### 8.3 KFH Query
+
+```sql
+SELECT
+    h.[label],
+    h.[host],
+    h.[description] AS host_description,
+    e.[title],
+    e.[severity],
+    e.[description] AS event_description,
+    DATEADD(HOUR, 3, e.[event_time]) AS event_time_kuwait
+FROM [db_owner].[tb_host_events] AS e
+JOIN [db_owner].[tb_hosts] AS h
+    ON e.[host_id] = h.[id]
+WHERE
+    e.[event_time] >= DATEADD(
+        MINUTE,
+        -?,
+        DATEADD(HOUR, -3, SYSDATETIME())
+    )
+    AND e.[title] IN ('Connection Quality', 'Host State')
+    AND (
+        h.[description] LIKE 'Server Support%'
+        OR h.[description] LIKE 'Call Center%'
+        OR h.[description] LIKE 'Database%'
+        OR h.[description] LIKE 'DevOps - OpenShift%'
+        OR h.[description] LIKE 'Storage & Sun%'
+        OR h.[description] LIKE 'Telephony%'
+    )
+ORDER BY e.[event_time] DESC;
+```
+
+Parameter `?` is `minutesBack`.
+
+### 8.4 CCTV Query
+
+```sql
+SELECT
+    h.[label],
+    h.[host],
+    h.[description] AS host_description,
+    e.[title],
+    e.[severity],
+    e.[description] AS event_description,
+    DATEADD(HOUR, 3, e.[event_time]) AS event_time_kuwait
+FROM [dbo].[tb_host_events] AS e
+JOIN [dbo].[tb_hosts] AS h
+    ON e.[host_id] = h.[id]
+WHERE
+    e.[event_time] >= DATEADD(
+        MINUTE,
+        -?,
+        DATEADD(HOUR, -3, SYSDATETIME())
+    )
+    AND e.[title] IN ('Connection Quality', 'Host State')
+    AND h.[label] NOT LIKE 'CCTV%'
+ORDER BY e.[event_time] DESC;
+```
+
+### 8.5 Important EMCO Fields to Normalize
+
+```text
+label
+host
+host_description
+title
+severity
+event_description
+event_time_kuwait
+source_domain: KFH / CCTV
+```
+
+### 8.6 Development Notes
+
+- Execute KFH and CCTV queries in parallel.
+- Set `PreparedStatement#setQueryTimeout` using `emco.query-timeout-seconds`.
+- Convert EMCO UTC event time to Kuwait time using `DATEADD(HOUR, 3, e.event_time)`.
+
+---
+
+## 9. Lansweeper Integration
+
+Lansweeper data is read from Excel files exported on the Lansweeper server. The current implementation retrieves files over WinRM/PowerShell, base64-decodes them, and parses with Apache POI.
+
+### 9.1 Configuration
+
+```properties
+lansweeper.server.enabled=true
+lansweeper.server.host=<lansweeper-server-fqdn>
+lansweeper.server.username=${BMC_ANALYSIS_LANSWEEPER_SERVER_USERNAME:}
+lansweeper.server.password=${BMC_ANALYSIS_LANSWEEPER_SERVER_PASSWORD:}
+lansweeper.server.domain=<domain>
+lansweeper.server.export-path=E:\Program Files (x86)\Lansweeper\Service\export
+lansweeper.server.winrm-port=5986
+lansweeper.server.use-https=true
+lansweeper.server.auth-method=Kerberos
+lansweeper.server.connection-timeout-seconds=120
+
+lansweeper.server.workstations.excel-filename=2026-KFHK-Severs-Events-Hourly.xlsx
+lansweeper.server.workstations.sharepoint-folder=BMC Analysis
+
+lansweeper.server.software-changes.excel-filename=<optional-file-name>.xlsx
+lansweeper.server.software-changes.sharepoint-folder=BMC Analysis
+```
+
+Current default server in this project:
+
+```text
+shvlanap01.corp.kfh.kw
+```
+
+UNC export path pattern:
+
+```text
+\\{lansweeper.server.host}\E$\Program Files (x86)\Lansweeper\Service\export
+```
+
+### 9.2 PowerShell File Read Pattern
+
+```powershell
+$secPassword = ConvertTo-SecureString '<password>' -AsPlainText -Force
+$credential = New-Object System.Management.Automation.PSCredential('<domain>\<username>', $secPassword)
+
+$session = New-PSSession `
+  -ComputerName '<lansweeper-server>' `
+  -Port 5986 `
+  -UseSSL `
+  -Credential $credential `
+  -Authentication Kerberos
+
+$result = Invoke-Command -Session $session -ScriptBlock {
+  param($path)
+  if (Test-Path $path) {
+    $bytes = [System.IO.File]::ReadAllBytes($path)
+    [Convert]::ToBase64String($bytes)
+  } else {
+    throw "File not found: $path"
+  }
+} -ArgumentList 'E:\Program Files (x86)\Lansweeper\Service\export\2026-KFHK-Severs-Events-Hourly.xlsx'
+
+Remove-PSSession $session
+Write-Output $result
+```
+
+### 9.3 Scan Events Excel Columns
+
+Expected columns for server scan / Windows Event Log file:
+
+```text
+IPAddress
+FQDN
+AssetName
+Eventcode
+Logfile
+Message
+```
+
+Normalize to:
+
+```text
+ipAddress
+fqdn
+assetName
+eventCode
+logFile
+message
+severity/category inferred from message and event code
+```
+
+### 9.4 Software Changes Excel Columns
+
+Expected columns:
+
+```text
+Assetname
+Domain
+ChangeType
+Software
+Version
+Publisher
+Lastchanged
+Caption
+```
+
+Normalize to:
+
+```text
+assetName
+domain
+changeType: + installed / - removed
+software
+version
+publisher
+lastChanged
+caption / OS
+```
+
+### 9.5 Development Notes
+
+- Enforce max Excel file size before parsing.
+- Use Apache POI `WorkbookFactory` or `XSSFWorkbook`.
+- Header matching should be case-insensitive where possible.
+- Treat software changes as possible root-cause indicators when changes precede alerts on the same server.
+
+---
+
+## 10. AI Model / Azure OpenAI Development Guide
+
+The current system uses a hybrid two-stage AI model flow:
+
+```text
+Stage 1: Fast preprocessing / summarization / grouping
+Stage 2: Deep reasoning root-cause analysis
+Final Merge: Consolidate parallel Stage 2 outputs into final report
+Embeddings: Optional GraphRAG semantic similarity support
+```
+
+### 10.1 Azure OpenAI Configuration
+
+Use deployment names and API versions as config, not hard-coded values.
+
+```properties
+azure.openai.endpoint=https://<resource>.cognitiveservices.azure.com/
+azure.openai.api-key=${BMC_ANALYSIS_AZURE_OPENAI_API_KEY:}
+azure.openai.deployment-name=gpt-5.2
+azure.openai.api-version=2025-04-01-preview
+azure.openai.timeout-minutes=60
+
+azure.openai.secondary.endpoint=https://<secondary-resource>.cognitiveservices.azure.com/
+azure.openai.secondary.api-key=${BMC_ANALYSIS_AZURE_OPENAI_SECONDARY_API_KEY:}
+azure.openai.secondary.deployment-name=gpt-5.2
+azure.openai.secondary.api-version=2025-04-01-preview
+
+azure.openai.reasoning.endpoint=https://<reasoning-resource>.cognitiveservices.azure.com/
+azure.openai.reasoning.api-key=${BMC_ANALYSIS_AZURE_OPENAI_REASONING_API_KEY:}
+azure.openai.reasoning.deployment-name=gpt-5.2
+azure.openai.reasoning.api-version=2025-04-01-preview
+azure.openai.reasoning.timeout-minutes=60
+
+azure.openai.merge.reasoning-effort=high
+azure.openai.merge.max-completion-tokens=50000
+```
+
+### 10.2 Stage 1 — Chat Completions API
+
+**Purpose:** fast preprocessing, summarization, deduplication hints, source coverage.
+
+**Method:** `POST`
+**URL:**
+
+```text
+{azure.openai.endpoint}/openai/deployments/{deployment}/chat/completions?api-version={apiVersion}
+```
+
+**Headers:**
+
+```http
+Content-Type: application/json
+Accept: application/json
+api-key: <azure-openai-api-key>
+```
+
+**Body:**
+
+```json
+{
+  "model": "gpt-5.2",
+  "messages": [
+    {
+      "role": "system",
+      "content": "<stage-1-system-prompt>"
+    },
+    {
+      "role": "user",
+      "content": "<chunked-alert-data>"
+    }
+  ],
+  "temperature": 0.1,
+  "max_completion_tokens": 16000
+}
+```
+
+### 10.3 Stage 2 — Responses API
+
+**Purpose:** deep incident analysis, root-cause reasoning, correlation map, clear root-cause chain, correlated alert chains.
+
+**Method:** `POST`
+**URL:**
+
+```text
+{azure.openai.reasoning.endpoint}/openai/responses?api-version={apiVersion}
+```
+
+**Headers:**
+
+```http
+Content-Type: application/json
+Accept: application/json
+api-key: <azure-openai-api-key>
+```
+
+**Body:**
+
+```json
+{
+  "model": "gpt-5.2",
+  "input": [
+    {
+      "role": "system",
+      "content": "<analysis-prompt>"
+    },
+    {
+      "role": "user",
+      "content": "<stage-1-output-or-alert-data>"
+    }
+  ],
+  "max_output_tokens": 100000,
+  "reasoning": {
+    "effort": "high"
+  }
+}
+```
+
+### 10.4 Final Merge — Responses API
+
+**Purpose:** merge multi-chunk analysis into one final report.
+
+**Method:** `POST`
+**URL:**
+
+```text
+{final-merge-endpoint}/openai/responses?api-version={apiVersion}
+```
+
+**Body:**
+
+```json
+{
+  "model": "gpt-5.2",
+  "input": [
+    {
+      "role": "system",
+      "content": "<merge-instructions>"
+    },
+    {
+      "role": "user",
+      "content": "<combined-stage-2-analysis>"
+    }
+  ],
+  "reasoning": {
+    "effort": "high"
+  },
+  "max_output_tokens": 50000
+}
+```
+
+### 10.5 Embedding Model
+
+Used by GraphRAG / semantic similarity.
+
+```properties
+embedding.enabled=true
+embedding.sweden.endpoint=https://<resource>.cognitiveservices.azure.com/openai/deployments/text-embedding-3-large/embeddings?api-version=2024-12-01-preview
+embedding.sweden.apiKey=${BMC_ANALYSIS_AZURE_OPENAI_API_KEY:}
+embedding.centralus.endpoint=https://<resource>.cognitiveservices.azure.com/openai/deployments/text-embedding-3-large/embeddings?api-version=2024-12-01-preview
+embedding.centralus.apiKey=${BMC_ANALYSIS_AZURE_OPENAI_REASONING_QUATERNARY_API_KEY:}
+```
+
+**Method:** `POST`
+**Headers:**
+
+```http
+Content-Type: application/json
+api-key: <embedding-api-key>
+```
+
+**Single input body:**
+
+```json
+{
+  "input": "<text-to-embed>"
+}
+```
+
+**Batch body:**
+
+```json
+{
+  "input": [
+    "<text-1>",
+    "<text-2>"
+  ]
+}
+```
+
+### 10.6 AI Report Requirements
+
+The final report should include:
+
+```text
+EXECUTIVE SUMMARY
+ISSUE-NN sections
+AFFECTED INFRASTRUCTURE
+WHAT HAPPENED
+KEY EVIDENCE
+ROOT CAUSE
+IMMEDIATE ACTIONS
+CORRELATION MAP
+TOP 5 PRIORITIES
+ESCALATION TRIGGERS
+OPERATIONAL RECOMMENDATIONS
+CLEAR ROOT-CAUSE CHAIN
+CORRELATED ALERT CHAINS
+```
+
+Important AppDynamics rule:
+
+```text
+Any AppDynamics event in CORRELATION MAP, CLEAR ROOT-CAUSE CHAIN, or CORRELATED ALERT CHAINS must show Event ID <Alert ID / Violation ID / Snapshot ID>. If absent, write Event ID: Not specified in alert data.
+```
+
+---
+
+## 11. Normalized Event Contract for New System
+
+If developing from scratch, normalize every source into one common structure before AI analysis.
+
+```json
+{
+  "source": "BMC|SCOM|AppDynamics|vROps|EMCO|Lansweeper",
+  "sourceEventId": "<native id or Not specified>",
+  "timestamp": "2026-06-17T10:15:00+03:00",
+  "severity": "CRITICAL|WARNING|INFO|UNKNOWN",
+  "status": "OPEN|CLOSED|ACTIVE|RESOLVED|UNKNOWN",
+  "host": "<fqdn-or-device>",
+  "ipAddress": "<ip>",
+  "application": "<application>",
+  "service": "<service>",
+  "component": "<tier/node/resource/object>",
+  "title": "<short alert name>",
+  "message": "<full raw message, never truncate before AI>",
+  "urlOrEndpoint": "<api/url/business transaction>",
+  "raw": {
+    "sourceSpecificField": "sourceSpecificValue"
+  }
+}
+```
+
+Source-specific ID mapping:
+
+| Source | Preferred native ID |
+|---|---|
+| BMC | `_id`, event id, alert id if present |
+| SCOM | `Id` |
+| AppDynamics | `Alert ID`, `Violation ID`, or Snapshot `id` |
+| vROps | `id` / alert id |
+| EMCO | no stable native ID; derive from host + title + event time |
+| Lansweeper | derive from AssetName + Eventcode + Logfile + Message + timestamp if available |
+
+---
+
+## 12. End-to-End Runner Order
+
+Recommended order:
+
+1. Fetch BMC Helix events.
+2. Fetch vROps alerts and enrich resource details.
+3. Fetch SCOM alerts through WinRM/PowerShell.
+4. Fetch AppDynamics applications, errors, violations, and slow transactions.
+5. Fetch EMCO KFH and CCTV SQL alerts in parallel.
+6. Fetch Lansweeper Excel exports through WinRM and parse scan/software sheets.
+7. Deduplicate per source.
+8. Normalize all events to common model.
+9. Build source counts and full alert context.
+10. Send to AI Stage 1 and Stage 2.
+11. Merge final report.
+12. Generate Markdown/HTML/Teams/email outputs.
+
+---
+
+## 13. Development Checklist for Another System
+
+### Infrastructure prerequisites
+
+- [ ] Java 17+ installed.
+- [ ] Maven wrapper or Maven installed.
+- [ ] Network access to BMC, vROps, AppDynamics, SQL Server, SCOM, Lansweeper, and Azure OpenAI endpoints.
+- [ ] WinRM enabled for SCOM and Lansweeper servers.
+- [ ] Service accounts created with least privilege.
+- [ ] SQL firewall allows access to EMCO databases.
+- [ ] Azure OpenAI deployments created for analysis and embeddings.
+
+### Connector implementation
+
+- [ ] BMC login and event search implemented.
+- [ ] vROps token acquire, alert paging, and resource enrichment implemented.
+- [ ] SCOM PowerShell remoting query implemented.
+- [ ] AppDynamics application discovery, snapshots, violations, and slow transactions implemented.
+- [ ] EMCO SQL queries implemented with parameterized `minutesBack`.
+- [ ] Lansweeper WinRM file read and Excel parsing implemented.
+- [ ] Normalized event model implemented.
+- [ ] Per-source deduplication implemented.
+
+### AI implementation
+
+- [ ] Stage 1 Chat Completions request implemented.
+- [ ] Stage 2 Responses API request implemented.
+- [ ] Final merge Responses API request implemented.
+- [ ] Retry/failover logic implemented for 429 and 5xx.
+- [ ] AppDynamics event ID rule included in prompts.
+- [ ] Output renderer supports correlation map and causal chain sections.
+
+---
+
+## 14. Quick Validation Commands
+
+From the project root:
+
+```powershell
+Set-Location -LiteralPath 'E:\NetBeansProjects\BMC Analysis'
+.\mvnw.cmd -q -DskipTests compile
+```
+
+Run the application:
+
+```powershell
+Set-Location -LiteralPath 'E:\NetBeansProjects\BMC Analysis'
+.\mvnw.cmd spring-boot:run
+```
+
+Check required environment variables in PowerShell:
+
+```powershell
+Get-ChildItem Env:BMC_ANALYSIS_* | Sort-Object Name
+```
+
+Test WinRM connectivity:
+
+```powershell
+Test-WSMan -ComputerName '<server-fqdn>' -Port 5986 -UseSSL
+```
+
+Test SQL connectivity manually if needed:
+
+```powershell
+# Example only; use your approved SQL client or PowerShell SQL module in production.
+Test-NetConnection -ComputerName '<sql-server>' -Port 11433
+```
+
+---
+
+## 15. Files in This Project That Implement These Details
+
+| Area | Main files |
+|---|---|
+| BMC config/API | `src/main/java/com/bmcanalysis/config/BmcConfig.java`, `src/main/java/com/bmcanalysis/service/impl/BmcApiServiceImpl.java`, `src/main/java/com/bmcanalysis/dto/EventSearchRequest.java` |
+| vROps config/API | `src/main/java/com/bmcanalysis/config/VropsConfig.java`, `src/main/java/com/bmcanalysis/service/impl/VropsApiServiceImpl.java`, `src/main/java/com/bmcanalysis/dto/VropsAlertData.java` |
+| SCOM config/API | `src/main/java/com/bmcanalysis/config/ScomConfig.java`, `src/main/java/com/bmcanalysis/service/impl/ScomApiServiceImpl.java`, `src/main/java/com/bmcanalysis/dto/ScomAlertData.java` |
+| AppDynamics config/API | `src/main/java/com/bmcanalysis/config/AppDynamicsConfig.java`, `src/main/java/com/bmcanalysis/service/impl/AppDynamicsApiServiceImpl.java`, `src/main/java/com/bmcanalysis/dto/AppDynamicsAlertData.java` |
+| EMCO config/API | `src/main/java/com/bmcanalysis/config/EmcoConfig.java`, `src/main/java/com/bmcanalysis/service/impl/EmcoApiServiceImpl.java`, `src/main/java/com/bmcanalysis/dto/EmcoAlertData.java` |
+| Lansweeper config/API | `src/main/java/com/bmcanalysis/config/LansweeperConfig.java`, `src/main/java/com/bmcanalysis/service/impl/LansweeperApiServiceImpl.java`, `src/main/java/com/bmcanalysis/dto/LansweeperScanAlertData.java`, `src/main/java/com/bmcanalysis/dto/LansweeperSoftwareChangeData.java` |
+| AI model | `src/main/java/com/bmcanalysis/config/AzureOpenAiConfig.java`, `src/main/java/com/bmcanalysis/service/impl/AzureOpenAiServiceImpl.java`, `src/main/java/com/bmcanalysis/pipeline/embedding/AzureEmbeddingServiceImpl.java` |
+| Main runner | `src/main/java/com/bmcanalysis/runner/BmcEventRunner.java` |
+| Active config | `src/main/resources/application.properties` |
+| Env var helper | `set-bmc-analysis-env-vars.ps1` |
+
+---
+
+## 16. Minimal Pseudocode for New Development
+
+```java
+List<NormalizedEvent> all = new ArrayList<>();
+
+all.addAll(bmcConnector.fetch(minutesBack));
+all.addAll(vropsConnector.fetch(hoursBack));
+all.addAll(scomConnector.fetch(hoursBack));
+all.addAll(appDynamicsConnector.fetch(durationMinutes));
+all.addAll(emcoConnector.fetch(minutesBack));
+all.addAll(lansweeperConnector.fetch());
+
+List<NormalizedEvent> deduped = deduplicate(all);
+String stage1Input = buildPromptInput(deduped);
+
+String stage1 = azureOpenAi.chatCompletions(stage1SystemPrompt, stage1Input);
+String stage2 = azureOpenAi.responses(analysisPrompt, stage1, "high", 100000);
+String finalReport = azureOpenAi.responses(mergePrompt, stage2, "high", 50000);
+
+renderMarkdown(finalReport);
+sendTeamsOrEmail(finalReport);
+```
+
+---
+
+## 17. AI-Ready Development Requirements by Tool
+
+Use this section when asking an AI model or another developer to rebuild the integrations. Each tool has a clear development contract: configuration, authentication, fetch logic, normalization, edge cases, and acceptance criteria.
+
+### 17.1 Master AI Implementation Prompt
+
+Copy this prompt when you want an AI model to generate a new implementation from this guide:
+
+```text
+You are developing a multi-source infrastructure alert analysis system.
+
+Build connectors for BMC Helix, VMware vROps/Aria Operations, Microsoft SCOM, AppDynamics, EMCO Ping Monitor, and Lansweeper.
+
+Use secure environment-variable based configuration only. Never hard-code passwords, API keys, access secrets, JWT tokens, Basic Auth values, or webhook URLs.
+
+For every connector:
+1. Create a config object/class with enable flag, endpoint/host, credentials, timeout, and time-window settings.
+2. Create a service/client that fetches source alerts/events.
+3. Handle failures per connector without crashing the full run.
+4. Normalize every source event into the common NormalizedEvent contract.
+5. Preserve full raw messages/descriptions for AI analysis.
+6. Deduplicate within each source using native IDs where available.
+7. Add structured logging with secret masking.
+8. Add validation for required fields and safe URL/path/SQL input handling.
+9. Return empty lists when a connector is disabled or not configured.
+10. Add tests/mocks for success, auth failure, empty response, malformed response, timeout, and pagination/large file cases.
+
+Then build an AI analysis pipeline:
+1. Collect normalized events from all connectors.
+2. Build source counts and source-specific evidence.
+3. Send chunks to Azure OpenAI Stage 1 using Chat Completions.
+4. Send consolidated data to Azure OpenAI Stage 2 using Responses API with reasoning effort high.
+5. Merge final outputs using Responses API.
+6. Ensure final report includes EXECUTIVE SUMMARY, ISSUE sections, CORRELATION MAP, CLEAR ROOT-CAUSE CHAIN, and CORRELATED ALERT CHAINS.
+7. Any AppDynamics event in correlation maps or chains must include Event ID <Alert ID / Violation ID / Snapshot ID>. If absent, write Event ID: Not specified in alert data.
+```
+
+### 17.2 Common `NormalizedEvent` Model Required by AI
+
+Every connector must output this model or an equivalent structure before the AI model receives the data.
+
+```json
+{
+  "source": "BMC|vROps|SCOM|AppDynamics|EMCO|Lansweeper",
+  "sourceEventId": "<native id or derived id or Not specified>",
+  "timestamp": "<ISO-8601 timestamp with timezone when possible>",
+  "severity": "<source severity normalized to CRITICAL|WARNING|INFO|UNKNOWN>",
+  "status": "<OPEN|CLOSED|ACTIVE|RESOLVED|UNKNOWN>",
+  "host": "<server fqdn, hostname, device, or Not specified>",
+  "ipAddress": "<ip address or Not specified>",
+  "application": "<application name or Not specified>",
+  "service": "<service name or Not specified>",
+  "component": "<tier, node, resource, object, interface, database, or Not specified>",
+  "title": "<alert title/name>",
+  "message": "<full raw source message/description; do not truncate>",
+  "urlOrEndpoint": "<URL, API endpoint, business transaction, or Not specified>",
+  "layer": "NETWORK|DNS_AD|STORAGE|CLUSTER_VM|OS|DATABASE|MIDDLEWARE|WEB|APPLICATION|CHANNEL|UNKNOWN",
+  "raw": {
+    "sourceSpecificFields": "keep original source payload or important fields"
+  }
+}
+```
+
+AI prompt input should group normalized events by source and include counts:
+
+```text
+Total alerts: X (BMC: A, vROps: B, SCOM: C, AppDynamics: D, EMCO: E, Lansweeper: F)
+
+=== BMC EVENTS ===
+<normalized BMC records>
+
+=== VROPS ALERTS ===
+<normalized vROps records>
+
+=== SCOM ALERTS ===
+<normalized SCOM records>
+
+=== APPDYNAMICS EVENTS ===
+<normalized AppDynamics records with Event ID>
+
+=== EMCO EVENTS ===
+<normalized EMCO records>
+
+=== LANSWEEPER EVENTS ===
+<normalized Lansweeper records>
+```
+
+---
+
+### 17.3 BMC Helix Connector Development Contract
+
+#### Goal
+
+Develop a REST connector that authenticates to BMC Helix, fetches recent non-OK events, paginates with `search_after`, deduplicates events, and normalizes them for AI root-cause analysis.
+
+#### Required configuration
+
+```properties
+bmc.enabled=true
+bmc.base-url=https://<bmc-tenant>.onbmc.com
+bmc.access-key=${BMC_ANALYSIS_BMC_ACCESS_KEY:}
+bmc.access-secret-key=${BMC_ANALYSIS_BMC_ACCESS_SECRET_KEY:}
+bmc.login-endpoint=/ims/api/v1/access_keys/login
+bmc.events-endpoint=/events-service/api/v1.0/events/msearch
+bmc.minutes-back=60
+bmc.max-events=500
+bmc.page-size=100
+bmc.timeout-seconds=120
+```
+
+#### Implementation steps
+
+1. Validate `base-url`, `access-key`, and `access-secret-key`.
+2. `POST` login request to `{base-url}{login-endpoint}`.
+3. Extract `json_web_token` from the response.
+4. Build event query for `creation_time >= now-{minutesBack}m` and `!severity:OK`.
+5. `POST` query to `{base-url}{events-endpoint}` with `Authorization: Bearer <jwt>`.
+6. Collect hits from response.
+7. If the response includes hit `sort`, continue with `search_after` until:
+   - no hits are returned,
+   - max events is reached,
+   - sort token stops advancing,
+   - or the returned page is smaller than page size.
+8. Deduplicate by native `_id`; fallback to index + sort + source hash.
+9. Normalize to `NormalizedEvent`.
+
+#### BMC fields the AI needs
+
+```text
+source_hostname, source_address, _service_name, alert_name, msg, class, status, priority, mc_object, severity, creation_time, modification_time
+```
+
+#### BMC normalization rules
+
+| Normalized field | BMC source |
+|---|---|
+| `source` | `BMC` |
+| `sourceEventId` | hit `_id` or source alert/event id if present |
+| `timestamp` | `creation_time` |
+| `severity` | `_source.severity` or `_source.priority` |
+| `status` | `_source.status` |
+| `host` | `_source.source_hostname` |
+| `ipAddress` | `_source.source_address` |
+| `service` | `_source._service_name` |
+| `title` | `_source.alert_name` |
+| `message` | full `_source.msg` |
+| `component` | `_source.mc_object` or `_source.class` |
+
+#### Edge cases
+
+- Login returns HTTP 401/403.
+- Login response has no `json_web_token`.
+- Events endpoint returns malformed JSON.
+- Events endpoint returns duplicate hits.
+- Events endpoint returns no `sort` token.
+- Event message is very long; keep raw message for AI but summarize only for UI if needed.
+
+#### Acceptance criteria
+
+- Connector returns an empty list when disabled.
+- Connector fetches at least one valid event when BMC has data.
+- Connector masks access key/secret and JWT in logs.
+- Connector does not crash other connectors on failure.
+- AI input includes full BMC message text and exact host/service names.
+
+---
+
+### 17.4 vROps / Aria Operations Connector Development Contract
+
+#### Goal
+
+Develop a REST connector that acquires a vROps token, fetches alert pages, filters by time/status, enriches alerts with resource details, and normalizes them for AI analysis.
+
+#### Required configuration
+
+```properties
+vrops.enabled=true
+vrops.host=<vrops-host-or-ip>
+vrops.username=${BMC_ANALYSIS_VROPS_USERNAME:}
+vrops.password=${BMC_ANALYSIS_VROPS_PASSWORD:}
+vrops.auth-source=<auth-source-name>
+vrops.page-size=1000
+vrops.max-pages=200
+vrops.hours=1
+vrops.workers=12
+vrops.verify-ssl=true
+vrops.timeout-seconds=120
+```
+
+#### Implementation steps
+
+1. Build base URL: `https://{vrops.host}/suite-api/api`.
+2. Acquire token with `POST /auth/token/acquire`.
+3. Store token in memory; optionally cache token in a local secure file.
+4. Fetch alerts using `GET /alerts?page={page}&pageSize={pageSize}&_no_links=true`.
+5. Add header `Authorization: vRealizeOpsToken <token>`.
+6. Filter alerts by `startTimeUTC`, optionally `updateTimeUTC` and `cancelTimeUTC`.
+7. Stop pagination on empty page, old page, max pages, or invalid pagination.
+8. Collect unique `resourceId` values.
+9. Enrich using `GET /resources/{resourceId}?_no_links=true`.
+10. Normalize to `NormalizedEvent`.
+
+#### vROps fields the AI needs
+
+```text
+id, alertDefinitionName, alertDefinitionId, criticality, status, startTimeUTC, updateTimeUTC, cancelTimeUTC, resourceId, resourceKey.name, resourceKey.adapterKindKey, resourceKey.resourceKindKey, alertType, subType, alertImpact, resourceHealth, resourceHealthValue
+```
+
+#### vROps normalization rules
+
+| Normalized field | vROps source |
+|---|---|
+| `source` | `vROps` |
+| `sourceEventId` | alert `id` |
+| `timestamp` | `startTimeUTC` converted from epoch millis |
+| `severity` | `criticality` |
+| `status` | `status` |
+| `host` | `resourceKey.name` when resource is VM/host |
+| `component` | `resourceKindKey` / `adapterKindKey` |
+| `title` | `alertDefinitionName` |
+| `message` | alert definition + impact + resource details |
+
+#### Edge cases
+
+- Token API returns HTML instead of JSON.
+- Token response has no `token` field.
+- Alert page returns invalid pagination error.
+- Alert references a resource that no longer exists.
+- Resource enrichment fails; keep original alert anyway.
+- SSL verification may fail in development; keep SSL bypass behind config only.
+
+#### Acceptance criteria
+
+- Connector renews or reacquires token when expired.
+- Connector can fetch multiple pages.
+- Connector enriches resource names and health where possible.
+- Connector continues with partial data when enrichment fails.
+- AI input includes resource name, resource kind, criticality, and alert definition.
+
+---
+
+### 17.5 SCOM Connector Development Contract
+
+#### Goal
+
+Develop a WinRM/PowerShell connector that executes SCOM cmdlets on the management server, returns JSON, sanitizes it, deduplicates alerts, and normalizes them for AI analysis.
+
+#### Required configuration
+
+```properties
+scom.enabled=true
+scom.management-server=<scom-management-server-fqdn>
+scom.username=${BMC_ANALYSIS_SCOM_USERNAME:}
+scom.password=${BMC_ANALYSIS_SCOM_PASSWORD:}
+scom.domain=<domain>
+scom.hours-back=1
+scom.connection-timeout-seconds=60
+scom.winrm-port=5986
+scom.use-https=true
+scom.auth-method=Kerberos
+scom.verify-ssl=true
+```
+
+#### Implementation steps
+
+1. Build full username as `{domain}\{username}` unless username already contains domain or UPN.
+2. Build a local PowerShell command using `powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass`.
+3. Create a PSCredential from username/password.
+4. Use `Invoke-Command` to run the remote SCOM script.
+5. Remote script imports `OperationsManager` module.
+6. Remote script runs `New-SCOMManagementGroupConnection`.
+7. Remote script runs `Get-SCOMAlert` and selects required fields.
+8. Convert result to JSON with `ConvertTo-Json -Depth 10 -Compress`.
+9. Extract JSON from PowerShell output.
+10. Remove invalid control characters.
+11. Parse JSON and deduplicate by `Id`.
+12. Normalize to `NormalizedEvent`.
+
+#### SCOM fields the AI needs
+
+```text
+Id, Name, Severity, Priority, Category, ResolutionState, MonitoringObjectName, MonitoringObjectPath, NetbiosComputerName, TimeRaised, TimeResolved, LastModified, Description
+```
+
+#### SCOM normalization rules
+
+| Normalized field | SCOM source |
+|---|---|
+| `source` | `SCOM` |
+| `sourceEventId` | `Id` |
+| `timestamp` | `TimeRaised` or current state-change time if available |
+| `severity` | `Severity` |
+| `status` | `ResolutionState` |
+| `host` | `NetbiosComputerName` or parsed from `MonitoringObjectPath` |
+| `component` | `MonitoringObjectName` / `MonitoringObjectPath` |
+| `title` | `Name` |
+| `message` | full `Description` |
+
+#### Edge cases
+
+- WinRM connection timeout.
+- Kerberos SPN/auth failure.
+- SCOM module missing on remote server.
+- PowerShell returns warning text before JSON.
+- PowerShell returns one object instead of array.
+- Alert description contains invalid control characters.
+- SCOM local time differs from Java/server UTC; over-fetch and filter in code.
+
+#### Acceptance criteria
+
+- Connector returns `[]` when no alerts exist.
+- Connector captures all selected SCOM fields.
+- Connector deduplicates repeated alert updates by `Id`.
+- Connector does not log raw passwords.
+- AI input includes SCOM `Id`, host/object path, full description, and resolution state.
+
+---
+
+### 17.6 AppDynamics Connector Development Contract
+
+#### Goal
+
+Develop a REST connector that discovers AppDynamics applications, fetches error snapshots, health-rule violations, and slow transactions, preserves event IDs, and normalizes records for AI correlation.
+
+#### Required configuration
+
+```properties
+appdynamics.enabled=true
+appdynamics.controller=https://<appd-controller>/controller
+appdynamics.username=${BMC_ANALYSIS_APPDYNAMICS_USERNAME:}
+appdynamics.password=${BMC_ANALYSIS_APPDYNAMICS_PASSWORD:}
+appdynamics.duration-minutes=60
+appdynamics.timeout-seconds=120
+appdynamics.max-workers=15
+appdynamics.verify-ssl=true
+appdynamics.fetch-errors=true
+appdynamics.fetch-violations=true
+appdynamics.fetch-slow-transactions=true
+```
+
+#### Implementation steps
+
+1. Create WebClient/HTTP client with controller base URL.
+2. Add Basic Auth from username/password.
+3. Fetch applications with `GET /rest/applications?output=JSON`.
+4. For each app, optionally in parallel:
+   - Fetch request snapshots for errors.
+   - Fetch health-rule violations.
+   - Fetch request snapshots for slow transactions.
+5. For request snapshots, keep records where:
+   - `userExperience == ERROR`, or
+   - `errorOccurred == true`, or
+   - `userExperience in [SLOW, VERY_SLOW, STALL]` for slow transactions.
+6. For violations, support both response formats:
+   - array,
+   - object with `policy-violations`.
+7. Extract snapshot `id` as Snapshot ID.
+8. Extract violation `id` as Violation ID.
+9. Build `sourceEventId` from `Violation ID`, `Snapshot ID`, or `Alert ID`.
+10. Normalize to `NormalizedEvent`.
+
+#### AppDynamics fields the AI needs
+
+```text
+Application ID, Application Name, Alert ID, Snapshot ID, Violation ID, Violation Name, Alert Type, Severity, Status, Start Time, End Time, Description, Affected Entity Name, Affected Entity Type, Business Transaction ID, Business Transaction Name, Tier ID, Tier Name, Node Name, URL, Deep Link URL, Time Taken, Error Details, Error Summary, Stack Trace
+```
+
+#### AppDynamics normalization rules
+
+| Normalized field | AppDynamics source |
+|---|---|
+| `source` | `AppDynamics` |
+| `sourceEventId` | `Violation ID`, `Snapshot ID`, or `Alert ID` |
+| `timestamp` | `serverStartTime` or `startTimeInMillis` |
+| `severity` | `severity`, `userExperience`, or computed status |
+| `status` | `status` or `userExperience` |
+| `host` | `nodeName` or `affectedEntityName` if server-like |
+| `application` | `applicationName` |
+| `service` | `tierName` or `affectedEntityName` |
+| `component` | tier/node/business transaction |
+| `title` | violation name, error summary, or alert type |
+| `message` | full error details, description, stack trace, and transaction details |
+| `urlOrEndpoint` | URL or business transaction name |
+
+#### Mandatory AppDynamics Event ID rule for AI
+
+Every AppDynamics record passed to AI must expose a visible ID field:
+
+```text
+AppDynamics Event ID: <Alert ID / Violation ID / Snapshot ID or Not specified in alert data>
+```
+
+In final reports, correlation maps, clear root-cause chains, and correlated alert chains must render AppDynamics links like:
+
+```text
+[AppDynamics 20:55] <application/component> — <short alert text> (Event ID: <id>)
+```
+
+If no ID exists:
+
+```text
+[AppDynamics 20:55] <application/component> — <short alert text> (Event ID: Not specified in alert data)
+```
+
+#### Edge cases
+
+- Some AppDynamics applications may not support request snapshots and return HTTP 400.
+- Controller may return empty arrays.
+- Violation response may be array or object.
+- Snapshot fields differ by app type.
+- Slow transactions and error snapshots use the same endpoint but different filters.
+- Do not lose event IDs during CSV export or AI prompt construction.
+
+#### Acceptance criteria
+
+- Connector fetches app list and per-app events.
+- Connector preserves Application ID and Event ID.
+- Connector supports errors, violations, and slow transactions independently via toggles.
+- Connector continues when one application fails.
+- AI output can always display AppDynamics Event ID in correlations and chains.
+
+---
+
+### 17.7 EMCO Ping Monitor Connector Development Contract
+
+#### Goal
+
+Develop a SQL Server connector that reads EMCO Ping Monitor events from KFH and CCTV databases, executes parameterized queries, maps rows, and normalizes network connectivity events for AI correlation.
+
+#### Required configuration
+
+```properties
+emco.enabled=true
+emco.sql-server=<sql-server-host>
+emco.sql-port=11433
+emco.kfh-database=<kfh-emco-db>
+emco.kfh-username=${BMC_ANALYSIS_EMCO_KFH_USERNAME:}
+emco.kfh-password=${BMC_ANALYSIS_EMCO_KFH_PASSWORD:}
+emco.cctv-database=<cctv-emco-db>
+emco.cctv-username=${BMC_ANALYSIS_EMCO_CCTV_USERNAME:}
+emco.cctv-password=${BMC_ANALYSIS_EMCO_CCTV_PASSWORD:}
+emco.minutes-back=60
+emco.connection-timeout-seconds=30
+emco.query-timeout-seconds=120
+emco.encrypt=true
+emco.trust-server-certificate=false
+```
+
+#### Implementation steps
+
+1. Build JDBC URL for KFH database.
+2. Build JDBC URL for CCTV database.
+3. Open SQL Server connections using configured credentials.
+4. Execute KFH and CCTV queries in parallel.
+5. Use `PreparedStatement` with `minutesBack` parameter.
+6. Set query timeout.
+7. Map `ResultSet` rows to EMCO DTOs.
+8. Derive stable ID from `sourceDomain + label + host + title + event_time_kuwait`.
+9. Normalize to `NormalizedEvent`.
+
+#### EMCO fields the AI needs
+
+```text
+label, host, host_description, title, severity, event_description, event_time_kuwait, source_domain
+```
+
+#### EMCO normalization rules
+
+| Normalized field | EMCO source |
+|---|---|
+| `source` | `EMCO` |
+| `sourceEventId` | derived ID |
+| `timestamp` | `event_time_kuwait` |
+| `severity` | `severity` |
+| `status` | inferred from `title` / `event_description` |
+| `host` | `label` or `host` |
+| `ipAddress` | `host` if IP address |
+| `component` | `host_description` |
+| `title` | `title` |
+| `message` | full `event_description` |
+| `layer` | usually `NETWORK` |
+
+#### Edge cases
+
+- One database succeeds and the other fails.
+- SQL login timeout.
+- SQL certificate validation failure.
+- Result set has null label/host.
+- Events are in UTC and require Kuwait time conversion.
+
+#### Acceptance criteria
+
+- Connector queries both KFH and CCTV domains.
+- Connector returns combined list while preserving `source_domain`.
+- Connector uses parameterized SQL only.
+- Connector masks SQL credentials in logs.
+- AI input clearly marks EMCO events as network/connectivity evidence.
+
+---
+
+### 17.8 Lansweeper Connector Development Contract
+
+#### Goal
+
+Develop a WinRM/PowerShell connector that fetches Lansweeper Excel export files from a remote server, decodes them, parses scan events and software changes, and normalizes them for AI correlation.
+
+#### Required configuration
+
+```properties
+lansweeper.server.enabled=true
+lansweeper.server.host=<lansweeper-server-fqdn>
+lansweeper.server.username=${BMC_ANALYSIS_LANSWEEPER_SERVER_USERNAME:}
+lansweeper.server.password=${BMC_ANALYSIS_LANSWEEPER_SERVER_PASSWORD:}
+lansweeper.server.domain=<domain>
+lansweeper.server.export-path=E:\Program Files (x86)\Lansweeper\Service\export
+lansweeper.server.winrm-port=5986
+lansweeper.server.use-https=true
+lansweeper.server.auth-method=Kerberos
+lansweeper.server.connection-timeout-seconds=120
+lansweeper.server.workstations.excel-filename=<server-events-file>.xlsx
+lansweeper.server.software-changes.excel-filename=<software-changes-file>.xlsx
+```
+
+#### Implementation steps
+
+1. Validate server host, username, export path, and Excel filename.
+2. Build full username as `{domain}\{username}` unless already qualified.
+3. Use PowerShell `New-PSSession` to connect to Lansweeper server.
+4. On remote server, read Excel file bytes with `[System.IO.File]::ReadAllBytes($path)`.
+5. Convert bytes to Base64 and return to local process.
+6. Decode Base64 locally.
+7. Enforce max file size before parsing.
+8. Parse workbook with Apache POI.
+9. Parse server scan file columns.
+10. Parse software changes file columns.
+11. Normalize rows to `NormalizedEvent`.
+
+#### Lansweeper scan fields the AI needs
+
+```text
+IPAddress, FQDN, AssetName, Eventcode, Logfile, Message
+```
+
+#### Lansweeper software fields the AI needs
+
+```text
+Assetname, Domain, ChangeType, Software, Version, Publisher, Lastchanged, Caption
+```
+
+#### Lansweeper normalization rules
+
+| Normalized field | Scan event source |
+|---|---|
+| `source` | `Lansweeper` |
+| `sourceEventId` | derived from AssetName + Eventcode + Logfile + Message |
+| `timestamp` | parsed from message if available, else file/report time |
+| `severity` | inferred from Eventcode/Message |
+| `host` | `FQDN` or `AssetName` |
+| `ipAddress` | `IPAddress` |
+| `component` | `Logfile` |
+| `title` | `Eventcode` |
+| `message` | full `Message` |
+
+| Normalized field | Software change source |
+|---|---|
+| `source` | `Lansweeper-Software` |
+| `sourceEventId` | derived from Assetname + Software + Version + Lastchanged |
+| `timestamp` | `Lastchanged` |
+| `host` | `Assetname` |
+| `component` | `Software` |
+| `title` | `ChangeType` + software name |
+| `message` | installation/removal details, version, publisher, OS caption |
+
+#### Edge cases
+
+- WinRM session fails.
+- File not found.
+- File is too large.
+- PowerShell output includes extra text before/after Base64.
+- Excel headers differ in casing or spacing.
+- Optional software changes file is not configured.
+- Some cells are blank or numeric.
+
+#### Acceptance criteria
+
+- Connector fetches configured Excel files via WinRM.
+- Connector safely parses scan and software sheets.
+- Connector handles missing optional software file without failing scan events.
+- AI input includes Eventcode, Logfile, full Message, AssetName/FQDN/IP.
+- Software changes are visible to AI as possible deployment/change root-cause evidence.
+
+---
+
+### 17.9 AI Model Development Contract
+
+#### Goal
+
+Develop an AI analysis pipeline that consumes all normalized source events and generates a banking-grade infrastructure incident report with correlation maps and causal chains.
+
+#### Required configuration
+
+```properties
+azure.openai.endpoint=https://<primary-resource>.cognitiveservices.azure.com/
+azure.openai.api-key=${BMC_ANALYSIS_AZURE_OPENAI_API_KEY:}
+azure.openai.deployment-name=gpt-5.2
+azure.openai.api-version=2025-04-01-preview
+
+azure.openai.reasoning.endpoint=https://<reasoning-resource>.cognitiveservices.azure.com/
+azure.openai.reasoning.api-key=${BMC_ANALYSIS_AZURE_OPENAI_REASONING_API_KEY:}
+azure.openai.reasoning.deployment-name=gpt-5.2
+azure.openai.reasoning.api-version=2025-04-01-preview
+
+azure.openai.stage1.parallel-chunk-size=100
+azure.openai.stage1.max-parallel-requests=40
+azure.openai.stage2.parallel-chunk-size=20
+azure.openai.stage2.max-parallel-requests=10
+azure.openai.merge.reasoning-effort=high
+azure.openai.merge.max-completion-tokens=50000
+```
+
+#### Implementation steps
+
+1. Build complete alert context from normalized events.
+2. Preserve source counts and source names.
+3. Chunk large input for Stage 1.
+4. Send Stage 1 chunks to Chat Completions endpoint.
+5. Validate Stage 1 output is not empty.
+6. Send Stage 2 chunks to Responses API with `reasoning.effort=high`.
+7. Validate Stage 2 output length and required sections.
+8. Merge Stage 2 outputs with final merge prompt.
+9. Render Markdown/HTML/Teams output.
+10. If a source has data, never omit it from final report.
+
+#### AI must understand these source layers
+
+```text
+Network/Router/Switch/Firewall
+DNS/AD/PKI/SSO
+Storage/SAN/vSAN
+Cluster/VM/ESXi/Compute
+OS
+Database/SQL/Oracle
+Middleware/MQ/ESB/WebLogic
+Web/IIS/Apache/Nginx
+Application/API/Microservice
+Channel/IVR/ATM/Mobile/Internet Banking
+```
+
+#### Correlation signals AI must use
+
+```text
+TEMPORAL: alerts within 5-15 minutes
+TOPOLOGICAL: same host, IP, subnet, cluster, datacenter
+RESOURCE: same DB, listener, queue, app pool, datastore, endpoint
+DEPENDENCY: upstream layer causes downstream layer
+SEMANTIC: similar message content or same error family
+```
+
+#### Required final report sections
+
+```text
+EXECUTIVE SUMMARY
+ISSUE-NN
+AFFECTED INFRASTRUCTURE
+WHAT HAPPENED
+KEY EVIDENCE
+ROOT CAUSE
+IMMEDIATE ACTIONS
+CORRELATION MAP
+TOP 5 PRIORITIES
+ESCALATION TRIGGERS
+OPERATIONAL RECOMMENDATIONS
+CLEAR ROOT-CAUSE CHAIN
+CORRELATED ALERT CHAINS
+```
+
+#### AI acceptance criteria
+
+- Every source with data appears in the final report.
+- Every issue has exact host/component/service names.
+- Root cause prefers upstream layer over downstream channel symptom.
+- Correlated alert chains are causal, not just time-ordered.
+- AppDynamics links include Event ID.
+- Missing values are shown as `Not specified in alert data` instead of invented values.
+
+---
+
+### 17.10 Per-Tool AI Input Checklist
+
+Before sending data to AI, ensure each source record includes these minimum details:
+
+| Tool | Minimum AI fields |
+|---|---|
+| BMC | timestamp, severity, status, source_hostname, source_address, service, alert_name, full msg |
+| vROps | timestamp, criticality, status, alertDefinitionName, resourceName, resourceKindKey, resourceHealth |
+| SCOM | timestamp, Id, Severity, ResolutionState, NetbiosComputerName, MonitoringObjectPath, Name, full Description |
+| AppDynamics | timestamp, Application Name, Alert ID/Violation ID/Snapshot ID, Alert Type, Business Transaction, Tier/Node, URL, full error/description |
+| EMCO | timestamp, label, host/IP, host_description, title, severity, full event_description, source_domain |
+| Lansweeper | timestamp if available, AssetName, FQDN, IPAddress, Eventcode, Logfile, full Message, software changes if present |
+
+If any minimum field is unavailable, set it explicitly to:
+
+```text
+Not specified in alert data
+```
+
+Do not remove the event only because some fields are missing.
+
+---
+
+## 18. Key Security Rules
+
+- Never log passwords, access secrets, API keys, JWT tokens, or Basic Auth headers.
+- Mask secrets in debug logs.
+- Use least-privilege service accounts.
+- Use HTTPS and certificate verification where possible.
+- For temporary SSL bypass in development, isolate it behind config and never default it to insecure mode in production.
+- Store credentials in environment variables, Vault, Key Vault, or a secrets manager.
+- Rotate keys after moving to a new system.
+

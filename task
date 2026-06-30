@@ -1,13 +1,30 @@
-Read .github/INDEX.md and .github/PROGRESS.md first.
-Load on-demand files per INDEX.md routing table based on task type.
-Follow OWASP security guidelines (A01-A10).
-Follow the database schema from DATABASE_SCHEMA.md.
-Follow naming conventions and code templates from CODE_TEMPLATES.md.
-Check PROGRESS.md for current status before starting.
+Graphify Task Prompt — KFH Causal AIOps Platform
+
+Before starting:
+1. Read the always-load files in this order:
+   - `.github/copilot-instructions.md`
+   - `.github/INDEX.md`
+   - `docs/AI_CODING_ASSISTANT_KNOWLEDGE_GRAPH.md`
+   - `.github/PROGRESS.md`
+   - the active `docs/PROGRESS-*.md` volume
+2. Use the Graphify knowledge graph and `.github/INDEX.md` routing table to load only the detailed docs required for the task type.
+3. Identify the impacted graph nodes before editing: module/page, data source, table/schema, API contract, RBAC permission, tenant/country/environment scope, audit/outbox need, and operational runbook impact.
+4. Enforce the platform invariants: OWASP A01-A10, tenant and country isolation, service-layer RBAC, audit for writes, safe structured logging, SSRF protection for outbound URLs, no secrets/PII/raw payloads in logs or prompts, deterministic incident lifecycle, and custom-index-only telemetry search.
+5. When schema or persistence is involved, follow `docs/DATABASE_SCHEMA.md` and add a Flyway `V{n}__*.sql` migration when needed.
+6. When generating code, follow `docs/CODE_TEMPLATES.md`, package boundaries, constructor injection, DTO/entity separation, tests, and the Definition of Done.
+
 After completion:
-  - Update PROGRESS.md with completed items and change log entry.
-  - Update SERVICES_CORE.md or SERVICES_SUPPORT.md if new classes/endpoints added.
-  - Update API_CONTRACTS.md if new inter-service APIs added.
-  - Update DATABASE_SCHEMA.md if schema changes.
-  - Update copilot-instructions.md if architecture changes.
+1. Validate the targeted change with diagnostics, tests, or docs-only checks as appropriate.
+2. Append a newest-on-top entry to the active `docs/PROGRESS-*.md` file.
+3. Update `.github/PROGRESS.md` for recent/high-impact work or agent-routing/status changes.
+4. Update the authoritative docs that match the change:
+   - `docs/SERVICES_CORE.md` or `docs/SERVICES_SUPPORT.md` for new/changed classes or endpoints
+   - `docs/API_CONTRACTS.md` for public or inter-service API changes
+   - `docs/DATABASE_SCHEMA.md` for schema changes
+   - `docs/RUNBOOKS.md` for operational behavior changes
+   - `docs/SECURITY.md` for security-control changes
+   - `docs/UI_PAGES.md` or `docs/FRONTEND_MODULES.md` for UI/front-end behavior changes
+   - `docs/AI_CODING_ASSISTANT_KNOWLEDGE_GRAPH.md`, `.github/INDEX.md`, or `task` for routing/prompt changes
+   - `.github/copilot-instructions.md` only when global architecture or coding rules change
+
 Task:

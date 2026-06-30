@@ -1,13 +1,14 @@
 # Copilot Routing Index — KFH Causal AIOps Platform
 
-This index is the **first file every AI agent (Copilot, Claude Code, OpenAI) should read** for a task.
-It tells the agent which on-demand files to load based on task type, so the context window stays small and focused.
+This index is the **first routing file every AI agent (Copilot, Claude Code, OpenAI) should read** for a task.
+Use `docs/AI_CODING_ASSISTANT_KNOWLEDGE_GRAPH.md` as the consolidated Graphify-style project knowledge graph, then load on-demand files below only when the task needs implementation detail.
 
 > Always-load (every task, always):
 > 1. `.github/copilot-instructions.md` — global rules (architecture, security, lifecycle, DoD)
 > 2. `.github/INDEX.md` — this file
 > 3. `.github/PROGRESS.md` — agent-facing current status snapshot + recent implementation change log
-> 4. `docs/PROGRESS.md` (or the highest-numbered `docs/PROGRESS-*.md`) — canonical full task history
+> 4. `docs/AI_CODING_ASSISTANT_KNOWLEDGE_GRAPH.md` — consolidated Graphify knowledge graph and source-document routing
+> 5. `docs/PROGRESS.md` (or the highest-numbered `docs/PROGRESS-*.md`) — canonical full task history
 
 ---
 
@@ -27,7 +28,7 @@ It tells the agent which on-demand files to load based on task type, so the cont
 | **Security review / audit** | `docs/SECURITY.md`, `.github/copilot-instructions.md` §16, §20–§21 | `docs/security-assessment-*.md` |
 | **Operations / runbook update** | `docs/RUNBOOKS.md` | `docs/OUTBOX.md` |
 | **Architecture decision** | `docs/adr/README.md`, `docs/ARCHITECTURE.md` | `docs/ROADMAP.md` |
-| **Documentation-only change** | (none beyond the always-load set) | target docs file |
+| **Documentation-only change** | `docs/AI_CODING_ASSISTANT_KNOWLEDGE_GRAPH.md` | target docs file |
 
 > Progress source of truth: `docs/PROGRESS.md` remains the canonical full audit trail. `.github/PROGRESS.md` is a concise routing/status companion for AI agents and must be kept in sync for recent/high-impact work.
 
@@ -59,6 +60,7 @@ The agent must update the relevant files **after** completing work:
   INDEX.md                     # this file
   PROGRESS.md                  # concise agent-facing status + recent change log
 docs/
+  AI_CODING_ASSISTANT_KNOWLEDGE_GRAPH.md  # consolidated Graphify knowledge graph for AI assistants
   PROGRESS.md                  # task log (rotate at 3000 lines → PROGRESS-002.md)
   ARCHITECTURE.md
   BACKEND_MODULES.md
@@ -75,9 +77,7 @@ docs/
   RUNBOOKS.md
   OUTBOX.md
   OVERVIEW.md
-  EXECUTIVE_SUMMARY.md
   ROADMAP.md
-  NEXT_STEPS_ENTERPRISE_AIOPS.md
   adr/                         # architecture decision records
 src/main/resources/
   db/migration/                # Flyway V{n}__*.sql
@@ -106,21 +106,34 @@ Every backend task must consider:
 ## Recommended Task Prompt Template
 
 ```
+Graphify Task Prompt — KFH Causal AIOps Platform
+
 Before starting:
-1. Read .github/copilot-instructions.md and .github/INDEX.md.
-2. Load on-demand files per the INDEX routing table for the task type below.
-3. Read .github/PROGRESS.md and the active docs/PROGRESS-*.md to check current status.
-4. Follow OWASP Top 10 (A01–A10) and copilot-instructions §16, §20–§21.
-5. Follow the schema in docs/DATABASE_SCHEMA.md.
-6. Follow naming + boilerplate in docs/CODE_TEMPLATES.md.
+1. Read the always-load files in this order:
+   - `.github/copilot-instructions.md`
+   - `.github/INDEX.md`
+   - `docs/AI_CODING_ASSISTANT_KNOWLEDGE_GRAPH.md`
+   - `.github/PROGRESS.md`
+   - the active `docs/PROGRESS-*.md` volume
+2. Use the Graphify knowledge graph and `.github/INDEX.md` routing table to load only the detailed docs required for the task type.
+3. Identify the impacted graph nodes before editing: module/page, data source, table/schema, API contract, RBAC permission, tenant/country/environment scope, audit/outbox need, and operational runbook impact.
+4. Enforce the platform invariants: OWASP A01-A10, tenant and country isolation, service-layer RBAC, audit for writes, safe structured logging, SSRF protection for outbound URLs, no secrets/PII/raw payloads in logs or prompts, deterministic incident lifecycle, and custom-index-only telemetry search.
+5. When schema or persistence is involved, follow `docs/DATABASE_SCHEMA.md` and add a Flyway `V{n}__*.sql` migration when needed.
+6. When generating code, follow `docs/CODE_TEMPLATES.md`, package boundaries, constructor injection, DTO/entity separation, tests, and the Definition of Done.
 
 After completion:
-- Append a new entry to the active docs/PROGRESS-*.md (rotate if > 3000 lines).
-- Update .github/PROGRESS.md for recent/high-impact completed work or agent-routing status changes.
-- Update docs/SERVICES_CORE.md or docs/SERVICES_SUPPORT.md if classes/endpoints changed.
-- Update docs/API_CONTRACTS.md if APIs changed.
-- Update docs/DATABASE_SCHEMA.md if schema changed (and add V{n}__*.sql).
-- Update .github/copilot-instructions.md if architecture rules changed.
+1. Validate the targeted change with diagnostics, tests, or docs-only checks as appropriate.
+2. Append a newest-on-top entry to the active `docs/PROGRESS-*.md` file.
+3. Update `.github/PROGRESS.md` for recent/high-impact work or agent-routing/status changes.
+4. Update the authoritative docs that match the change:
+   - `docs/SERVICES_CORE.md` or `docs/SERVICES_SUPPORT.md` for new/changed classes or endpoints
+   - `docs/API_CONTRACTS.md` for public or inter-service API changes
+   - `docs/DATABASE_SCHEMA.md` for schema changes
+   - `docs/RUNBOOKS.md` for operational behavior changes
+   - `docs/SECURITY.md` for security-control changes
+   - `docs/UI_PAGES.md` or `docs/FRONTEND_MODULES.md` for UI/front-end behavior changes
+   - `docs/AI_CODING_ASSISTANT_KNOWLEDGE_GRAPH.md`, `.github/INDEX.md`, or `task` for routing/prompt changes
+   - `.github/copilot-instructions.md` only when global architecture or coding rules change
 
 Task:
 <your task here>

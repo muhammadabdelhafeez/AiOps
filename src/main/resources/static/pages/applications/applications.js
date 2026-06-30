@@ -880,8 +880,15 @@
     function goToConfig(app, mode) {
       var id = app && app.id ? app.id : 'app-cbs-001';
       var nextMode = mode || 'view';
-      // Always use absolute path from site root
-      window.location.href = '/pages/applications/applicationconfig.html?id=' + encodeURIComponent(id) + '&mode=' + encodeURIComponent(nextMode);
+      // SPA navigation — avoid full page reload. Router parses the
+      // query-string after the route id and the applicationconfig page
+      // reads params from window.location.hash.
+      var route = 'applicationconfig?id=' + encodeURIComponent(id) + '&mode=' + encodeURIComponent(nextMode);
+      if (window.Router && typeof window.Router.navigate === 'function') {
+        window.Router.navigate(route);
+      } else {
+        window.location.hash = '#' + route;
+      }
     }
 
     function openDetails(app) {
@@ -948,7 +955,12 @@
       }
 
       // Navigate into config view (create mode) for the full multi-tab experience.
-      window.location.href = '/pages/applications/applicationconfig.html?id=' + encodeURIComponent(app.id) + '&mode=create';
+      var createRoute = 'applicationconfig?id=' + encodeURIComponent(app.id) + '&mode=create';
+      if (window.Router && typeof window.Router.navigate === 'function') {
+        window.Router.navigate(createRoute);
+      } else {
+        window.location.hash = '#' + createRoute;
+      }
     }
 
     // Run lucide icons only once on mount

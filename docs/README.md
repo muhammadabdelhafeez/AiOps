@@ -3,6 +3,8 @@
 This folder is the source of truth for project documentation.
 
 ## Start here
+- **[Causal Pipeline (master design)](./CAUSAL_PIPELINE.md)** — the funnel, AI router, cost & latency targets. **Read first.**
+- [AI Coding Assistant Knowledge Graph](./AI_CODING_ASSISTANT_KNOWLEDGE_GRAPH.md)
 - [Overview](./OVERVIEW.md)
 - [Architecture](./ARCHITECTURE.md)
 - [Security (OWASP)](./SECURITY.md)

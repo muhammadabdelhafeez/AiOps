@@ -240,6 +240,67 @@ window.KFHUtils = (function() {
     };
   }
 
+  /**
+   * Wire a text input so that typing does NOT re-render on every keystroke.
+   * The input handler is debounced (~250ms by default) and, after the
+   * downstream `onChange(value)` call fires, focus and caret position are
+   * restored on the rebuilt input element (some pages re-render the entire
+   * region which destroys and recreates the <input>).
+   *
+   * Use this for every search/filter box in vanilla-JS pages so that:
+   *  - The screen does not flicker on each letter typed.
+   *  - The input never loses focus mid-typing.
+   *  - Filtering only runs after the user pauses typing.
+   *
+   * @param {string} inputId        - id of the <input> element.
+   * @param {Function} onChange     - called with the latest value once typing settles.
+   * @param {Object} [opts]
+   * @param {number} [opts.wait=250] - debounce delay in milliseconds.
+   * @returns {Function|null}        - cleanup function (removes listener) or null
+   *                                   if the element wasn't found.
+   */
+  function bindLiveSearch(inputId, onChange, opts = {}) {
+    const wait = typeof opts.wait === 'number' ? opts.wait : 250;
+    const input = document.getElementById(inputId);
+    if (!input) return null;
+
+    let pendingSelStart = null;
+    let pendingSelEnd = null;
+
+    const apply = debounce(function(value) {
+      try {
+        onChange(value);
+      } catch (err) {
+        console.error('[bindLiveSearch] onChange threw:', err);
+      }
+      // After the page re-renders, refocus the (possibly recreated) input
+      // and restore the caret to where the user left it.
+      requestAnimationFrame(function() {
+        const refreshed = document.getElementById(inputId);
+        if (!refreshed) return;
+        if (document.activeElement !== refreshed) {
+          try { refreshed.focus({ preventScroll: true }); }
+          catch (e) { refreshed.focus(); }
+        }
+        if (pendingSelStart !== null) {
+          try { refreshed.setSelectionRange(pendingSelStart, pendingSelEnd); }
+          catch (e) { /* unsupported on some input types */ }
+        }
+      });
+    }, wait);
+
+    const handler = function(event) {
+      pendingSelStart = event.target.selectionStart;
+      pendingSelEnd = event.target.selectionEnd;
+      apply(event.target.value);
+    };
+
+    input.addEventListener('input', handler);
+    return function unbind() {
+      input.removeEventListener('input', handler);
+    };
+  }
+
   // ========== ARRAY UTILITIES ==========
   function groupBy(array, key) {
     return array.reduce((groups, item) => {
@@ -323,21 +384,36 @@ window.KFHUtils = (function() {
   }
 
   // ========== TOAST NOTIFICATIONS ==========
-  function showToast(message, type = 'info', duration = 3000) {
+  function showToast(message, type = 'info', duration = 3500) {
     const container = document.getElementById('toast-container');
     if (!container) return;
 
-    const toast = createElement('div', {
-      className: `kfh-toast kfh-toast-${type}`
-    }, [message]);
+    const toast = document.createElement('div');
+    toast.className = `kfh-toast kfh-toast-${type}`;
+    toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
+    toast.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
+
+    const text = document.createElement('span');
+    text.className = 'kfh-toast-message';
+    text.textContent = message;
+    toast.appendChild(text);
+
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'kfh-toast-close';
+    close.setAttribute('aria-label', 'Dismiss notification');
+    close.innerHTML = '&times;';
+    toast.appendChild(close);
+
+    const dismiss = () => {
+      if (toast.classList.contains('is-leaving')) return;
+      toast.classList.add('is-leaving');
+      setTimeout(() => toast.remove(), 240);
+    };
+    close.addEventListener('click', dismiss);
 
     container.appendChild(toast);
-
-    setTimeout(() => {
-      toast.style.opacity = '0';
-      toast.style.transform = 'translateX(100%)';
-      setTimeout(() => toast.remove(), 300);
-    }, duration);
+    setTimeout(dismiss, duration);
   }
 
   // ========== PUBLIC API ==========
@@ -384,6 +460,7 @@ window.KFHUtils = (function() {
     // Functions
     debounce,
     throttle,
+    bindLiveSearch,
 
     // Arrays
     groupBy,

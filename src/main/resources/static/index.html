@@ -24,10 +24,7 @@
       <!-- Logo Area -->
       <div class="kfh-sidebar-logo">
         <div class="kfh-sidebar-logo-icon">
-          <svg viewBox="0 0 32 32" fill="none">
-            <rect width="32" height="32" rx="8" fill="white"/>
-            <path d="M8 8h4v16H8V8zm6 6h4v10h-4V14zm6-3h4v13h-4V11z" fill="#128754"/>
-          </svg>
+          <img src="images/kfh-logo.png" alt="KFH logo" loading="eager" decoding="async">
         </div>
         <div class="kfh-sidebar-logo-text">
           <div class="kfh-sidebar-logo-title">KFH AIOps</div>
@@ -198,6 +195,15 @@
           </button>
         </div>
       </div>
+
+      <div class="kfh-sidebar-collapse-row">
+        <button id="sidebar-collapse-toggle" class="kfh-sidebar-collapse-toggle" type="button" aria-label="Collapse in" aria-expanded="true" title="Collapse in">
+          <svg class="kfh-sidebar-collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M15 18l-6-6 6-6"/>
+          </svg>
+          <span class="kfh-sidebar-collapse-label">Collapse in</span>
+        </button>
+      </div>
     </nav>
 
     <!-- Main Content -->
@@ -243,6 +249,7 @@
   <script src="shared/js/api-client.js"></script>
   <script src="shared/js/auth.js"></script>
   <script src="shared/js/router.js"></script>
+  <script src="shared/js/sidebar-collapse.js"></script>
 
   <!-- Initialize Application -->
   <script>

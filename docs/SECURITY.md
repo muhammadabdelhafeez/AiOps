@@ -3,10 +3,19 @@
 ## Baseline security requirements
 - TLS everywhere
 - Strict multi-tenancy: tenant_id in every query and record
-- RBAC permission checks for every protected action
-- Audit log for every write
-- Secrets encrypted at rest; never logged
+- Country isolation: every persistence + cache key is `(tenant_id, country, environment)` scoped (Redis uses key-prefix isolation on **DB 0 only** — never logical DB > 0)
+- RBAC permission checks for every protected action, at the **service layer** (filters are defense-in-depth only)
+- Audit log for every write (before + after state, correlation id)
+- Secrets encrypted at rest; never logged; never returned by APIs; **never placed in `EvidencePack` or any AI prompt**
 - Input validation on all APIs (DTO validation)
+
+## AI / Funnel guardrails (CAUSAL_PIPELINE §12)
+- AI **never** receives raw alerts, logs, metrics, traces, change events, secrets, tokens, credentials, or unnecessary PII.
+- AI only receives a compact `EvidencePack` (≤ 3 KB) built by `org.kfh.aiops.rca.evidence.EvidencePackBuilder`. The builder runs `EvidencePackValidator` to reject any pack containing forbidden patterns (regex sweep for secret-like values, JWTs, bearer tokens, IBANs, civil IDs, card PANs).
+- AI **never** decides incident lifecycle. Only the deterministic `IncidentLifecycleEngine` may open / acknowledge / monitor / close / reopen.
+- AI **never** runs in the user request thread. All AI work is dispatched via outbox events (`AI_NARRATIVE_REQUESTED`) on virtual threads.
+- AI output is validated against the pack: `citedEvidenceIds` must be a subset of `pack.evidence[].id`. Any hallucinated reference is rejected and audited as `AI_HALLUCINATION_BLOCKED`.
+- `CostGuard` per-tenant daily call + USD budget gates every Azure OpenAI call; soft cap demotes to DeepSeek, hard cap pages on-call.
 
 ## Dependency security maintenance
 - Keep Maven dependencies on CVE-remediated versions before release and before production deployment.
@@ -59,6 +68,22 @@
 
 ## Implemented hardening controls (2026-06-11)
 - Local HTTPS can reference a developer-supplied PFX keystore by file path, but the keystore password remains externalized through `SERVER_SSL_KEY_STORE_PASSWORD` and certificate files under `src/main/resources/certs/**` are excluded from Maven-packaged artifacts.
+
+## Implemented hardening controls (2026-06-18)
+- BMC, AppDynamics, and vROps connector tests keep `verifySsl=true` by default. Operators may explicitly set `verifySsl=false` per connector for governed dev/hybrid troubleshooting when Java truststore CA import is pending; the test still requires HTTPS and retains SSRF blocks for localhost, loopback, link-local, multicast, and metadata targets. The preferred remediation for PKIX failures remains importing the corporate CA chain into the JVM truststore and re-enabling verification.
+
+## Implemented hardening controls (2026-06-21)
+- Microsoft SCOM connector configuration validates WinRM management-server endpoints, rejects credentials/query/fragment and paths beyond `/wsman`, blocks localhost/metadata/link-local/multicast targets, encrypts username/password secrets, and passes SCOM live-test credentials only through a child PowerShell process environment. Live-test responses return sanitized step status and never return raw SCOM alert payloads, passwords, or PowerShell credential data.
+- SCOM/WinRM expired certificate failures are reported as certificate lifecycle issues requiring renewal/rebind on the destination server. For dev/testing-domain connector hosts reaching the corporate SCOM endpoint over HTTPS/5986, the destination WinRM certificate must be non-expired, trusted by the connector host, and issued for the configured FQDN/SAN. Relaxed certificate-chain verification remains a governed troubleshooting control for trust-chain/CN/revocation issues and is not documented as a bypass for expired HTTPS listener certificates.
+- SCOM/WinRM revocation-check failures are reported separately from unknown-CA and expired-certificate failures. The preferred control is CRL/OCSP reachability from the connector host; `verifySsl=false` remains an explicit temporary test-only troubleshooting control that passes `SkipRevocationCheck` to PowerShell while preserving HTTPS transport.
+- EMCO Ping Monitor connector configuration validates SQL Server host/port and database names before JDBC URL construction, rejects JDBC/HTTP URLs and credential-bearing strings, blocks localhost/metadata/link-local/multicast targets, encrypts separate KFH/CCTV SQL credentials, uses parameterized bounded SQL probes with query timeouts, and returns only sanitized readiness steps without raw EMCO rows or SQL credential data.
+- Connector secret encryption can now read the platform master key from either startup environment/property configuration or a protected deployment secret file (`KFH_AIOPS_SECRET_KEY_FILE` / `kfh.security.master-key-file`, with a local dev default under user-home `.kfh-aiops/secret-key.txt`). The key value and file content are never returned by Settings, never logged, and must remain outside the repository with service-account-only file permissions where possible.
+- Connector live tests now fail closed with a secret-safe `SECRET_DECRYPTION_FAILED` result when saved credentials were encrypted with a different master key, rather than passing empty credentials to source-system testers. Credential rotation preserves old encrypted entries without decrypting them and encrypts only submitted replacement values with the current key.
+
+## Implemented hardening controls (2026-06-29)
+- Settings infrastructure Test Connection supports Redis, Kafka, and custom index storage through bounded, audited probes. Redis/Kafka tests reject URL syntax, credential-bearing endpoint strings, localhost, loopback, link-local, multicast, and metadata hosts before opening sockets/AdminClient probes; responses include only status, latency, checked endpoint, correlation ID, and sanitized messages.
+- Settings custom index-storage tests require absolute non-traversal local/NFS paths before checking directory readability/writability. Cloud object-storage entries validate allowed pointer schemes only in this phase; HTTPS endpoints are checked against metadata/loopback/link-local targets and no SDK-backed cloud listing/read/write is performed yet.
+- Settings metadata is persisted by tenant, country scope, environment, and key in `config.integration_settings`. Settings-managed provider secrets for AI, Neo4j, database/sharepoint/infrastructure rows are encrypted server-side and stripped from API responses; masked Test Connection requests decrypt saved secrets only inside the bounded server-side tester path.
 
 ## Residual architectural requirement
 - Permission-based RBAC annotations exist on connector services. Production deployments must provide authenticated principals/authorities from the enterprise identity layer or trusted gateway before enabling protected endpoints. Header-only tenant/user context is not a substitute for authentication.

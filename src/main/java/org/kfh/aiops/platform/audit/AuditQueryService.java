@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 public class AuditQueryService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AuditQueryService.class);
+    private static final String AUDIT_READ = "AUDIT_READ";
 
     private final CommandCenterReadModel readModel;
     private final AuditActivityRepository auditActivityRepository;
@@ -32,8 +33,7 @@ public class AuditQueryService {
     }
 
     public PageResponse<Map<String, Object>> list(TenantContext ctx, int page, int size) {
-        ctx.requirePermission("AUDIT_READ");
-        requireGlobalPermissionForAllCountryScope(ctx);
+        requireReadAccess(ctx);
         var persisted = persistedAudit(ctx);
         if (!persisted.isEmpty()) {
             return PageResponse.of(persisted, page, size);
@@ -42,8 +42,7 @@ public class AuditQueryService {
     }
 
     public Map<String, Object> get(TenantContext ctx, UUID id) {
-        ctx.requirePermission("AUDIT_READ");
-        requireGlobalPermissionForAllCountryScope(ctx);
+        requireReadAccess(ctx);
         if (auditActivityRepository != null) {
             try {
                 var persisted = auditActivityRepository.find(ctx, id);
@@ -60,6 +59,11 @@ public class AuditQueryService {
             throw new NotFoundException("Audit event not found");
         }
         return row;
+    }
+
+    public void requireReadAccess(TenantContext ctx) {
+        ctx.requirePermission(AUDIT_READ);
+        requireGlobalPermissionForAllCountryScope(ctx);
     }
 
     private static void requireGlobalPermissionForAllCountryScope(TenantContext ctx) {

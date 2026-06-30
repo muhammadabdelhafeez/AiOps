@@ -65,6 +65,173 @@
 
 ## 2. Java Templates
 
+> **Funnel-aware templates:** the snippets below (`EvidencePack`, `AiRouter`, `CausalCandidate`, `CostGuard`) are the canonical shapes used by [CAUSAL_PIPELINE](./CAUSAL_PIPELINE.md). Do not invent variants. AI never receives raw telemetry — only `EvidencePack`.
+
+### 2.0 Canonical funnel records (drop-in)
+
+```java
+// org.kfh.aiops.normalization.model
+public record CanonicalTelemetryEvent(
+        UUID eventId, String eventType, UUID tenantId,
+        String countryCode, String environment, Instant timestamp,
+        String sourceSystem, String collectorId, String connectorId,
+        String businessDomain, String businessJourney,
+        String applicationId, String applicationName,
+        String serviceId, String serviceName,
+        String resourceId, String resourceName, String resourceType, String resourceRole,
+        String severity, String status,
+        String message, String normalizedMessage,
+        String errorCode, String exceptionType,
+        String traceId, String spanId, String correlationId, String transactionId,
+        Map<String, Object> metrics, Map<String, String> attributes,
+        String rawRef, String schemaVersion) {}
+
+// org.kfh.aiops.rca.evidence
+public record EvidencePack(
+        String packId,                       // EVP-YYYYMMDD-NNN
+        String packHash,                     // sha256 of canonical evidence
+        String country, String environment, UUID tenantId,
+        String businessJourney, String impact,
+        Instant firstBadTime,
+        ProposedRootCause proposedRootCause, // set by deterministic scoring, not AI
+        List<String> candidateRootCauses,
+        List<EvidenceItem> evidence,         // each item has a stable id
+        List<String> topology,               // human-readable edges
+        List<String> excludedCauses,
+        String schemaVersion) {
+    public record ProposedRootCause(String entityId, String entityType,
+                                    BigDecimal confidence, String reason) {}
+    public record EvidenceItem(String id, String ts, String entity, String fact) {}
+}
+
+// org.kfh.aiops.rca.result
+public record RcaResult(
+        UUID incidentId, String countryCode, String environment,
+        String impactedJourney,
+        String rootCauseEntityId, String rootCauseEntityType,
+        String rootCauseSummary,
+        List<String> symptomEntityIds,
+        List<String> citedEvidenceIds,       // MUST be subset of pack evidence ids
+        BigDecimal confidence,                // never 1.0
+        String recommendedAction,
+        String aiNarrative,
+        String modelUsed,                     // "deepseek-r1-local" | "azure-openai-gpt-5.5"
+        int tokensIn, int tokensOut,
+        long latencyMs) {}
+```
+
+### 2.1 AiRouter (decision skeleton — see CAUSAL_PIPELINE §5)
+
+```java
+@Service
+@RequiredArgsConstructor
+public class AiRouter {
+    private final StringRedisTemplate redis;
+    private final DeepSeekClient deepseek;
+    private final AzureOpenAiClient azureOpenAi;
+    private final CostGuard costGuard;
+    private final AiAuditService audit;
+
+    @CircuitBreaker(name = "azure-openai", fallbackMethod = "demoteToDeepSeek")
+    public RcaResult route(EvidencePack pack, IncidentMeta meta, TenantContext ctx) {
+        var cacheKey = "ai:summary:known-issue:" + pack.packHash();
+        var cached = redis.opsForValue().get(cacheKey);
+        if (cached != null) {
+            audit.cached(ctx, pack, cacheKey);
+            return RcaResultJson.parse(cached);
+        }
+        if (!costGuard.canCallAzure(ctx.tenantId())) {
+            return demoteToDeepSeek(pack, meta, ctx, new BudgetExhaustedException());
+        }
+        if (meta.severity().isLowOrMedium() || pack.matchesKnownPattern()) {
+            var r = deepseek.summarize(pack, ctx);
+            cache(cacheKey, r);
+            return r;
+        }
+        var draft = deepseek.draftRca(pack, ctx);
+        if (draft.confidence().compareTo(new BigDecimal("0.85")) >= 0
+                && !meta.customerImpacting()) {
+            cache(cacheKey, draft);
+            return draft;
+        }
+        if (meta.severity().isCritical() || meta.customerImpacting() || meta.novel()) {
+            var finalRca = azureOpenAi.finalRca(pack, draft, ctx);
+            validateNoHallucination(finalRca, pack);
+            cache(cacheKey, finalRca);
+            audit.escalated(ctx, pack, finalRca);
+            return finalRca;
+        }
+        cache(cacheKey, draft);
+        return draft;
+    }
+
+    private RcaResult demoteToDeepSeek(EvidencePack pack, IncidentMeta meta,
+                                       TenantContext ctx, Throwable t) {
+        audit.degraded(ctx, pack, t);
+        return deepseek.summarize(pack, ctx);
+    }
+
+    private void validateNoHallucination(RcaResult r, EvidencePack pack) {
+        var validIds = pack.evidence().stream().map(EvidencePack.EvidenceItem::id).collect(toSet());
+        if (!validIds.containsAll(r.citedEvidenceIds())) {
+            audit.hallucinationBlocked(r, pack);
+            throw new AiHallucinationException(r.citedEvidenceIds(), validIds);
+        }
+        if (r.confidence().compareTo(BigDecimal.ONE) >= 0) {
+            throw new InvalidConfidenceException(r.confidence());
+        }
+    }
+    private void cache(String k, RcaResult r) {
+        redis.opsForValue().set(k, RcaResultJson.write(r), Duration.ofHours(6));
+    }
+}
+```
+
+### 2.2 CostGuard
+
+```java
+@Service
+@RequiredArgsConstructor
+public class CostGuard {
+    private final StringRedisTemplate redis;
+    @Value("${kfh.ai.router.azure.daily-call-budget-per-tenant}") long dailyCalls;
+    @Value("${kfh.ai.router.azure.monthly-usd-budget-per-tenant}") long monthlyUsdCents;
+
+    public boolean canCallAzure(UUID tenantId) {
+        var dayKey = "ai:budget:calls:%s:%s".formatted(tenantId, LocalDate.now());
+        var monthKey = "ai:budget:usd:%s:%s".formatted(tenantId, YearMonth.now());
+        long calls = parse(redis.opsForValue().get(dayKey));
+        long usdCents = parse(redis.opsForValue().get(monthKey));
+        return calls < dailyCalls && usdCents < monthlyUsdCents;
+    }
+    public void record(UUID tenantId, int tokensIn, int tokensOut) {
+        var dayKey = "ai:budget:calls:%s:%s".formatted(tenantId, LocalDate.now());
+        var monthKey = "ai:budget:usd:%s:%s".formatted(tenantId, YearMonth.now());
+        redis.opsForValue().increment(dayKey, 1);
+        redis.expire(dayKey, Duration.ofDays(2));
+        long cents = estimateCents(tokensIn, tokensOut);
+        redis.opsForValue().increment(monthKey, cents);
+        redis.expire(monthKey, Duration.ofDays(35));
+    }
+    private static long parse(String s) { return s == null ? 0 : Long.parseLong(s); }
+    private static long estimateCents(int in, int out) {
+        // Indicative: $1.25/M input + $10/M output. Replace with your contract rate.
+        return Math.round((in * 0.000_001_25 + out * 0.000_010_00) * 100);
+    }
+}
+```
+
+### 2.3 EvidencePackBuilder rules
+- Size cap: enforce `kfh.ai.evidence-pack.max-bytes` (default 3072). Reject builds that exceed it.
+- No secrets: run `SecretPatternValidator` (regex sweep for JWTs, bearer tokens, IBAN, civil IDs, card PANs). Fail fast on match.
+- Stable IDs: every `EvidenceItem.id` must be `E1, E2, …` so AI can cite them.
+- `proposedRootCause` is set by `CausalScoringService`, not AI.
+- `excludedCauses` lists rejected candidates with reason — gives AI permission to disagree.
+
+---
+
+
+
 ### 2.1 Controller (thin, validates, maps DTOs)
 
 ```java

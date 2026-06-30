@@ -1135,7 +1135,13 @@ const AssetDrawer = ({ asset, onClose, onUpdate }) => {
                         {asset.openIncidents.critical} critical • open the incident page for tenant-scoped details
                       </div>
                     </div>
-                    <Button size="xs" variant="ghost" onClick={() => window.location.href = '../incidents/incidents.html'}>
+                    <Button size="xs" variant="ghost" onClick={() => {
+                      if (window.Router && typeof window.Router.navigate === 'function') {
+                        window.Router.navigate('incidents');
+                      } else {
+                        window.location.hash = '#incidents';
+                      }
+                    }}>
                       <Eye size={16} />
                     </Button>
                   </div>

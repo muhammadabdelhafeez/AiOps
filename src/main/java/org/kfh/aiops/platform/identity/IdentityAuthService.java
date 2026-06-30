@@ -47,9 +47,13 @@ public class IdentityAuthService {
             recordLoginSucceeded(request, response.get(), "DATABASE");
             return response.get();
         }
+        var bootstrapDiagnostics = bootstrapAuthenticator.diagnostics(request);
         var diagnostics = identityJdbcRepository.signInFailureDiagnostics(request);
-        LOGGER.warn("sign-in rejected countryCode={} environment={} usernameMatches={} scopedMatches={} activeScopedMatches={} passwordReadyScopedMatches={}",
-                request.countryCode(), request.environment(), diagnostics.usernameMatches(), diagnostics.scopedMatches(),
+        LOGGER.warn("sign-in rejected countryCode={} environment={} bootstrapEnabled={} bootstrapPasswordConfigured={} bootstrapUsernameMatched={} bootstrapCountryMatched={} bootstrapEnvironmentMatched={} bootstrapPasswordMatched={} bootstrapConfiguredCountryScope={} bootstrapConfiguredEnvironmentScope={} bootstrapConfiguredRole={} usernameMatches={} scopedMatches={} activeScopedMatches={} passwordReadyScopedMatches={}",
+                request.countryCode(), request.environment(), bootstrapDiagnostics.enabled(), bootstrapDiagnostics.passwordConfigured(),
+                bootstrapDiagnostics.usernameMatched(), bootstrapDiagnostics.countryMatched(), bootstrapDiagnostics.environmentMatched(),
+                bootstrapDiagnostics.passwordMatched(), bootstrapDiagnostics.configuredCountryScope(),
+                bootstrapDiagnostics.configuredEnvironmentScope(), bootstrapDiagnostics.configuredRole(), diagnostics.usernameMatches(), diagnostics.scopedMatches(),
                 diagnostics.activeScopedMatches(), diagnostics.passwordReadyScopedMatches());
         recordLoginFailed(request);
         throw new ForbiddenAccessException("Invalid username, password, country, or status");
@@ -58,16 +62,21 @@ public class IdentityAuthService {
     private void recordLoginSucceeded(IdentitySignInRequest request, IdentitySignInResponse response, String source) {
         var ctx = new TenantContext(response.tenantId(), response.userId(), response.countryCode(), response.environment(),
                 correlationId("auth-success"), response.permissions() == null ? Set.of() : Set.copyOf(response.permissions()));
+        var actorName = displayName(response);
+        var username = safe(response.username());
         var details = Map.of(
-                "actorName", response.username(),
+                "actorName", actorName,
+                "actorUsername", username,
+                "actorUserId", response.userId().toString(),
+                "targetName", "Authentication",
+                "targetType", "Security",
                 "result", "Success",
                 "severity", "Info",
-                "message", "User signed in successfully",
-                "details", Map.of("username", response.username(), "countryCode", response.countryCode(),
+                "message", "Login succeeded for " + actorName,
+                "details", Map.of("username", username, "displayName", actorName, "countryCode", response.countryCode(),
                         "environment", response.environment(), "source", source, "requestedCountryCode", safe(request.countryCode())));
-        auditService.recordWrite(ctx, "LOGIN_SUCCEEDED", "Security", response.userId().toString(), null,
-                Map.of("username", response.username(), "source", source));
-        readModel.appendAudit(ctx, "LOGIN_SUCCEEDED", "Security", response.userId().toString(), details);
+        auditService.recordWrite(ctx, "LOGIN_SUCCEEDED", "Security", "AUTHENTICATION", null, details);
+        readModel.appendAudit(ctx, "LOGIN_SUCCEEDED", "Security", "AUTHENTICATION", details);
     }
 
     private void recordLoginFailed(IdentitySignInRequest request) {
@@ -76,14 +85,17 @@ public class IdentityAuthService {
         var submittedUsername = safe(request.username());
         var details = Map.of(
                 "actorName", submittedUsername.isBlank() ? "Unknown sign-in attempt" : submittedUsername,
+                "actorUsername", submittedUsername,
+                "actorUserId", SYSTEM_USER_ID.toString(),
+                "targetName", "Authentication",
+                "targetType", "Security",
                 "result", "Fail",
                 "severity", "Warn",
-                "message", "User sign-in failed",
+                "message", "Login failed" + (submittedUsername.isBlank() ? "" : " for " + submittedUsername),
                 "details", Map.of("username", submittedUsername, "countryCode", safe(request.countryCode()),
                         "environment", safe(request.environment()), "reason", "INVALID_CREDENTIALS_OR_SCOPE"));
-        auditService.recordWrite(ctx, "LOGIN_FAILED", "Security", "LOGIN_ATTEMPT", null,
-                Map.of("username", submittedUsername, "reason", "INVALID_CREDENTIALS_OR_SCOPE"));
-        readModel.appendAudit(ctx, "LOGIN_FAILED", "Security", submittedUsername, details);
+        auditService.recordWrite(ctx, "LOGIN_FAILED", "Security", "AUTHENTICATION", null, details);
+        readModel.appendAudit(ctx, "LOGIN_FAILED", "Security", "AUTHENTICATION", details);
     }
 
     private static String correlationId(String prefix) {
@@ -92,6 +104,15 @@ public class IdentityAuthService {
 
     private static String safe(String value) {
         return value == null ? "" : value.trim();
+    }
+
+    private static String displayName(IdentitySignInResponse response) {
+        var displayName = safe(response.displayName());
+        if (!displayName.isBlank()) {
+            return displayName;
+        }
+        var username = safe(response.username());
+        return username.isBlank() ? response.userId().toString() : username;
     }
 }
 

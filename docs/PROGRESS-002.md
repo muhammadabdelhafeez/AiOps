@@ -1,0 +1,3061 @@
+# KFH AIOps Platform — Progress Log Volume 002
+
+This file is archived history for completed work after `docs/PROGRESS.md` reached the rotation threshold.
+
+- **Previous Volume:** [`docs/PROGRESS.md`](PROGRESS.md) | **Next Volume:** [`docs/PROGRESS-003.md`](PROGRESS-003.md)
+- **Status:** 📦 Archived
+
+---
+
+## How to Add an Entry
+
+Use this template for every completed task:
+
+```markdown
+### YYYY-MM-DD — <Short Task Title>
+- **Phase:** <1–7 per Development Strategy in copilot-instructions.md>
+- **Module(s):** <e.g., platform.security, ingestion, index.writer, frontend/incidents>
+- **Type:** <feature | fix | refactor | migration | docs | test | security | infra>
+- **Country/Tenant scope:** <ALL | KW | BH | EG | tenant-id>
+- **Summary:** <1–3 sentences describing what was done and why>
+- **Files touched:**
+  - `path/to/file1`
+  - `path/to/file2`
+- **DB migrations:** <V{n}__name.sql or N/A>
+- **API changes:** <new/changed endpoints or N/A>
+- **Tests added/updated:** list test class names or N/A
+- **Docs updated:** <docs/API_CONTRACTS.md, docs/RUNBOOKS.md, etc. or N/A>
+- **Security / OWASP checklist:**
+  - [ ] Tenant + user context enforced
+  - [ ] RBAC checked at service layer
+  - [ ] Inputs validated (Bean Validation)
+  - [ ] Audit log written for write actions
+  - [ ] No secrets / PII / tokens logged or returned
+  - [ ] SSRF-safe for any URL-based config
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [ ] Supports tenant + country context
+  - [ ] Clear DTOs and validation
+  - [ ] Follows package/module boundaries
+  - [ ] Audit logs for write actions
+  - [ ] No secrets exposed
+  - [ ] Tests for core logic
+  - [ ] Correlation ID supported
+  - [ ] Does not break incident lifecycle rules
+  - [ ] Does not bypass custom index engine for telemetry search
+  - [ ] Extractable into a future microservice
+- **Follow-ups / TODO:** <bullets or N/A>
+- **Author:** <github handle or "copilot-agent">
+- **Correlation:** <ticket id, PR link, or commit short SHA>
+```
+
+---
+
+## Status Snapshot
+
+| Area | Status | Notes |
+|------|--------|-------|
+| Phase 1 — Modular monolith skeleton | 🟡 In progress | Package structure established under `org.kfh.aiops`; frontend-aligned `/api/v1/**` scaffold endpoints added |
+| Phase 2 — Custom Log Index Engine | ⚪ Not started | |
+| Phase 3 — Neo4j banking flow graph | ⚪ Not started | |
+| Phase 4 — RCA evidence builder + causal scoring | ⚪ Not started | |
+| Phase 5 — AI Router (DeepSeek + Azure OpenAI) | ⚪ Not started | |
+| Phase 6 — Redis hot health state + dashboard cache | ⚪ Not started | |
+| Phase 7 — Worker extraction | ⚪ Not started | |
+
+Legend: 🟢 Done · 🟡 In progress · 🔴 Blocked · ⚪ Not started
+
+---
+
+## Task Log
+
+> Newest entries on top. Append your entry above the previous one.
+
+### 2026-06-18 — Status-Tinted Connector Cards
+- **Phase:** Phase 1
+- **Module(s):** `commandcenter/connectors`, `docs/ui`
+- **Type:** fix | docs | test
+- **Country/Tenant scope:** ALL physical countries (`KW`, `BH`, `EG`) and tenant-scoped connector rows
+- **Summary:** Removed the compact connector card top accent line and added modern status-tinted card backgrounds so operators can distinguish healthy, degraded, down, and disabled connectors at a glance. Down cards use a soft red background, disabled cards use a muted neutral background, and the compact card layout remains unchanged.
+- **Files touched:**
+  - `src/main/resources/static/pages/connectors/connectors.js`
+  - `src/main/resources/static/pages/connectors/connectors.css`
+  - `src/test/java/org/kfh/aiops/commandcenter/ConnectorStaticUiTest.java`
+  - `docs/UI_PAGES.md`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** Updated `ConnectorStaticUiTest.shouldRenderCompactModernConnectorCards` to assert card-level status classes, disabled/down background colors, and removal of the old `connector-card::before` top accent. Passed `node --check src\main\resources\static\pages\connectors\connectors.js`, `./mvnw.cmd -q "-Dtest=ConnectorStaticUiTest" test`, `git --no-pager diff --check`, and `./mvnw.cmd -q verify`.
+- **Docs updated:** `docs/UI_PAGES.md`, `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — UI styling only; existing connector API tenant headers unchanged
+  - [x] RBAC checked at service layer — no service-layer changes
+  - [x] Inputs validated (Bean Validation) — no input contract changes
+  - [x] Audit log written for write actions — no write-flow changes
+  - [x] No secrets / PII / tokens logged or returned — no secret handling changed
+  - [x] SSRF-safe for any URL-based config — no URL handling changed
+- **Definition of Done checklist (from copilot-instructions 25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** N/A
+- **Author:** copilot-agent
+- **Correlation:** user-request-2026-06-18-status-tinted-connector-cards
+
+### 2026-06-18 — Compact Modern Connector Cards
+- **Phase:** Phase 1
+- **Module(s):** `commandcenter/connectors`, `docs/ui`
+- **Type:** fix | docs | test
+- **Country/Tenant scope:** ALL physical countries (`KW`, `BH`, `EG`) and tenant-scoped connector rows
+- **Summary:** Reduced connector card height and improved the Cards view visual design with tighter card padding, smaller icons/badges/actions, two-column detail chips, compact stats, a subtle top accent, and softer modern shadows. The 3-card desktop row layout and 10-card pagination behavior remain unchanged.
+- **Files touched:**
+  - `src/main/resources/static/pages/connectors/connectors.css`
+  - `src/test/java/org/kfh/aiops/commandcenter/ConnectorStaticUiTest.java`
+  - `docs/UI_PAGES.md`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** Added `ConnectorStaticUiTest.shouldRenderCompactModernConnectorCards`. Passed `node --check src\main\resources\static\pages\connectors\connectors.js`, `./mvnw.cmd -q "-Dtest=ConnectorStaticUiTest" test`, `git --no-pager diff --check`, and `./mvnw.cmd -q verify`.
+- **Docs updated:** `docs/UI_PAGES.md`, `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — UI styling only; existing connector API tenant headers unchanged
+  - [x] RBAC checked at service layer — no service-layer changes
+  - [x] Inputs validated (Bean Validation) — no input contract changes
+  - [x] Audit log written for write actions — no write-flow changes
+  - [x] No secrets / PII / tokens logged or returned — no secret handling changed
+  - [x] SSRF-safe for any URL-based config — no URL handling changed
+- **Definition of Done checklist (from copilot-instructions 25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** N/A
+- **Author:** copilot-agent
+- **Correlation:** user-request-2026-06-18-compact-connector-cards
+
+### 2026-06-18 — Fix All-Country Connector Inventory Scope
+- **Phase:** Phase 1
+- **Module(s):** `platform.session`, `plugin.service`, `commandcenter/connectors`, `db/migration`, `docs/api`, `docs/runbooks`, `docs/schema`
+- **Type:** fix | migration | docs | test | security
+- **Country/Tenant scope:** KFH group tenant with physical connector country scopes `KW`, `BH`, `EG`; all-country scope `ALL`
+- **Summary:** Fixed the country switcher so global users changing between `ALL`, `KW`, `BH`, and `EG` preserve the authenticated tenant/user and only change active country scope. Added a Flyway repair migration for connector rows previously saved under old Phase 1 Bahrain/Egypt scaffold tenant IDs, so `ALL` connector inventory can show Kuwait, Bahrain, and Egypt connector rows together for the same tenant/environment.
+- **Files touched:**
+  - `src/main/resources/static/shared/js/config.js`
+  - `src/main/resources/db/migration/V9__normalize_connector_country_scope_tenant.sql`
+  - `src/test/java/org/kfh/aiops/commandcenter/ConnectorStaticUiTest.java`
+  - `src/test/java/org/kfh/aiops/commandcenter/CommandCenterBackendServiceTest.java`
+  - `docs/API_CONTRACTS.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/DATABASE_SCHEMA.md`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** `V9__normalize_connector_country_scope_tenant.sql`
+- **API changes:** Clarified that `GET /api/v1/connectors` with `X-Country-Code=ALL` and global permission returns all same-tenant physical country connector rows for the selected environment; physical country headers still return only that country.
+- **Tests added/updated:** Added `ConnectorStaticUiTest.shouldPreserveTenantWhenGlobalUserSwitchesConnectorCountryScope` and `CommandCenterBackendServiceTest.shouldListAllPhysicalCountryConnectorsWhenGlobalCountryScopeSelected`. Passed `node --check src\main\resources\static\shared\js\config.js`, `node --check src\main\resources\static\pages\connectors\connectors.js`, `./mvnw.cmd -q "-Dtest=ConnectorStaticUiTest,CommandCenterBackendServiceTest" test`, `git --no-pager diff --check`, and `./mvnw.cmd -q verify`.
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/RUNBOOKS.md`, `docs/DATABASE_SCHEMA.md`, `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — switching scope now preserves tenant/user instead of changing tenant per country
+  - [x] RBAC checked at service layer — all-country list still requires `CONNECTOR_READ` plus global country access
+  - [x] Inputs validated (Bean Validation) — no request body contract change
+  - [x] Audit log written for write actions — no write/audit path bypass added
+  - [x] No secrets / PII / tokens logged or returned — connector secrets remain encrypted and write-only
+  - [x] SSRF-safe for any URL-based config — no URL validation changes
+- **Definition of Done checklist (from copilot-instructions 25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** After deployment, clear stale browser local storage sessions if a browser still sends an old country-scoped tenant ID; Flyway V9 repairs known scaffold connector rows in PostgreSQL.
+- **Author:** copilot-agent
+- **Correlation:** user-request-2026-06-18-all-country-connectors
+
+### 2026-06-18 — Clarify Connector Enablement Colors
+- **Phase:** Phase 1
+- **Module(s):** `commandcenter/connectors`, `docs/ui`
+- **Type:** fix | docs | test
+- **Country/Tenant scope:** ALL physical countries (`KW`, `BH`, `EG`) and tenant-scoped connector rows
+- **Summary:** Updated the connector configuration drawer enablement panel so the current connector state is visually clear: enabled connectors use KFH green, while disabled connectors use the existing amber/orange warning color. Added explicit state classes and static UI coverage to prevent the color mapping from being reversed.
+- **Files touched:**
+  - `src/main/resources/static/pages/connectors/connectors.js`
+  - `src/main/resources/static/pages/connectors/connectors.css`
+  - `src/test/java/org/kfh/aiops/commandcenter/ConnectorStaticUiTest.java`
+  - `docs/UI_PAGES.md`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** Added `ConnectorStaticUiTest.shouldColorConnectorEnablementStateForOperatorClarity`. Passed `node --check src\main\resources\static\pages\connectors\connectors.js`, `./mvnw.cmd -q "-Dtest=ConnectorStaticUiTest" test`, `git --no-pager diff --check`, and `./mvnw.cmd -q verify`.
+- **Docs updated:** `docs/UI_PAGES.md`, `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — UI-only styling change; existing connector service/API tenant checks unchanged
+  - [x] RBAC checked at service layer — no service-layer changes
+  - [x] Inputs validated (Bean Validation) — no input contract changes
+  - [x] Audit log written for write actions — no write-flow changes
+  - [x] No secrets / PII / tokens logged or returned — no secret handling changed
+  - [x] SSRF-safe for any URL-based config — no URL handling changed
+- **Definition of Done checklist (from copilot-instructions 25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** N/A
+- **Author:** copilot-agent
+- **Correlation:** user-request-2026-06-18-connector-enable-colors
+
+### 2026-06-18 — Persist Basic Auth Connector Credentials Safely
+- **Phase:** Phase 1
+- **Module(s):** `plugin.service`, `plugin.service.jdbc`, `commandcenter/connectors`, `docs/api`, `docs/runbooks`, `docs/ui`
+- **Type:** fix | docs | test | security
+- **Country/Tenant scope:** ALL physical countries (`KW`, `BH`, `EG`) and tenant-scoped connector rows
+- **Summary:** Fixed connector credential-save behavior so known Basic Auth/access-key aliases are normalized into `secretsPlain`, encrypted into `config.connector_secrets`, and never stored as plaintext connector config. The Connectors UI now shows an encrypted credential status while keeping password/access-key inputs write-only, sends only non-blank rotation fields, and keeps vROps username/password rotation deterministic.
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/plugin/service/ConnectorService.java`
+  - `src/main/resources/static/pages/connectors/connectors.js`
+  - `src/test/java/org/kfh/aiops/commandcenter/CommandCenterBackendServiceTest.java`
+  - `src/test/java/org/kfh/aiops/plugin/service/JdbcConnectorPersistenceStoreTest.java`
+  - `src/test/java/org/kfh/aiops/commandcenter/ConnectorStaticUiTest.java`
+  - `docs/API_CONTRACTS.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/UI_PAGES.md`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** Clarified `/api/v1/connectors` create/update behavior: preferred `secretsPlain` remains write-only, while known top-level credential aliases (`accessKey`/`accessSecretKey`, `username`/`password`) are normalized server-side into encrypted connector secrets for compatibility.
+- **Tests added/updated:** Added `CommandCenterBackendServiceTest.shouldSaveBasicAuthCredentialsWhenSubmittedAsTopLevelFields`, `CommandCenterBackendServiceTest.shouldRetainSavedBasicAuthPasswordWhenOnlyUsernameRotated`, and `JdbcConnectorPersistenceStoreTest.shouldEncryptSubmittedCredentialPayloadWhenCreatingConnector`; updated `ConnectorStaticUiTest.shouldKeepConnectorCredentialsWriteOnlyWhenConfigurationIsEdited`, AppDynamics, and vROps static assertions. Passed `node --check src\main\resources\static\pages\connectors\connectors.js`, `./mvnw.cmd -q "-Dtest=CommandCenterBackendServiceTest,JdbcConnectorPersistenceStoreTest,ConnectorStaticUiTest" test`, `git --no-pager diff --check`, and `./mvnw.cmd -q verify`.
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/RUNBOOKS.md`, `docs/UI_PAGES.md`, `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — connector service paths keep tenant/country checks and required permissions
+  - [x] RBAC checked at service layer — connector read/write/test permissions remain enforced
+  - [x] Inputs validated (Bean Validation) — `UiWriteRequest` plus connector-specific validators handle endpoint and credential rules
+  - [x] Audit log written for write actions — connector create/update actions continue to audit through `ConnectorService.audit`
+  - [x] No secrets / PII / tokens logged or returned — plaintext credentials are normalized into encrypted secret storage and stripped from API/UI responses
+  - [x] SSRF-safe for any URL-based config — existing BMC/AppDynamics/vROps URL validation and vROps allowlist behavior preserved
+- **Definition of Done checklist (from copilot-instructions 25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Consider adding Testcontainers-backed PostgreSQL connector-secret integration tests when CI supports containers.
+- **Author:** copilot-agent
+- **Correlation:** user-request-2026-06-18-basic-auth-persistence
+
+### 2026-06-18 — Preserve Connector Secrets Across Metadata-Only Updates
+- **Phase:** Phase 1
+- **Module(s):** `plugin.service`, `docs/runbooks`
+- **Type:** fix | docs | test | security
+- **Country/Tenant scope:** ALL physical countries (`KW`, `BH`, `EG`) and tenant-scoped connector rows
+- **Summary:** Fixed JDBC connector persistence so a configuration-only connector update carrying `secretsMask` no longer overwrites the encrypted `config.connector_secrets.secret_enc.secrets` object. This addresses the observed flow where an initial configure/test succeeds, then later Test Connection fails because saved credentials were lost after an edit that did not re-enter secrets.
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/plugin/service/JdbcConnectorPersistenceStore.java`
+  - `src/test/java/org/kfh/aiops/plugin/service/JdbcConnectorPersistenceStoreTest.java`
+  - `src/test/java/org/kfh/aiops/commandcenter/CommandCenterBackendServiceTest.java`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** Added `JdbcConnectorPersistenceStoreTest.shouldPreserveEncryptedSecretsWhenOnlySecretMetadataIsPersisted` and `CommandCenterBackendServiceTest.shouldRetainConnectorSecretsWhenConfigurationUpdatedWithoutReenteringSecrets`. Passed `./mvnw.cmd '-Dtest=JdbcConnectorPersistenceStoreTest,CommandCenterBackendServiceTest' test`, `git --no-pager diff --check` for the touched files, and `./mvnw.cmd verify` (135 tests).
+- **Docs updated:** `docs/RUNBOOKS.md`, `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — connector create/update/test paths keep existing tenant and country-scoped service checks
+  - [x] RBAC checked at service layer — connector writes require `CONNECTOR_WRITE`; tests require `CONNECTOR_TEST`
+  - [x] Inputs validated (Bean Validation) — existing connector validators remain responsible for endpoint and field validation
+  - [x] Audit log written for write actions — existing connector update/test audit behavior is unchanged
+  - [x] No secrets / PII / tokens logged or returned — fix preserves encrypted secret JSON and tests use non-production placeholders only
+  - [x] SSRF-safe for any URL-based config — no URL validation bypass or outbound call behavior changed
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** N/A
+- **Author:** copilot-agent
+- **Correlation:** user-request-20260618-connector-secret-persistence
+
+### 2026-06-18 — Clarify Connectors Card Layout to Three Per Row and Ten Per Page
+- **Phase:** Phase 1
+- **Module(s):** `frontend/connectors`, `docs/ui-pages`, `docs/runbooks`
+- **Type:** fix | docs | test
+- **Country/Tenant scope:** ALL physical countries (`KW`, `BH`, `EG`) and tenant-scoped connector rows
+- **Summary:** Corrected the Connectors Cards view behavior from the previous three-per-page interpretation to the intended layout: three wider connector cards per desktop row and up to ten connectors per card page, with pagination continuing when more than ten connectors match. Table view remains unchanged as the full filtered inventory view.
+- **Files touched:**
+  - `src/main/resources/static/pages/connectors/connectors.js`
+  - `src/main/resources/static/pages/connectors/connectors.css`
+  - `src/test/java/org/kfh/aiops/commandcenter/ConnectorStaticUiTest.java`
+  - `docs/UI_PAGES.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** Updated `ConnectorStaticUiTest` with `shouldRenderTenConnectorCardsPerPageWithThreeCardsPerRow`. Passed `node --check src/main/resources/static/pages/connectors/connectors.js`, `./mvnw.cmd -q "-Dtest=ConnectorStaticUiTest" test`, and `git --no-pager diff --check` for the updated UI/docs files.
+- **Docs updated:** `docs/UI_PAGES.md`, `docs/RUNBOOKS.md`, `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — no backend scope behavior changed; card data still comes from tenant/country-scoped connector APIs
+  - [x] RBAC checked at service layer — no backend permission behavior changed
+  - [x] Inputs validated (Bean Validation) — presentation-only pagination/layout change
+  - [x] Audit log written for write actions — no write-action behavior changed
+  - [x] No secrets / PII / tokens logged or returned — card layout does not expose connector secrets
+  - [x] SSRF-safe for any URL-based config — no connector URL/test behavior changed
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** N/A
+- **Author:** copilot-agent
+- **Correlation:** user-request-20260618-connectors-three-per-row-ten-per-page
+
+### 2026-06-18 — Limit Connectors Card View to Three Cards Per Page
+- **Phase:** Phase 1
+- **Module(s):** `frontend/connectors`, `docs/ui-pages`, `docs/runbooks`
+- **Type:** feature | docs | test
+- **Country/Tenant scope:** ALL physical countries (`KW`, `BH`, `EG`) and tenant-scoped connector rows
+- **Summary:** Updated the Connectors card view to show exactly three connector cards per page with card-only pagination controls, while preserving the Table view as the full filtered inventory. Search, filter, and view-mode changes reset the card page to keep operators on a valid first page after narrowing results.
+- **Files touched:**
+  - `src/main/resources/static/pages/connectors/connectors.js`
+  - `src/main/resources/static/pages/connectors/connectors.css`
+  - `src/test/java/org/kfh/aiops/commandcenter/ConnectorStaticUiTest.java`
+  - `docs/UI_PAGES.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** Updated `ConnectorStaticUiTest` with `shouldLimitConnectorCardsToThreePerPage`. Passed `node --check src/main/resources/static/pages/connectors/connectors.js`, `./mvnw.cmd -q "-Dtest=ConnectorStaticUiTest" test`, and `git --no-pager diff --check` for the updated UI/docs files.
+- **Docs updated:** `docs/UI_PAGES.md`, `docs/RUNBOOKS.md`, `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — no backend scope behavior changed; existing API calls remain tenant/country scoped
+  - [x] RBAC checked at service layer — no backend permission behavior changed
+  - [x] Inputs validated (Bean Validation) — UI-only pagination uses existing filtered connector data and does not add user-submitted backend fields
+  - [x] Audit log written for write actions — no write-action behavior changed
+  - [x] No secrets / PII / tokens logged or returned — card pagination is presentation-only and does not expose connector secrets
+  - [x] SSRF-safe for any URL-based config — no connector URL/test behavior changed
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Consider reusable pagination helpers if other static SPA pages need card pagination.
+- **Author:** copilot-agent
+- **Correlation:** user-request-20260618-connectors-card-pagination
+
+### 2026-06-18 — Enforce vROps Private-IP Allowlist During Test Connection
+- **Phase:** Phase 1
+- **Module(s):** `plugin.implementations.vrops`, `docs/api-contracts`, `docs/runbooks`
+- **Type:** fix | security | docs | test
+- **Country/Tenant scope:** ALL physical countries (`KW`, `BH`, `EG`) and tenant-scoped vROps connector rows
+- **Summary:** Strengthened the vROps live readiness tester so private literal IP hosts require explicit `KFH_SSRF_ALLOWLIST` / `kfh.security.ssrf.allowed-host-suffixes` approval during **Test Connection** and heartbeat, even if DNS resolution checks are disabled. This keeps internal vROps testing available only through an explicit deployment-approved allowlist and prevents DNS-check toggles from becoming an SSRF bypass.
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/plugin/implementations/vrops/HttpVropsConnectorLiveTester.java`
+  - `src/test/java/org/kfh/aiops/plugin/implementations/vrops/HttpVropsConnectorLiveTesterTest.java`
+  - `docs/API_CONTRACTS.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** No endpoint shape changes. `POST /api/v1/connectors/{id}/test` and `POST /api/v1/connectors/heartbeat` now reject unallowlisted private vROps IP hosts before any outbound HTTP call.
+- **Tests added/updated:** Updated `HttpVropsConnectorLiveTesterTest` with `shouldRejectPrivateVropsIpWithoutExplicitAllowlistDuringLiveTest`. Passed `./mvnw.cmd -q "-Dtest=HttpVropsConnectorLiveTesterTest,VropsConnectorConfigValidatorTest" test` and `node --check src/main/resources/static/pages/connectors/connectors.js` plus `./mvnw.cmd -q "-Dtest=HttpVropsConnectorLiveTesterTest,VropsConnectorConfigValidatorTest,CommandCenterBackendServiceTest,ConnectorStaticUiTest" test`.
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/RUNBOOKS.md`, `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — existing connector test/heartbeat service paths remain tenant/country scoped
+  - [x] RBAC checked at service layer — existing connector test/heartbeat permissions remain `CONNECTOR_TEST`
+  - [x] Inputs validated (Bean Validation) — vROps live tester validates HTTPS suite API shape and private-IP allowlist before outbound calls
+  - [x] Audit log written for write actions — existing test/heartbeat audit behavior is unchanged
+  - [x] No secrets / PII / tokens logged or returned — rejected tests return secret-safe messages and do not call vROps token endpoints
+  - [x] SSRF-safe for any URL-based config — private vROps IPs require explicit allowlist approval even when DNS resolution checks are disabled
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Consider extracting shared SSRF host canonicalization and allowlist policy into a platform security service before adding the remaining connector families.
+- **Author:** copilot-agent
+- **Correlation:** user-request-20260618-vrops-private-ip-allowlist
+
+### 2026-06-18 — Implement VMware vROps / Aria Operations Connector Readiness
+- **Phase:** Phase 1
+- **Module(s):** `plugin.implementations.vrops`, `plugin.service`, `frontend/connectors`, `db/migration`, `docs/api-contracts`, `docs/runbooks`
+- **Type:** feature | security | migration | docs | test
+- **Country/Tenant scope:** ALL physical countries (`KW`, `BH`, `EG`) and tenant-scoped connector rows
+- **Summary:** Added VMware vROps / Aria Operations as an enabled connector type with marketplace installation, pending secure configuration, HTTPS/SSRF-safe suite API endpoint validation, encrypted username/password credentials, and a live readiness test that acquires a vROps token before probing the alerts API. The Connectors UI now captures vROps host/auth source/window controls, maps credentials to the backend-expected username/password secret shape, and keeps test/heartbeat health deterministic without exposing secrets.
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/plugin/implementations/vrops/VropsConnectorLiveTester.java`
+  - `src/main/java/org/kfh/aiops/plugin/implementations/vrops/VropsConnectorConfigValidator.java`
+  - `src/main/java/org/kfh/aiops/plugin/implementations/vrops/HttpVropsConnectorLiveTester.java`
+  - `src/main/java/org/kfh/aiops/plugin/service/ConnectorCatalogService.java`
+  - `src/main/java/org/kfh/aiops/plugin/service/ConnectorService.java`
+  - `src/main/resources/db/migration/V8__allow_vrops_connector_type.sql`
+  - `src/main/resources/static/pages/connectors/connectors.js`
+  - `src/main/resources/static/shared/js/config.js`
+  - `src/test/java/org/kfh/aiops/plugin/implementations/vrops/VropsConnectorConfigValidatorTest.java`
+  - `src/test/java/org/kfh/aiops/plugin/implementations/vrops/HttpVropsConnectorLiveTesterTest.java`
+  - `src/test/java/org/kfh/aiops/commandcenter/CommandCenterBackendServiceTest.java`
+  - `src/test/java/org/kfh/aiops/commandcenter/ConnectorStaticUiTest.java`
+  - `docs/API_CONTRACTS.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** `V8__allow_vrops_connector_type.sql`
+- **API changes:** Existing connector endpoints now support `pluginType=VROPS`: `GET /api/v1/connectors/types`, `POST /api/v1/connectors`, `PUT /api/v1/connectors/{id}`, `POST /api/v1/connectors/{id}/test`, and `POST /api/v1/connectors/heartbeat` for enabled vROps rows.
+- **Tests added/updated:** Added `VropsConnectorConfigValidatorTest` and `HttpVropsConnectorLiveTesterTest`; updated `CommandCenterBackendServiceTest` and `ConnectorStaticUiTest`. Passed `node --check src/main/resources/static/pages/connectors/connectors.js`, `./mvnw.cmd -q "-Dtest=ConnectorStaticUiTest" test`, `./mvnw.cmd -q "-Dtest=VropsConnectorConfigValidatorTest,HttpVropsConnectorLiveTesterTest,CommandCenterBackendServiceTest,ConnectorStaticUiTest" test`, `git --no-pager diff --check -- src/main/resources/static/pages/connectors/connectors.js docs/API_CONTRACTS.md docs/RUNBOOKS.md`, and `./mvnw.cmd -q verify`.
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/RUNBOOKS.md`, `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — connector create/update/test/heartbeat use existing tenant and country-scoped service paths
+  - [x] RBAC checked at service layer — writes require `CONNECTOR_WRITE`; tests/heartbeat require `CONNECTOR_TEST`
+  - [x] Inputs validated (Bean Validation) — vROps uses a dedicated server-side config validator for endpoint, time-window, page, worker, timeout, SSL, and credential requirements
+  - [x] Audit log written for write actions — connector install/update/test/heartbeat flows use existing connector audit actions
+  - [x] No secrets / PII / tokens logged or returned — username/password are encrypted server-side, tokens are masked, and test results are secret-safe
+  - [x] SSRF-safe for any URL-based config — vROps requires HTTPS, rejects unsafe URL parts/paths, blocks metadata/localhost/private targets unless explicitly allowlisted, and requires SSL verification
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Implement scheduled vROps collection/normalization for alert paging, resource enrichment, canonical telemetry emission, custom index writes, and topology/RCA evidence integration; this task completes install/configuration/readiness testing only.
+- **Author:** copilot-agent
+- **Correlation:** user-request-20260618-vrops-connector
+
+### 2026-06-18 — Add Connector Heartbeat and Failed-Test Health Warnings
+- **Phase:** Phase 1
+- **Module(s):** `plugin.service`, `plugin.api`, `frontend/connectors`, `docs/api-contracts`, `docs/runbooks`
+- **Type:** feature | fix | docs | test | security
+- **Country/Tenant scope:** ALL physical countries (`KW`, `BH`, `EG`) and tenant-scoped connector rows
+- **Summary:** Fixed connector health derivation so a failed live test marks an enabled connector `DOWN` instead of leaving the UI at enabled/pending, and added a tenant/country-scoped heartbeat endpoint plus UI action to test every enabled connector. The connector page now shows a Warning KPI for pending/degraded connectors, a Down KPI for failed connectors, and an inline warning message without exposing credentials.
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/plugin/api/ConnectorController.java`
+  - `src/main/java/org/kfh/aiops/plugin/service/ConnectorPersistenceStore.java`
+  - `src/main/java/org/kfh/aiops/plugin/service/JdbcConnectorPersistenceStore.java`
+  - `src/main/java/org/kfh/aiops/plugin/service/ConnectorService.java`
+  - `src/main/resources/static/shared/js/api-client.js`
+  - `src/main/resources/static/pages/connectors/connectors.js`
+  - `src/main/resources/static/pages/connectors/connectors.css`
+  - `src/test/java/org/kfh/aiops/commandcenter/CommandCenterBackendServiceTest.java`
+  - `src/test/java/org/kfh/aiops/commandcenter/ConnectorStaticUiTest.java`
+  - `docs/API_CONTRACTS.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** Added `POST /api/v1/connectors/heartbeat`; changed `POST /api/v1/connectors/{id}/test` persistence behavior so `PASS` stores `health=HEALTHY` and `FAIL` stores `health=DOWN` for connector inventory display.
+- **Tests added/updated:** Updated `CommandCenterBackendServiceTest` and `ConnectorStaticUiTest`. `node --check src/main/resources/static/pages/connectors/connectors.js`, `./mvnw.cmd -q "-Dtest=CommandCenterBackendServiceTest,ConnectorStaticUiTest" test`, and `./mvnw.cmd -q verify` passed.
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/RUNBOOKS.md`, `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — heartbeat uses existing `TenantContext` and country guard for current scope
+  - [x] RBAC checked at service layer — heartbeat and single tests require `CONNECTOR_TEST`
+  - [x] Inputs validated (Bean Validation) — heartbeat reuses stored, validated connector configuration and existing live-test validators
+  - [x] Audit log written for write actions — heartbeat/test requests and per-connector heartbeat outcomes are audited
+  - [x] No secrets / PII / tokens logged or returned — heartbeat returns live-test result summaries only and keeps encrypted connector secrets server-side
+  - [x] SSRF-safe for any URL-based config — heartbeat reuses the BMC/AppDynamics HTTPS/SSRF live-test guards
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Add scheduled/background heartbeat cadence later through the connector schedule/outbox worker when scheduled collection is implemented; this task adds manual heartbeat and persisted health state.
+- **Author:** copilot-agent
+- **Correlation:** user-request-20260618-connector-heartbeat
+
+### 2026-06-18 — Implement AppDynamics Connector Readiness Test
+- **Phase:** Phase 1
+- **Module(s):** `plugin.implementations.appdynamics`, `plugin.service`, `frontend/connectors`, `db/migration`, `docs/api-contracts`, `docs/runbooks`
+- **Type:** feature | security | migration | docs | test
+- **Country/Tenant scope:** ALL physical countries (`KW`, `BH`, `EG`) and tenant-scoped connector rows
+- **Summary:** Added AppDynamics as an enabled connector type with country-aware install placeholders, secure Controller URL validation, encrypted Basic Auth credentials, explicit internal-host suffix allowlisting for corporate controllers, and a live readiness test against `GET /rest/applications?output=JSON`. The connector UI now supports AppDynamics Controller configuration, event-family toggles for errors/violations/slow transactions, and write-only username/password submission while preserving deterministic connector lifecycle behavior.
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/plugin/implementations/appdynamics/AppDynamicsConnectorConfigValidator.java`
+  - `src/main/java/org/kfh/aiops/plugin/implementations/appdynamics/AppDynamicsConnectorLiveTester.java`
+  - `src/main/java/org/kfh/aiops/plugin/implementations/appdynamics/HttpAppDynamicsConnectorLiveTester.java`
+  - `src/main/java/org/kfh/aiops/plugin/service/ConnectorCatalogService.java`
+  - `src/main/java/org/kfh/aiops/plugin/service/ConnectorService.java`
+  - `src/main/resources/db/migration/V7__allow_appdynamics_connector_type.sql`
+  - `src/main/resources/static/pages/connectors/connectors.js`
+  - `src/main/resources/static/pages/connectors/connectors.css`
+  - `src/main/resources/static/shared/js/config.js`
+  - `src/test/java/org/kfh/aiops/plugin/implementations/appdynamics/AppDynamicsConnectorConfigValidatorTest.java`
+  - `src/test/java/org/kfh/aiops/plugin/implementations/appdynamics/HttpAppDynamicsConnectorLiveTesterTest.java`
+  - `src/test/java/org/kfh/aiops/commandcenter/CommandCenterBackendServiceTest.java`
+  - `src/test/java/org/kfh/aiops/commandcenter/ConnectorStaticUiTest.java`
+  - `docs/API_CONTRACTS.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** `V7__allow_appdynamics_connector_type.sql`
+- **API changes:** `GET /api/v1/connectors/types` now marks `APPDYNAMICS` available; `POST/PUT /api/v1/connectors` accept AppDynamics `controllerUrl`, collection toggles, and `secretsPlain.username/password`; `POST /api/v1/connectors/{id}/test` supports AppDynamics readiness testing.
+- **Tests added/updated:** Added `AppDynamicsConnectorConfigValidatorTest`, `HttpAppDynamicsConnectorLiveTesterTest`; updated `CommandCenterBackendServiceTest` and `ConnectorStaticUiTest`. `node --check src/main/resources/static/pages/connectors/connectors.js` and `./mvnw.cmd -q "-Dtest=AppDynamicsConnectorConfigValidatorTest,HttpAppDynamicsConnectorLiveTesterTest,CommandCenterBackendServiceTest,ConnectorStaticUiTest" test` passed.
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/RUNBOOKS.md`, `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — connector APIs continue to require tenant/user context and country guard checks
+  - [x] RBAC checked at service layer — create/update/test still require `CONNECTOR_WRITE` / `CONNECTOR_TEST`
+  - [x] Inputs validated (Bean Validation) — AppDynamics Controller URL, numeric bounds, fetch toggles, and required credentials are validated before persistence/test
+  - [x] Audit log written for write actions — existing connector create/update/test audit flow unchanged
+  - [x] No secrets / PII / tokens logged or returned — Basic Auth username/password are stored through encrypted `config.connector_secrets`, stripped from responses, and masked in error messages
+  - [x] SSRF-safe for any URL-based config — AppDynamics Controller URL requires HTTPS `/controller`, rejects user-info/query/fragment/unsafe literal hosts, and live tester applies DNS resolution guard when enabled
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Implement scheduled AppDynamics collection/normalization next so request snapshots, health-rule violations, slow transactions, and AppDynamics Event IDs are written through the canonical telemetry/index pipeline.
+- **Author:** copilot-agent
+- **Correlation:** user-request-20260618-appdynamics-connector
+
+### 2026-06-18 — Add Secret Master-Key Runtime Diagnostic
+- **Phase:** Phase 1
+- **Module(s):** `platform.security`, `platform.config`, `docs/api-contracts`, `docs/runbooks`
+- **Type:** fix | security | docs | test
+- **Country/Tenant scope:** ALL physical countries (`KW`, `BH`, `EG`) and tenant-scoped connector rows
+- **Summary:** Kept BMC connector credentials encrypted at rest and improved troubleshooting for `SECRET_MASTER_KEY_MISSING`. The missing-key exception now explains that `KFH_AIOPS_SECRET_KEY` must be visible to the running backend JVM, while `GET /api/v1/settings` exposes only a secret-safe `system.secretMasterKeyConfigured` boolean so operators can verify runtime configuration without revealing the key.
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/platform/security/SecretCipherService.java`
+  - `src/main/java/org/kfh/aiops/platform/config/SettingsService.java`
+  - `src/test/java/org/kfh/aiops/platform/security/SecretCipherServiceTest.java`
+  - `src/test/java/org/kfh/aiops/platform/config/SettingsServiceTest.java`
+  - `docs/API_CONTRACTS.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** `GET /api/v1/settings` now includes `system.secretMasterKeyConfigured` and `system.secretMasterKeySource`; neither field exposes the configured secret value.
+- **Tests added/updated:** Updated `SecretCipherServiceTest` and `SettingsServiceTest`; `./mvnw.cmd -q "-Dtest=SecretCipherServiceTest,SettingsServiceTest" test` passed.
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/RUNBOOKS.md`, `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — Settings API already requires tenant/user context and `SETTINGS_READ`; connector APIs unchanged
+  - [x] RBAC checked at service layer — `SettingsService.get` requires `SETTINGS_READ`; connector save/test permissions unchanged
+  - [x] Inputs validated (Bean Validation) — no new user-submitted secret value paths added
+  - [x] Audit log written for write actions — no write behavior changed; existing connector/settings write audit remains in place
+  - [x] No secrets / PII / tokens logged or returned — response exposes only a boolean/source label and tests assert the key value is not returned
+  - [x] SSRF-safe for any URL-based config — no URL-handling behavior changed
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** In production/UAT, configure `KFH_AIOPS_SECRET_KEY` through deployment secrets or the service wrapper environment, not a user shell.
+- **Author:** copilot-agent
+- **Correlation:** user-request-20260618-secret-key-runtime-diagnostic
+
+### 2026-06-17 — Add Connector Secret Master-Key Startup Guard
+- **Phase:** Phase 1
+- **Module(s):** `platform.security`, `plugin.service`, `scripts`, `docs/runbooks`
+- **Type:** fix | security | infra | docs
+- **Country/Tenant scope:** ALL physical countries (`KW`, `BH`, `EG`) and tenant-scoped connector rows
+- **Summary:** Clarified and operationalized the required `KFH_AIOPS_SECRET_KEY` startup configuration that encrypts BMC connector credentials. Local database-backed and HTTPS startup scripts now prompt securely for the key when missing, preventing connector Save/Test from failing with `SECRET_MASTER_KEY_MISSING` while avoiding hardcoded or logged secrets.
+- **Files touched:**
+  - `scripts/run-with-database.ps1`
+  - `scripts/run-local-https.ps1`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** No test source changes; validated PowerShell parsing for both startup scripts and ran `SecretCipherServiceTest`.
+- **Docs updated:** `docs/RUNBOOKS.md`, `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — connector APIs and service-layer tenant scope unchanged
+  - [x] RBAC checked at service layer — existing connector save/test permissions unchanged
+  - [x] Inputs validated (Bean Validation) — BMC URL/path/secret validation unchanged
+  - [x] Audit log written for write actions — existing connector save/test audit flow unchanged
+  - [x] No secrets / PII / tokens logged or returned — scripts prompt with `Read-Host -AsSecureString`, mask console output, and do not write the key to source-controlled files
+  - [x] SSRF-safe for any URL-based config — BMC SSRF validation unchanged
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Configure the same stable `KFH_AIOPS_SECRET_KEY` in production/UAT deployment secrets; do not rotate it without a connector-secret re-encryption plan.
+- **Author:** copilot-agent
+- **Correlation:** user-request-20260617-bmc-secret-master-key
+
+### 2026-06-17 — Clarify Connector Post-PASS Configuration Editing
+- **Phase:** Phase 1
+- **Module(s):** `frontend/connectors`, `commandcenter/tests`, `docs/api-contracts`, `docs/runbooks`
+- **Type:** fix | docs | test
+- **Country/Tenant scope:** ALL physical countries (`KW`, `BH`, `EG`) and tenant-scoped connector rows
+- **Summary:** Added an explicit **Edit Configuration** action on the connector Health/runtime validation tab so a successful BMC connector test no longer appears to block endpoint, schedule, owner, notes, or credential rotation updates. Clarified that PASS is a runtime validation status, not a configuration lock, while preserving write-only credential behavior.
+- **Files touched:**
+  - `src/main/resources/static/pages/connectors/connectors.js`
+  - `src/main/resources/static/pages/connectors/connectors.css`
+  - `src/test/java/org/kfh/aiops/commandcenter/ConnectorStaticUiTest.java`
+  - `docs/API_CONTRACTS.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** No endpoint shape changes; clarified existing `PUT /api/v1/connectors/{id}` behavior that updates remain allowed after `POST /api/v1/connectors/{id}/test` returns PASS.
+- **Tests added/updated:** Added `ConnectorStaticUiTest`; `node --check src/main/resources/static/pages/connectors/connectors.js` and `./mvnw.cmd -q "-Dtest=ConnectorStaticUiTest" test` passed.
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/RUNBOOKS.md`, `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — existing connector update/test APIs and headers unchanged
+  - [x] RBAC checked at service layer — existing `CONNECTOR_WRITE`/`CONNECTOR_TEST` checks unchanged
+  - [x] Inputs validated (Bean Validation) — backend BMC URL/path/secret validation remains authoritative
+  - [x] Audit log written for write actions — existing connector save/test audit flow unchanged
+  - [x] No secrets / PII / tokens logged or returned — UI guidance keeps credentials write-only and blank fields preserve encrypted secrets
+  - [x] SSRF-safe for any URL-based config — backend BMC SSRF validation unchanged
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Consider adding browser-level connector drawer tests if a frontend test runner is introduced.
+- **Author:** copilot-agent
+- **Correlation:** user-request-20260617-connector-post-pass-edit
+
+### 2026-06-17 — Implement Live BMC Connector Test And Encrypted Secrets
+- **Phase:** Phase 1
+- **Module(s):** `plugin.implementations.bmc`, `plugin.service`, `platform.security`, `frontend/connectors`, `docs/api-contracts`, `docs/runbooks`
+- **Type:** feature | security | fix | docs | test
+- **Country/Tenant scope:** ALL physical countries (`KW`, `BH`, `EG`) and tenant-scoped connector rows
+- **Summary:** Replaced the simulated connector test with a real BMC Helix communication readiness test. Connector Save now persists configuration changes and encrypts submitted BMC credentials in `config.connector_secrets`; Configuration **Test Connection** saves current form values first, then tests saved config by performing BMC access-key login and events `msearch` readiness probing.
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/platform/security/SecretCipherService.java`
+  - `src/main/java/org/kfh/aiops/plugin/implementations/bmc/BmcConnectorLiveTester.java`
+  - `src/main/java/org/kfh/aiops/plugin/implementations/bmc/HttpBmcConnectorLiveTester.java`
+  - `src/main/java/org/kfh/aiops/plugin/service/ConnectorPersistenceStore.java`
+  - `src/main/java/org/kfh/aiops/plugin/service/JdbcConnectorPersistenceStore.java`
+  - `src/main/java/org/kfh/aiops/plugin/service/ConnectorService.java`
+  - `src/main/resources/static/pages/connectors/connectors.js`
+  - `src/test/java/org/kfh/aiops/platform/security/SecretCipherServiceTest.java`
+  - `src/test/java/org/kfh/aiops/plugin/implementations/bmc/HttpBmcConnectorLiveTesterTest.java`
+  - `src/test/java/org/kfh/aiops/commandcenter/CommandCenterBackendServiceTest.java`
+  - `docs/API_CONTRACTS.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A — reused existing `config.connector_secrets.secret_enc` JSONB column
+- **API changes:** Existing `POST /api/v1/connectors/{id}/test` now performs live BMC readiness checks for BMC connectors and returns secret-safe `pass`, `readyToCollect`, status, latency, checked endpoint, correlation, and step details.
+- **Tests added/updated:** Added `HttpBmcConnectorLiveTesterTest` and `SecretCipherServiceTest`; updated `CommandCenterBackendServiceTest`; `node --check src/main/resources/static/pages/connectors/connectors.js`, `./mvnw.cmd -q '-Dtest=HttpBmcConnectorLiveTesterTest,SecretCipherServiceTest,CommandCenterBackendServiceTest' test`, `./mvnw.cmd -q test`, and `./mvnw.cmd -q -DskipTests package` passed.
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/RUNBOOKS.md`, `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — connector test still goes through tenant/country-scoped `ConnectorService.require`
+  - [x] RBAC checked at service layer — `CONNECTOR_WRITE` and `CONNECTOR_TEST` checks preserved
+  - [x] Inputs validated (Bean Validation) — BMC URL/path/bounds validation preserved; live tester revalidates saved URLs before outbound calls
+  - [x] Audit log written for write actions — connector save/test audit flow preserved
+  - [x] No secrets / PII / tokens logged or returned — access keys, access secret keys, bearer tokens, and raw BMC payloads are not returned; tests assert this
+  - [x] SSRF-safe for any URL-based config — HTTPS-only URL validation, relative endpoint checks, and optional DNS resolution blocking are applied before BMC calls
+- **Definition of Done checklist (from copilot-instructions 25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Add scheduled BMC collection worker that uses the same encrypted credentials to collect, normalize, archive, and index BMC events through the canonical telemetry flow.
+- **Author:** copilot-agent
+- **Correlation:** user-request-20260617-live-connector-test-save-config
+
+### 2026-06-17 — Fix Connector Configuration Test And Save Buttons
+- **Phase:** Phase 1
+- **Module(s):** `frontend/connectors`, `docs/runbooks`
+- **Type:** fix | docs
+- **Country/Tenant scope:** ALL physical countries (`KW`, `BH`, `EG`) and tenant-scoped connector rows
+- **Summary:** Fixed the connector Configuration drawer footer actions so **Test Connection** and **Save** are explicitly bound after each drawer render, show busy states, and provide visible feedback above the drawer. Test now switches to the Health tab with the latest result, and Save now validates pending BMC base URL and secrets before calling the API.
+- **Files touched:**
+  - `src/main/resources/static/pages/connectors/connectors.js`
+  - `src/main/resources/static/pages/connectors/connectors.css`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** JavaScript syntax checked with `node --check src/main/resources/static/pages/connectors/connectors.js`; `./mvnw.cmd -q -Dtest=CommandCenterBackendServiceTest test`, `./mvnw.cmd -q test`, and `./mvnw.cmd -q -DskipTests package` passed.
+- **Docs updated:** `docs/RUNBOOKS.md`, `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — existing connector API headers/path unchanged
+  - [x] RBAC checked at service layer — existing connector update/test permissions unchanged
+  - [x] Inputs validated (Bean Validation) — added client-side required-field validation; backend validation remains authoritative
+  - [x] Audit log written for write actions — existing connector save/test audit flow unchanged
+  - [x] No secrets / PII / tokens logged or returned — credentials remain write-only; only validation messages are shown
+  - [x] SSRF-safe for any URL-based config — backend BMC URL validation unchanged
+- **Definition of Done checklist (from copilot-instructions 25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Add browser-level UI tests for connector drawer actions when the frontend test harness is introduced.
+- **Author:** copilot-agent
+- **Correlation:** user-request-20260617-connector-config-test-save-buttons
+
+### 2026-06-17 — Rename Connector Pause Resume To Enable Disable
+- **Phase:** Phase 1
+- **Module(s):** `frontend/connectors`, `plugin.implementations.bmc`, `docs/api-contracts`, `docs/runbooks`
+- **Type:** fix | docs | test
+- **Country/Tenant scope:** ALL physical countries (`KW`, `BH`, `EG`) and tenant-scoped connector rows
+- **Summary:** Changed connector operator wording from pause/resume and collecting/paused to enable/disable and enabled/disabled. BMC marketplace install now creates an enabled pending-configuration connector instead of installing it as disabled.
+- **Files touched:**
+  - `src/main/resources/static/pages/connectors/connectors.js`
+  - `src/main/resources/static/pages/connectors/connectors.css`
+  - `src/main/java/org/kfh/aiops/plugin/implementations/bmc/BmcConnectorConfigValidator.java`
+  - `src/test/java/org/kfh/aiops/commandcenter/CommandCenterBackendServiceTest.java`
+  - `docs/API_CONTRACTS.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A path/schema change; BMC install-only connector response now returns `enabled=true` with `configurationStatus=PENDING` and `secretsMask=not_configured`.
+- **Tests added/updated:** Updated `CommandCenterBackendServiceTest` BMC install-only expectations; `./mvnw.cmd -q -Dtest=CommandCenterBackendServiceTest test`, `./mvnw.cmd -q test`, and `./mvnw.cmd -q -DskipTests package` passed.
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/RUNBOOKS.md`, `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — connector APIs still use existing tenant/country-aware service path
+  - [x] RBAC checked at service layer — existing connector read/write/test permissions unchanged
+  - [x] Inputs validated (Bean Validation) — BMC pending/configured validation unchanged except default enabled state
+  - [x] Audit log written for write actions — existing connector create/update/toggle/delete audit flow unchanged
+  - [x] No secrets / PII / tokens logged or returned — `secretsPlain` remains stripped and docs/tests avoid plaintext secrets
+  - [x] SSRF-safe for any URL-based config — BMC URL validation unchanged
+- **Definition of Done checklist (from copilot-instructions 25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Live connector workers must still skip pending/not-configured connectors until required endpoint and secret configuration is complete, even when the connector enabled flag is true.
+- **Author:** copilot-agent
+- **Correlation:** user-request-20260617-connector-enable-disable-install-enabled
+
+### 2026-06-17 — Fail Closed When Connector Database Persistence Is Unavailable
+- **Phase:** Phase 1
+- **Module(s):** `plugin.service`, `platform.exception`, `docs/api-contracts`, `docs/runbooks`
+- **Type:** fix | security | docs | test
+- **Country/Tenant scope:** ALL physical countries (`KW`, `BH`, `EG`) and tenant-scoped connector rows
+- **Summary:** Fixed the remaining connector disappearance path by preventing connector install/update/delete/toggle writes from silently falling back to volatile memory when the JDBC persistence store is not wired. The JDBC connector store is now a normal repository for datasource-backed startup, and connector writes fail closed with `503 CONNECTOR_PERSISTENCE_UNAVAILABLE` rather than acknowledging a non-durable install.
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/plugin/service/ConnectorService.java`
+  - `src/main/java/org/kfh/aiops/plugin/service/JdbcConnectorPersistenceStore.java`
+  - `src/main/java/org/kfh/aiops/platform/exception/ServiceUnavailableException.java`
+  - `src/test/java/org/kfh/aiops/commandcenter/CommandCenterBackendServiceTest.java`
+  - `docs/API_CONTRACTS.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A — reused existing `config.connectors` and `config.connector_secrets`
+- **API changes:** Existing connector write endpoints now return `503 application/problem+json` with code `CONNECTOR_PERSISTENCE_UNAVAILABLE` if durable connector persistence is unavailable; no path or request-body shape changes.
+- **Tests added/updated:** Updated `CommandCenterBackendServiceTest` restart-style connector persistence coverage to keep the same tenant scope and added `shouldRejectConnectorInstallWhenPersistenceStoreUnavailable`; passed `./mvnw.cmd -q -Dtest=CommandCenterBackendServiceTest test`, `./mvnw.cmd -q test`, and `./mvnw.cmd -q -DskipTests package`.
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/RUNBOOKS.md`, `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — connector list/get still require tenant and country scope; tests now mirror tenant-scoped persistence
+  - [x] RBAC checked at service layer — existing `CONNECTOR_READ`, `CONNECTOR_WRITE`, and `CONNECTOR_TEST` checks preserved
+  - [x] Inputs validated (Bean Validation) — `UiWriteRequest` and BMC SSRF/config validation unchanged
+  - [x] Audit log written for write actions — create/update/delete/toggle audit calls preserved after durable writes
+  - [x] No secrets / PII / tokens logged or returned — no plaintext connector secrets stored in response/docs/tests; runbook SQL excludes secret metadata
+  - [x] SSRF-safe for any URL-based config — BMC HTTPS/path/host validation unchanged
+- **Definition of Done checklist (from copilot-instructions 25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Replace connector secret metadata placeholder with encrypted `SecretCipherService` storage before live BMC authentication worker execution.
+- **Author:** copilot-agent
+- **Correlation:** user-request-20260617-connector-persistence-after-webserver-restart
+
+### 2026-06-17 — Persist Installed Connectors In PostgreSQL
+- **Phase:** Phase 1
+- **Module(s):** `plugin.service`, `frontend/connectors`, `docs/runbooks`
+- **Type:** fix
+- **Country/Tenant scope:** ALL physical countries (`KW`, `BH`, `EG`)
+- **Summary:** Fixed installed connectors disappearing after refresh/restart by adding a PostgreSQL-backed connector persistence store using `config.connectors`. `ConnectorService` now lists, creates, updates, toggles, and deletes connectors through the persistent store when JDBC is available, with the existing in-memory read model retained only as degraded local fallback.
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/plugin/service/ConnectorPersistenceStore.java`
+  - `src/main/java/org/kfh/aiops/plugin/service/JdbcConnectorPersistenceStore.java`
+  - `src/main/java/org/kfh/aiops/plugin/service/ConnectorService.java`
+  - `src/test/java/org/kfh/aiops/commandcenter/CommandCenterBackendServiceTest.java`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A — reused existing `config.connectors` and `config.connector_secrets` tables
+- **API changes:** N/A — existing `/api/v1/connectors` create/list/update/delete/toggle endpoints now use durable PostgreSQL storage when available
+- **Tests added/updated:** Added `shouldKeepInstalledConnectorAfterServiceRefreshWhenPersistenceStoreAvailable` and `shouldRejectPersistedConnectorLookupWhenTenantDoesNotMatch` in `CommandCenterBackendServiceTest`; `./mvnw.cmd -q -Dtest=CommandCenterBackendServiceTest test`, `./mvnw.cmd -q -DskipTests package`, and `./mvnw.cmd -q test` passed after code and documentation updates.
+- **Docs updated:** `docs/RUNBOOKS.md`, `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — connector persistence queries are tenant-scoped and country/environment-filtered
+  - [x] RBAC checked at service layer — existing `CONNECTOR_READ`, `CONNECTOR_WRITE`, and `CONNECTOR_TEST` checks unchanged
+  - [x] Inputs validated (Bean Validation) — existing DTO validation and BMC SSRF validation unchanged
+  - [x] Audit log written for write actions — existing connector create/update/delete/toggle audit flow unchanged
+  - [x] No secrets / PII / tokens logged or returned — `secretsPlain` remains stripped; connector secret metadata stores only status/mask, not plaintext
+  - [x] SSRF-safe for any URL-based config — existing BMC HTTPS/host/path validation unchanged
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Consider replacing the connector secret metadata placeholder with the platform `SecretCipherService` once the connector worker executes live BMC authentication.
+- **Author:** copilot-agent
+- **Correlation:** user-request-20260617-persist-installed-connectors-refresh
+
+### 2026-06-17 — Keep Connector Collection Toggle Only In Configuration
+- **Phase:** Phase 1
+- **Module(s):** `frontend/connectors`
+- **Type:** fix
+- **Country/Tenant scope:** ALL physical countries (`KW`, `BH`, `EG`)
+- **Summary:** Removed actionable pause/resume controls from connector cards, table rows, and the drawer header. Added a dedicated modern collection toggle inside the Configuration tab while cards and tables now show passive `Collecting`/`Paused` state pills only.
+- **Files touched:**
+  - `src/main/resources/static/pages/connectors/connectors.js`
+  - `src/main/resources/static/pages/connectors/connectors.css`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A — reused existing `PATCH /api/v1/connectors/{id}/toggle`
+- **Tests added/updated:** N/A — frontend placement/styling update; `node --check src/main/resources/static/pages/connectors/connectors.js`, `./mvnw.cmd -q -DskipTests package`, and `./mvnw.cmd -q test` passed. IDE diagnostics reported no CSS errors and only pre-existing JS warnings unrelated to this change.
+- **Docs updated:** `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — existing connector toggle API context unchanged
+  - [x] RBAC checked at service layer — backend `CONNECTOR_WRITE` enforcement unchanged
+  - [x] Inputs validated (Bean Validation) — no backend input contracts changed
+  - [x] Audit log written for write actions — existing connector toggle audit flow unchanged
+  - [x] No secrets / PII / tokens logged or returned — UI action exposes no secrets
+  - [x] SSRF-safe for any URL-based config — no URL behavior changed
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Hard-refresh `index.html#connectors` (`Ctrl+F5`) and verify the only actionable pause/resume control appears inside `Configure > Configuration`.
+- **Author:** copilot-agent
+- **Correlation:** user-request-20260617-collection-toggle-configuration-only
+
+### 2026-06-17 — Move Connector Collection Toggle Into Configuration
+- **Phase:** Phase 1
+- **Module(s):** `frontend/connectors`
+- **Type:** fix
+- **Country/Tenant scope:** ALL physical countries (`KW`, `BH`, `EG`)
+- **Summary:** Moved the collection pause/resume action into the connector Configuration tab as a modern toggle control. Removed actionable pause/resume buttons from connector cards, table rows, and drawer header; cards/table now show passive `Collecting` or `Paused` state pills only.
+- **Files touched:**
+  - `src/main/resources/static/pages/connectors/connectors.js`
+  - `src/main/resources/static/pages/connectors/connectors.css`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A — reused existing `PATCH /api/v1/connectors/{id}/toggle`
+- **Tests added/updated:** N/A — frontend placement/styling update; `node --check src/main/resources/static/pages/connectors/connectors.js`, `./mvnw.cmd -q -DskipTests package`, and `./mvnw.cmd -q test` passed. IDE diagnostics reported no CSS errors and only pre-existing JS warnings unrelated to this change.
+- **Docs updated:** `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — existing connector toggle API context unchanged
+  - [x] RBAC checked at service layer — backend `CONNECTOR_WRITE` enforcement unchanged
+  - [x] Inputs validated (Bean Validation) — no backend input contracts changed
+  - [x] Audit log written for write actions — existing connector toggle audit flow unchanged
+  - [x] No secrets / PII / tokens logged or returned — UI action exposes no secrets
+  - [x] SSRF-safe for any URL-based config — no URL behavior changed
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Hard-refresh `index.html#connectors` (`Ctrl+F5`) and verify the Configuration tab contains the only pause/resume toggle while cards/table show passive state labels.
+- **Author:** copilot-agent
+- **Correlation:** user-request-20260617-move-collection-toggle-into-configuration
+
+### 2026-06-17 — Add Per-Connector Log Collection Pause Resume Action
+- **Phase:** Phase 1
+- **Module(s):** `frontend/connectors`
+- **Type:** fix
+- **Country/Tenant scope:** ALL physical countries (`KW`, `BH`, `EG`)
+- **Summary:** Added explicit `Pause Logs` / `Resume Logs` actions for each connector on cards, table rows, and the connector drawer header. The action reuses the existing tenant-scoped, RBAC-protected connector toggle API so pausing/resuming collection stays audited and country-aware.
+- **Files touched:**
+  - `src/main/resources/static/pages/connectors/connectors.js`
+  - `src/main/resources/static/pages/connectors/connectors.css`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A — reused existing `PATCH /api/v1/connectors/{id}/toggle`
+- **Tests added/updated:** N/A — frontend action exposure/styling update; `node --check src/main/resources/static/pages/connectors/connectors.js`, `./mvnw.cmd -q -DskipTests package`, and `./mvnw.cmd -q test` passed. IDE diagnostics reported no CSS errors and only pre-existing JS warnings unrelated to this change.
+- **Docs updated:** `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — existing connector toggle API context unchanged
+  - [x] RBAC checked at service layer — backend `CONNECTOR_WRITE` enforcement unchanged
+  - [x] Inputs validated (Bean Validation) — no backend input contracts changed
+  - [x] Audit log written for write actions — existing connector toggle audit flow unchanged
+  - [x] No secrets / PII / tokens logged or returned — UI action exposes no secrets
+  - [x] SSRF-safe for any URL-based config — no URL behavior changed
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Hard-refresh `index.html#connectors` (`Ctrl+F5`) and visually confirm each connector card, table row, and drawer header shows `Pause Logs` or `Resume Logs` according to collection state.
+- **Author:** copilot-agent
+- **Correlation:** user-request-20260617-connector-pause-resume-log-collection
+
+### 2026-06-17 — Modernize All Connector Drawer Tabs
+- **Phase:** Phase 1
+- **Module(s):** `frontend/connectors`
+- **Type:** fix
+- **Country/Tenant scope:** ALL physical countries (`KW`, `BH`, `EG`)
+- **Summary:** Redesigned all connector drawer tabs (`Overview`, `Configuration`, `Mapping`, `Health`, `Logs`) with a consistent modern card-based workspace. Added modern hero panels, KPI/stat cards, endpoint/detail cards, mapping table styling, health validation panels, chart placeholder, log toolbar, and empty states while preserving existing connector Save/Test behavior.
+- **Files touched:**
+  - `src/main/resources/static/pages/connectors/connectors.js`
+  - `src/main/resources/static/pages/connectors/connectors.css`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** N/A — static frontend design update; `node --check src/main/resources/static/pages/connectors/connectors.js`, `./mvnw.cmd -q -DskipTests package`, and `./mvnw.cmd -q test` passed. IDE diagnostics reported no CSS errors and only pre-existing JS warnings unrelated to this change.
+- **Docs updated:** `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — existing connector APIs and tenant context unchanged
+  - [x] RBAC checked at service layer — backend connector authorization unchanged
+  - [x] Inputs validated (Bean Validation) — no backend input contracts changed
+  - [x] Audit log written for write actions — existing connector write/test flows unchanged
+  - [x] No secrets / PII / tokens logged or returned — logs and helper text remain secret-safe; credentials remain write-only
+  - [x] SSRF-safe for any URL-based config — existing connector URL validation unchanged
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Hard-refresh `index.html#connectors` (`Ctrl+F5`) and visually confirm all drawer tabs share the modern design and existing Test/Save actions still work.
+- **Author:** copilot-agent
+- **Correlation:** user-request-20260617-modernize-all-connector-tabs
+
+### 2026-06-17 — Modernize Connector Configuration Drawer
+- **Phase:** Phase 1
+- **Module(s):** `frontend/connectors`
+- **Type:** fix
+- **Country/Tenant scope:** ALL physical countries (`KW`, `BH`, `EG`)
+- **Summary:** Redesigned the connector Configuration tab into a modern settings workspace with a governed setup banner, polished section cards, icon-led headers, helper copy, improved field styling, secure credential note, and responsive layout. Preserved all existing `edit-*` field IDs and existing Test Connection/Save behavior.
+- **Files touched:**
+  - `src/main/resources/static/pages/connectors/connectors.js`
+  - `src/main/resources/static/pages/connectors/connectors.css`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** N/A — static frontend design update; `node --check src/main/resources/static/pages/connectors/connectors.js`, `./mvnw.cmd -q -DskipTests package`, and `./mvnw.cmd -q test` passed. IDE diagnostics reported no CSS errors and only pre-existing JS warnings unrelated to this change.
+- **Docs updated:** `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — existing connector save/test APIs unchanged
+  - [x] RBAC checked at service layer — backend connector authorization unchanged
+  - [x] Inputs validated (Bean Validation) — no backend input contracts changed
+  - [x] Audit log written for write actions — existing connector write/test flows unchanged
+  - [x] No secrets / PII / tokens logged or returned — credentials remain write-only; helper text reinforces encrypted storage
+  - [x] SSRF-safe for any URL-based config — existing connector URL validation unchanged
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Hard-refresh `index.html#connectors` (`Ctrl+F5`) and visually confirm the Configuration tab uses the modern section-card design while Save/Test Connection still work.
+- **Author:** copilot-agent
+- **Correlation:** user-request-20260617-modern-connector-configuration-design
+
+### 2026-06-17 — Remove Connectors Header Eyebrow and Subtitle
+- **Phase:** Phase 1
+- **Module(s):** `frontend/connectors`
+- **Type:** fix
+- **Country/Tenant scope:** ALL physical countries (`KW`, `BH`, `EG`)
+- **Summary:** Removed the `Configuration` eyebrow and the long descriptive subtitle from the Connectors inventory header, leaving the page title and controls only.
+- **Files touched:**
+  - `src/main/resources/static/pages/connectors/connectors.js`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** N/A — static frontend text removal; `node --check src/main/resources/static/pages/connectors/connectors.js`, `./mvnw.cmd -q -DskipTests package`, and `./mvnw.cmd -q test` passed. IDE diagnostics call hit a stale-offset issue after the edit, so syntax/build/test validation was used.
+- **Docs updated:** `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — existing connector API behavior unchanged
+  - [x] RBAC checked at service layer — backend connector authorization unchanged
+  - [x] Inputs validated (Bean Validation) — no backend input contracts changed
+  - [x] Audit log written for write actions — no write behavior changed
+  - [x] No secrets / PII / tokens logged or returned — removed display text only
+  - [x] SSRF-safe for any URL-based config — connector URL validation unchanged
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Hard-refresh `index.html#connectors` (`Ctrl+F5`) and visually confirm the header no longer shows `Configuration` or the descriptive subtitle.
+- **Author:** copilot-agent
+- **Correlation:** user-request-20260617-remove-connectors-header-text
+
+### 2026-06-17 — Make Connector Configuration Save Button Visible
+- **Phase:** Phase 1
+- **Module(s):** `frontend/connectors`
+- **Type:** fix
+- **Country/Tenant scope:** ALL physical countries (`KW`, `BH`, `EG`)
+- **Summary:** Replaced the utility-class-only configuration drawer footer buttons with explicit connector footer button classes so `Save` renders as a clearly visible green action next to `Test Connection`. The footer now consistently shows `Cancel`, `Test Connection`, and `Save` with wrapping support on narrow drawer widths.
+- **Files touched:**
+  - `src/main/resources/static/pages/connectors/connectors.js`
+  - `src/main/resources/static/pages/connectors/connectors.css`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A — reused existing tenant-scoped connector update API
+- **Tests added/updated:** N/A — static frontend visibility fix; `node --check src/main/resources/static/pages/connectors/connectors.js`, `./mvnw.cmd -q -DskipTests package`, and `./mvnw.cmd -q test` passed. IDE diagnostics reported no CSS errors and only pre-existing JS warnings unrelated to this change.
+- **Docs updated:** `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — existing connector save API context unchanged
+  - [x] RBAC checked at service layer — backend connector authorization unchanged
+  - [x] Inputs validated (Bean Validation) — no backend input contracts changed
+  - [x] Audit log written for write actions — existing connector save flow unchanged
+  - [x] No secrets / PII / tokens logged or returned — UI styling only; connector secrets remain write-only
+  - [x] SSRF-safe for any URL-based config — existing connector URL validation unchanged
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Hard-refresh `index.html#connectors` (`Ctrl+F5`) and visually confirm the configuration drawer footer shows the green `Save` button to the right of `Test Connection`.
+- **Author:** copilot-agent
+- **Correlation:** user-request-20260617-connector-save-button-visible
+
+### 2026-06-17 — Add Connector Card Country and Configuration Test Save Actions
+- **Phase:** Phase 1
+- **Module(s):** `frontend/connectors`
+- **Type:** fix
+- **Country/Tenant scope:** ALL physical countries (`KW`, `BH`, `EG`)
+- **Summary:** Made connector cards the default inventory view, added country badges to connector cards and table rows, and added `Test Connection` plus `Save` actions to the configuration drawer footer. Test actions now remain available for disabled/pending connectors so connection settings can be validated before enabling scheduled collection.
+- **Files touched:**
+  - `src/main/resources/static/pages/connectors/connectors.js`
+  - `src/main/resources/static/pages/connectors/connectors.css`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A — reused existing tenant-scoped `/api/v1/connectors/{id}/test` and `/api/v1/connectors/{id}` update APIs
+- **Tests added/updated:** N/A — static frontend behavior update; `node --check src/main/resources/static/pages/connectors/connectors.js`, `./mvnw.cmd -q -DskipTests package`, and `./mvnw.cmd -q test` passed. IDE diagnostics reported no CSS errors and only pre-existing JS warnings unrelated to this change.
+- **Docs updated:** `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — existing connector API client and backend context validation unchanged
+  - [x] RBAC checked at service layer — backend connector authorization unchanged
+  - [x] Inputs validated (Bean Validation) — no backend input contracts changed
+  - [x] Audit log written for write actions — existing connector save/test backend flows unchanged
+  - [x] No secrets / PII / tokens logged or returned — UI displays country/scope metadata only and does not expose connector secrets
+  - [x] SSRF-safe for any URL-based config — existing connector URL validation unchanged
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Hard-refresh `index.html#connectors` (`Ctrl+F5`) and visually confirm cards are default, each connector card shows country, and the configuration drawer footer shows `Test Connection` and `Save`.
+- **Author:** copilot-agent
+- **Correlation:** user-request-20260617-connector-cards-country-test-save
+
+### 2026-06-17 — Align Connector Detail Back Button With Title
+- **Phase:** Phase 1
+- **Module(s):** `frontend/connectors`
+- **Type:** fix
+- **Country/Tenant scope:** ALL physical countries (`KW`, `BH`, `EG`)
+- **Summary:** Reworked the connector detail hero so the compact Back button and connector name render on the same top row, matching the requested sample layout. Also aligned the marketplace header to use the same compact Back + page-title row pattern.
+- **Files touched:**
+  - `src/main/resources/static/pages/connectors/connectors.js`
+  - `src/main/resources/static/pages/connectors/connectors.css`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** N/A — static frontend layout refinement; `node --check src/main/resources/static/pages/connectors/connectors.js`, `./mvnw.cmd -q -DskipTests package`, and `./mvnw.cmd -q test` passed. IDE diagnostics reported no CSS errors and only pre-existing JS warnings unrelated to this change.
+- **Docs updated:** `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — existing tenant/country-scoped connector flows unchanged
+  - [x] RBAC checked at service layer — backend connector authorization unchanged
+  - [x] Inputs validated (Bean Validation) — no backend input contracts changed
+  - [x] Audit log written for write actions — install/configure/uninstall write flows unchanged
+  - [x] No secrets / PII / tokens logged or returned — UI displays connector metadata only
+  - [x] SSRF-safe for any URL-based config — connector URL validation unchanged
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Hard-refresh `index.html#connectors` (`Ctrl+F5`) and visually confirm the BMC detail header starts with `Back` followed immediately by `BMC Helix` on the same row.
+- **Author:** copilot-agent
+- **Correlation:** user-request-20260617-bmc-title-row-back-button
+
+### 2026-06-17 — Compact Connector Back Buttons Inline
+- **Phase:** Phase 1
+- **Module(s):** `frontend/connectors`
+- **Type:** fix
+- **Country/Tenant scope:** ALL physical countries (`KW`, `BH`, `EG`)
+- **Summary:** Reworked marketplace and connector detail return controls into compact one-line buttons with a small back icon before the text. The buttons remain before the page title or connector name while avoiding stacked two-line copy.
+- **Files touched:**
+  - `src/main/resources/static/pages/connectors/connectors.js`
+  - `src/main/resources/static/pages/connectors/connectors.css`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** N/A — static frontend layout refinement; `node --check src/main/resources/static/pages/connectors/connectors.js`, `./mvnw.cmd -q -DskipTests package`, and `./mvnw.cmd -q test` passed. IDE diagnostics reported no CSS errors and only pre-existing JS warnings unrelated to this change.
+- **Docs updated:** `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — existing tenant/country-scoped connector flows unchanged
+  - [x] RBAC checked at service layer — backend connector authorization unchanged
+  - [x] Inputs validated (Bean Validation) — no backend input contracts changed
+  - [x] Audit log written for write actions — install/configure/uninstall write flows unchanged
+  - [x] No secrets / PII / tokens logged or returned — UI displays connector metadata only
+  - [x] SSRF-safe for any URL-based config — connector URL validation unchanged
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Hard-refresh `index.html#connectors` (`Ctrl+F5`) and visually confirm the compact inline back icon/text appears before the marketplace title and connector detail title.
+- **Author:** copilot-agent
+- **Correlation:** user-request-20260617-connector-compact-inline-back-button
+
+### 2026-06-17 — Place Connector Return Buttons Before Titles
+- **Phase:** Phase 1
+- **Module(s):** `frontend/connectors`
+- **Type:** fix
+- **Country/Tenant scope:** ALL physical countries (`KW`, `BH`, `EG`)
+- **Summary:** Moved the Connector Marketplace and connector detail return buttons immediately before the page title or connector name, matching the requested header order. Kept the labels explicit as return actions and preserved the existing navigation destinations.
+- **Files touched:**
+  - `src/main/resources/static/pages/connectors/connectors.js`
+  - `src/main/resources/static/pages/connectors/connectors.css`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** N/A — static frontend layout refinement; `node --check src/main/resources/static/pages/connectors/connectors.js`, `./mvnw.cmd -q -DskipTests package`, and `./mvnw.cmd -q test` passed. IDE diagnostics reported no CSS errors and only pre-existing JS warnings unrelated to this change.
+- **Docs updated:** `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — existing tenant/country-scoped connector flows unchanged
+  - [x] RBAC checked at service layer — backend connector authorization unchanged
+  - [x] Inputs validated (Bean Validation) — no backend input contracts changed
+  - [x] Audit log written for write actions — install/configure/uninstall write flows unchanged
+  - [x] No secrets / PII / tokens logged or returned — UI displays connector metadata only
+  - [x] SSRF-safe for any URL-based config — connector URL validation unchanged
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Hard-refresh `index.html#connectors` (`Ctrl+F5`) and visually confirm the return button appears immediately above the marketplace title and each connector detail title.
+- **Author:** copilot-agent
+- **Correlation:** user-request-20260617-connector-return-before-title
+
+### 2026-06-17 — Make Connector Headers Title-First
+- **Phase:** Phase 1
+- **Module(s):** `frontend/connectors`
+- **Type:** fix
+- **Country/Tenant scope:** ALL physical countries (`KW`, `BH`, `EG`)
+- **Summary:** Reordered the Connector Marketplace and connector detail headers so the page or connector name is the first primary header content. Moved the return controls into secondary header/action positions while preserving navigation back to Connector Inventory or Connector Marketplace.
+- **Files touched:**
+  - `src/main/resources/static/pages/connectors/connectors.js`
+  - `src/main/resources/static/pages/connectors/connectors.css`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** N/A — static frontend layout refinement; `node --check src/main/resources/static/pages/connectors/connectors.js`, `./mvnw.cmd -q -DskipTests package`, and `./mvnw.cmd -q test` passed. IDE diagnostics reported no CSS errors and only pre-existing JS warnings unrelated to this change.
+- **Docs updated:** `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — existing tenant/country-scoped connector flows unchanged
+  - [x] RBAC checked at service layer — backend connector authorization unchanged
+  - [x] Inputs validated (Bean Validation) — no backend input contracts changed
+  - [x] Audit log written for write actions — install/configure/uninstall write flows unchanged
+  - [x] No secrets / PII / tokens logged or returned — UI displays connector metadata only
+  - [x] SSRF-safe for any URL-based config — connector URL validation unchanged
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Hard-refresh `index.html#connectors` (`Ctrl+F5`) and visually confirm the title-first headers on marketplace and detail pages across desktop/mobile breakpoints.
+- **Author:** copilot-agent
+- **Correlation:** user-request-20260617-connector-header-return-button-order
+
+### 2026-06-17 — Refine Connector Marketplace Header and Scope Design
+- **Phase:** Phase 1
+- **Module(s):** `frontend/connectors`
+- **Type:** fix
+- **Country/Tenant scope:** ALL physical countries (`KW`, `BH`, `EG`)
+- **Summary:** Reduced the visual height of the connector marketplace hero, marketplace KPI cards, connector KPI cards, and connector detail hero. Reworked marketplace/detail back buttons to show the previous page name more clearly, and redesigned the installation scope panel as a more visible governed install target card with country, environment, status, and explanatory text.
+- **Files touched:**
+  - `src/main/resources/static/pages/connectors/connectors.js`
+  - `src/main/resources/static/pages/connectors/connectors.css`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** N/A — visual/static frontend refinement; `node --check src/main/resources/static/pages/connectors/connectors.js`, `./mvnw.cmd -q -DskipTests package`, and `./mvnw.cmd -q test` passed. IDE diagnostics reported no CSS errors and only pre-existing JS warnings unrelated to this change.
+- **Docs updated:** `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — existing connector API calls and country-scoped install logic unchanged
+  - [x] RBAC checked at service layer — backend country/RBAC enforcement unchanged
+  - [x] Inputs validated (Bean Validation) — no backend input contracts changed
+  - [x] Audit log written for write actions — install/configure/uninstall write flows unchanged
+  - [x] No secrets / PII / tokens logged or returned — UI displays connector metadata only
+  - [x] SSRF-safe for any URL-based config — connector URL validation unchanged
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Hard-refresh `index.html#connectors` (`Ctrl+F5`) and visually confirm the compact header, named back buttons, and highlighted installation scope on desktop/mobile breakpoints.
+- **Author:** copilot-agent
+- **Correlation:** user-request-20260617-connector-marketplace-design-refinement
+
+### 2026-06-17 — Fix Marketplace Country Handler Initialization Error
+- **Phase:** Phase 1
+- **Module(s):** `frontend/connectors`
+- **Type:** fix
+- **Country/Tenant scope:** ALL physical countries (`KW`, `BH`, `EG`)
+- **Summary:** Fixed the Connectors route initialization failure caused by exporting `setMarketplaceCountry` without defining it. The marketplace now keeps selected install country state, uses it for BMC install/uninstall scope checks, and renders a styled selector for global admins or a locked country badge for country admins.
+- **Files touched:**
+  - `src/main/resources/static/pages/connectors/connectors.js`
+  - `src/main/resources/static/pages/connectors/connectors.css`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** N/A — static frontend runtime fix; `node --check src/main/resources/static/pages/connectors/connectors.js` passed and IDE diagnostics reported no errors for changed JS/CSS.
+- **Docs updated:** `docs/PROGRESS-002.md`, `.github/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — connector install still uses tenant-scoped API calls
+  - [x] RBAC checked at service layer — backend `CountryAccessGuard` remains authoritative
+  - [x] Inputs validated (Bean Validation) — backend BMC validator unchanged
+  - [x] Audit log written for write actions — existing connector write APIs unchanged
+  - [x] No secrets / PII / tokens logged or returned — country selector contains metadata only
+  - [x] SSRF-safe for any URL-based config — BMC URL validator unchanged
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Hard-refresh `index.html#connectors` (`Ctrl+F5`) and verify the route loads without `setMarketplaceCountry` ReferenceError.
+- **Author:** copilot-agent
+- **Correlation:** user-report-20260617-connectors-setMarketplaceCountry-reference-error
+
+### 2026-06-17 — Add Marketplace Install Country Selection for Global Admins
+- **Phase:** Phase 1
+- **Module(s):** `frontend/connectors`, `docs`
+- **Type:** feature | docs
+- **Country/Tenant scope:** ALL physical countries (`KW`, `BH`, `EG`)
+- **Summary:** Added target-country selection on the connector marketplace detail page for all-country/global admins. Global admins can choose which physical country to install BMC into, while country admins remain locked to their signed-in country and cannot change the install country.
+- **Files touched:**
+  - `src/main/resources/static/pages/connectors/connectors.js`
+  - `src/main/resources/static/pages/connectors/connectors.css`
+  - `docs/UI_PAGES.md`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A — existing backend country guard already permits global admins and blocks cross-country country admins.
+- **Tests added/updated:** N/A — frontend scope behavior only; IDE diagnostics and `node --check src/main/resources/static/pages/connectors/connectors.js` reported no syntax errors.
+- **Docs updated:** `docs/UI_PAGES.md`, `docs/PROGRESS-002.md`, `.github/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — install still calls tenant-scoped connector API
+  - [x] RBAC checked at service layer — backend `CountryAccessGuard` remains authoritative
+  - [x] Inputs validated (Bean Validation) — backend BMC validator unchanged
+  - [x] Audit log written for write actions — install/configure/uninstall still use existing audited APIs
+  - [x] No secrets / PII / tokens logged or returned — country selector is metadata only
+  - [x] SSRF-safe for any URL-based config — BMC validator unchanged
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Hard-refresh `index.html#connectors` (`Ctrl+F5`) and verify global admin can choose country while country admin sees locked country.
+- **Author:** copilot-agent
+- **Correlation:** user-request-20260617-marketplace-install-country-scope
+
+### 2026-06-17 — Modernize Connector Marketplace and Inventory UI
+- **Phase:** Phase 1
+- **Module(s):** `frontend/connectors`, `docs`
+- **Type:** frontend | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Modernized the Connectors inventory and Marketplace UI with a richer Command Center visual style: gradient hero areas, marketplace statistics, category pills, polished product cards, improved connector detail page hero/actions, capability/security cards, and responsive layouts. Behavior remains unchanged: BMC installs as pending/disabled, then Configure opens the connection details form.
+- **Files touched:**
+  - `src/main/resources/static/pages/connectors/connectors.js`
+  - `src/main/resources/static/pages/connectors/connectors.css`
+  - `docs/UI_PAGES.md`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** N/A — frontend visual refinement only; IDE diagnostics and `node --check src/main/resources/static/pages/connectors/connectors.js` reported no syntax errors.
+- **Docs updated:** `docs/UI_PAGES.md`, `docs/PROGRESS-002.md`, `.github/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — no backend/API behavior changed
+  - [x] RBAC checked at service layer — no backend/API behavior changed
+  - [x] Inputs validated (Bean Validation) — no input contract changed
+  - [x] Audit log written for write actions — install/configure/uninstall still use existing audited APIs
+  - [x] No secrets / PII / tokens logged or returned — marketplace shows metadata only
+  - [x] SSRF-safe for any URL-based config — BMC validator unchanged
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Hard-refresh `index.html#connectors` (`Ctrl+F5`) and visually confirm the Marketplace and connector inventory polish in the browser.
+- **Author:** copilot-agent
+- **Correlation:** user-request-20260617-modern-connector-marketplace-ui
+
+### 2026-06-17 — Add Full Connector Marketplace Page
+- **Phase:** Phase 1
+- **Module(s):** `frontend/connectors`, `docs`
+- **Type:** feature | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Converted the Connectors primary action into an in-page Connector Marketplace experience instead of a compact Add Connector modal. The marketplace shows all connector cards, opens a full connector detail page with overview/capabilities/security/scope panels, and provides Install/Configure/Uninstall actions for BMC Helix while future connectors remain visible as coming soon.
+- **Files touched:**
+  - `src/main/resources/static/pages/connectors/connectors.js`
+  - `src/main/resources/static/pages/connectors/connectors.css`
+  - `docs/UI_PAGES.md`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** No backend test changes; IDE diagnostics on `connectors.js` and `connectors.css` show no syntax errors, only existing non-blocking warnings.
+- **Docs updated:** `docs/UI_PAGES.md`, `docs/PROGRESS-002.md`, `.github/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — no backend behavior changed
+  - [x] RBAC checked at service layer — no backend behavior changed
+  - [x] Inputs validated (Bean Validation) — no input contract changed
+  - [x] Audit log written for write actions — install/uninstall/configure still use existing audited connector APIs
+  - [x] No secrets / PII / tokens logged or returned — marketplace page shows metadata only
+  - [x] SSRF-safe for any URL-based config — BMC backend validator unchanged
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Hard-refresh `index.html#connectors` (`Ctrl+F5`) and validate the marketplace navigation visually in the browser.
+- **Author:** copilot-agent
+- **Correlation:** user-request-20260617-connector-marketplace-page
+
+### 2026-06-17 — Convert Add Connector to Install-First Catalog
+- **Phase:** Phase 1
+- **Module(s):** `plugin`, `frontend/connectors`, `docs`
+- **Type:** feature | fix | test | docs
+- **Country/Tenant scope:** ALL physical countries (`KW`, `BH`, `EG`)
+- **Summary:** Changed Add Connector from an immediate full BMC form to an install-first connector catalog. Operators now click **Install** on BMC Helix, which creates a disabled pending connector row; clicking Configure on the installed row opens the BMC connection-details form, and the catalog supports Uninstall for installed connectors.
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/plugin/implementations/bmc/BmcConnectorConfigValidator.java`
+  - `src/main/resources/static/pages/connectors/connectors.js`
+  - `src/main/resources/static/pages/connectors/connectors.css`
+  - `src/test/java/org/kfh/aiops/commandcenter/CommandCenterBackendServiceTest.java`
+  - `docs/API_CONTRACTS.md`
+  - `docs/UI_PAGES.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** `POST /api/v1/connectors` now supports BMC `attributes.installOnly=true` to create a disabled `configurationStatus=PENDING` placeholder without secrets until the operator configures connection details.
+- **Tests added/updated:** Added `shouldInstallBmcConnectorAsDisabledPlaceholderBeforeConfiguration` and `shouldRequireSecretsWhenCompletingPendingBmcConnectorConfiguration`; targeted `mvnw.cmd -Dtest=CommandCenterBackendServiceTest test` passed with 21 tests, 0 failures.
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/UI_PAGES.md`, `docs/RUNBOOKS.md`, `docs/PROGRESS-002.md`, `.github/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (Bean Validation)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Persist installed connector placeholders to PostgreSQL and implement live BMC plugin execution in the worker phase.
+- **Author:** copilot-agent
+- **Correlation:** user-request-20260617-install-first-connectors
+
+### 2026-06-17 — Fix Add Connector Modal Host in SPA Route
+- **Phase:** Phase 1
+- **Module(s):** `frontend/connectors`
+- **Type:** fix
+- **Country/Tenant scope:** ALL
+- **Summary:** Fixed the Add Connector runtime error where `connector-modal-overlay` was missing when the SPA router loaded `connectors.js` without the standalone `connectors.html` wrapper. `connectors.js` now creates the modal and drawer host elements on demand before opening the BMC Add Connector modal or detail drawer.
+- **Files touched:**
+  - `src/main/resources/static/pages/connectors/connectors.js`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** No backend test changes; IDE diagnostics on `connectors.js` report no syntax errors, only existing non-blocking warnings.
+- **Docs updated:** `docs/PROGRESS-002.md`, `.github/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — no API/backend behavior changed
+  - [x] RBAC checked at service layer — no service behavior changed
+  - [x] Inputs validated (Bean Validation) — no input contract changed
+  - [x] Audit log written for write actions — no write behavior changed
+  - [x] No secrets / PII / tokens logged or returned — DOM host creation only
+  - [x] SSRF-safe for any URL-based config — BMC backend validator unchanged
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Hard-refresh `index.html#connectors` (`Ctrl+F5`) and click **Add Connector** again to load the BMC modal.
+- **Author:** copilot-agent
+- **Correlation:** user-report-20260617-add-connector-modal-host-null
+
+### 2026-06-17 — Remove Dummy SolarWinds Connector Seed
+- **Phase:** Phase 1
+- **Module(s):** `plugin`, `frontend/connectors`, `commandcenter`
+- **Type:** fix | test
+- **Country/Tenant scope:** ALL
+- **Summary:** Removed the seeded `SolarWinds KW` demo connector from the in-memory Command Center read model so the Connectors page starts empty until an operator clicks **Add Connector** and creates a real BMC connector configuration. Added regression coverage to prevent dummy connectors from returning by default.
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/commandcenter/support/CommandCenterReadModel.java`
+  - `src/test/java/org/kfh/aiops/commandcenter/CommandCenterBackendServiceTest.java`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** Added `shouldNotSeedDummyConnectorsWhenListingConnectorInventory`; targeted `mvnw.cmd -Dtest=CommandCenterBackendServiceTest test` passed with 19 tests, 0 failures.
+- **Docs updated:** `docs/PROGRESS-002.md`, `.github/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — connector API behavior unchanged
+  - [x] RBAC checked at service layer — connector API behavior unchanged
+  - [x] Inputs validated (Bean Validation) — no input contract changed
+  - [x] Audit log written for write actions — no write behavior changed
+  - [x] No secrets / PII / tokens logged or returned — removed non-real demo connector only
+  - [x] SSRF-safe for any URL-based config — BMC validator unchanged
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Hard-refresh `index.html#connectors` (`Ctrl+F5`) so the old SolarWinds card is not served from cache.
+- **Author:** copilot-agent
+- **Correlation:** user-request-20260617-remove-dummy-solarwinds-connector
+
+### 2026-06-17 — Fix Connectors Page JavaScript Parse Error
+- **Phase:** Phase 1
+- **Module(s):** `frontend/connectors`
+- **Type:** fix
+- **Country/Tenant scope:** ALL
+- **Summary:** Fixed the Connectors page runtime parse failure caused by a stray `deleteConnector,` token outside the `Connectors` module export. Restored the BMC add/save/remove handlers inside the module so `index.html#connectors` can load the page script again.
+- **Files touched:**
+  - `src/main/resources/static/pages/connectors/connectors.js`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** No test class changes; IDE diagnostics on `connectors.js` report no syntax errors, only an existing simplification warning.
+- **Docs updated:** `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — no API/backend behavior changed
+  - [x] RBAC checked at service layer — no service behavior changed
+  - [x] Inputs validated (Bean Validation) — no input contract changed
+  - [x] Audit log written for write actions — no write behavior changed
+  - [x] No secrets / PII / tokens logged or returned — restored existing secret-safe BMC form handling
+  - [x] SSRF-safe for any URL-based config — backend BMC validator remains unchanged
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Hard-refresh `index.html#connectors` (`Ctrl+F5`) so the browser reloads the corrected `connectors.js`.
+- **Author:** copilot-agent
+- **Correlation:** user-report-20260617-connectors-js-eof
+
+### 2026-06-17 — Start BMC Connector Add Flow
+- **Phase:** Phase 1
+- **Module(s):** `plugin`, `frontend/connectors`, `docs`
+- **Type:** feature | security | test | docs
+- **Country/Tenant scope:** ALL physical countries (`KW`, `BH`, `EG`) with tenant-scoped APIs
+- **Summary:** Implemented the first BMC Helix connector configuration flow on the Connectors page. The Add Connector window now shows connector cards/icons, enables only BMC Helix in this phase, captures country/environment-specific BMC connection and collection settings, submits credentials as `secretsPlain`, and the backend validates BMC scope/URL/endpoints/settings while stripping secrets from responses.
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/plugin/api/ConnectorController.java`
+  - `src/main/java/org/kfh/aiops/plugin/service/ConnectorService.java`
+  - `src/main/java/org/kfh/aiops/plugin/service/ConnectorCatalogService.java`
+  - `src/main/java/org/kfh/aiops/plugin/dto/ConnectorTypeMetadataDto.java`
+  - `src/main/java/org/kfh/aiops/plugin/dto/ConnectorFieldSchemaDto.java`
+  - `src/main/java/org/kfh/aiops/plugin/implementations/bmc/BmcConnectorConfigValidator.java`
+  - `src/main/java/org/kfh/aiops/commandcenter/support/CommandCenterReadModel.java`
+  - `src/main/resources/static/shared/js/api-client.js`
+  - `src/main/resources/static/pages/connectors/connectors.js`
+  - `src/main/resources/static/pages/connectors/connectors.css`
+  - `src/test/java/org/kfh/aiops/commandcenter/CommandCenterBackendServiceTest.java`
+  - `docs/API_CONTRACTS.md`
+  - `docs/SERVICES_CORE.md`
+  - `docs/UI_PAGES.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A — Phase 1 scaffold remains in-memory for connector config; no schema change was added.
+- **API changes:** Added `GET /api/v1/connectors/types`; tightened `POST/PUT /api/v1/connectors` BMC validation behavior while preserving existing CRUD/toggle/test paths.
+- **Tests added/updated:** `CommandCenterBackendServiceTest` updated with BMC type metadata, secret masking, selected-country creation, unsafe URL rejection, and cross-country denial tests. Targeted test run passed with 18 tests; full `mvnw.cmd test` passed with 91 tests, 0 failures.
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/SERVICES_CORE.md`, `docs/UI_PAGES.md`, `docs/RUNBOOKS.md`, `docs/PROGRESS-002.md`, `.github/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — connector APIs require `TenantContext` and service permissions
+  - [x] RBAC checked at service layer — `CONNECTOR_READ`, `CONNECTOR_WRITE`, and `CONNECTOR_TEST`
+  - [x] Inputs validated (Bean Validation) — DTO size validation plus BMC semantic URL/path/range validation
+  - [x] Audit log written for write actions — create/update/delete/toggle/test request audit remains in `ConnectorService`
+  - [x] No secrets / PII / tokens logged or returned — `secretsPlain` is stripped and only `secretsMask` is returned
+  - [x] SSRF-safe for any URL-based config — BMC HTTPS base URL and safe relative endpoint validation added
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Implement the live `BmcHelixConnectorPlugin` worker for encrypted secret persistence, access-key login, msearch pagination with `search_after`, canonical telemetry normalization, object-storage raw archive pointers, connector run persistence, and outbox scheduling.
+- **Author:** copilot-agent
+- **Correlation:** user-request-20260617-bmc-connector-page
+
+### 2026-06-17 — Document Redis Kafka Neo4j Egypt Use Case
+- **Phase:** Phase 1
+- **Module(s):** `docs`, `architecture`
+- **Type:** docs
+- **Country/Tenant scope:** EG
+- **Summary:** Added a simple Egyptian-English Markdown explanation of how Kafka, Redis, and Neo4j are used in the KFH Causal AIOps Platform. The document explains each tool with an Egypt Mobile Banking Fund Transfer incident use case while preserving the platform boundaries: Kafka for event movement, Redis for hot temporary state, Neo4j for topology relationships, PostgreSQL for authoritative incident records, and the custom index for telemetry evidence.
+- **Files touched:**
+  - `docs/REDIS_KAFKA_NEO4J_EGYPT_USE_CASE.md`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** N/A — documentation-only change; Markdown files validated for existence/content and no IDE-reported errors were found.
+- **Docs updated:** `docs/REDIS_KAFKA_NEO4J_EGYPT_USE_CASE.md`, `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — no API/backend behavior changed
+  - [x] RBAC checked at service layer — no service behavior changed
+  - [x] Inputs validated (Bean Validation) — no input contracts changed
+  - [x] Audit log written for write actions — no write behavior changed
+  - [x] No secrets / PII / tokens logged or returned — documentation contains only illustrative non-sensitive examples
+  - [x] SSRF-safe for any URL-based config — no outbound URL behavior changed
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** N/A
+- **Author:** copilot-agent
+- **Correlation:** user-request-20260617-eg-redis-kafka-neo4j-md
+
+### 2026-06-15 — Replace Connectors Dropdowns with Smart Filter
+- **Phase:** Phase 1
+- **Module(s):** `frontend/connectors`, `docs`
+- **Type:** fix | frontend | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Removed the visible Refresh action from the Connectors header and replaced the separate status/type/scope dropdowns with one smart filter popover. The smart filter follows the attached Issue Filters style with grouped pill chips for Status, Type, and Scope while preserving existing filter behavior.
+- **Files touched:**
+  - `src/main/resources/static/pages/connectors/connectors.js`
+  - `src/main/resources/static/pages/connectors/connectors.css`
+  - `docs/UI_PAGES.md`
+  - `docs/PROGRESS-002.md`
+  - `.github/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** No tests added for static UI filter refinement; `get_errors` showed only existing style/lint warnings, `mvnw.cmd -DskipTests package` passed, and `mvnw.cmd test` passed with 87 tests.
+- **Docs updated:** `docs/UI_PAGES.md`, `docs/PROGRESS-002.md`, `.github/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — no API/backend behavior changed
+  - [x] RBAC checked at service layer — no service behavior changed
+  - [x] Inputs validated (Bean Validation) — no input contracts changed
+  - [x] Audit log written for write actions — no write behavior changed
+  - [x] No secrets / PII / tokens logged or returned — static UI layout only
+  - [x] SSRF-safe for any URL-based config — no outbound URL behavior changed
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Hard-refresh `index.html#connectors` (`Ctrl+F5`) and visually confirm the smart filter popover matches the attached Issue Filters pattern.
+- **Author:** copilot-agent
+- **Correlation:** session-20260615-connectors-smart-filter
+
+s### 2026-06-15 — Flatten Connectors Header into One Control Row
+- **Phase:** Phase 1
+- **Module(s):** `frontend/connectors`, `docs`
+- **Type:** fix | frontend | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Flattened the Connectors header so the page title, Refresh button, search box, status/type/scope filters, Table/Cards toggle, and Add Connector button render in a single horizontal row on desktop instead of splitting into two header lines.
+- **Files touched:**
+  - `src/main/resources/static/pages/connectors/connectors.js`
+  - `src/main/resources/static/pages/connectors/connectors.css`
+  - `docs/UI_PAGES.md`
+  - `docs/PROGRESS-002.md`
+  - `.github/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** No tests added for static UI layout refinement; `get_errors` showed only existing style/lint warnings, `mvnw.cmd -DskipTests package` passed, and `mvnw.cmd test` passed with 87 tests.
+- **Docs updated:** `docs/UI_PAGES.md`, `docs/PROGRESS-002.md`, `.github/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — no API/backend behavior changed
+  - [x] RBAC checked at service layer — no service behavior changed
+  - [x] Inputs validated (Bean Validation) — no input contracts changed
+  - [x] Audit log written for write actions — no write behavior changed
+  - [x] No secrets / PII / tokens logged or returned — static UI layout only
+  - [x] SSRF-safe for any URL-based config — no outbound URL behavior changed
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Hard-refresh `index.html#connectors` (`Ctrl+F5`) and visually confirm the header no longer breaks into two lines at desktop width.
+- **Author:** copilot-agent
+- **Correlation:** session-20260615-connectors-one-line-header
+
+### 2026-06-15 — Remove Connectors Degraded KPI Card
+- **Phase:** Phase 1
+- **Module(s):** `frontend/connectors`, `docs`
+- **Type:** fix | frontend | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Removed the Degraded card from the Connectors KPI strip because it is not useful as a top-level KPI. Kept Degraded as a valid connector status/filter/badge so existing connector health states continue to render correctly, and adjusted the KPI grid to five columns.
+- **Files touched:**
+  - `src/main/resources/static/pages/connectors/connectors.js`
+  - `src/main/resources/static/pages/connectors/connectors.css`
+  - `docs/UI_PAGES.md`
+  - `docs/PROGRESS-002.md`
+  - `.github/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** No tests added for static UI KPI refinement; `get_errors` showed only existing style/lint warnings, `mvnw.cmd -DskipTests package` passed, and `mvnw.cmd test` passed with 87 tests.
+- **Docs updated:** `docs/UI_PAGES.md`, `docs/PROGRESS-002.md`, `.github/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — no API/backend behavior changed
+  - [x] RBAC checked at service layer — no service behavior changed
+  - [x] Inputs validated (Bean Validation) — no input contracts changed
+  - [x] Audit log written for write actions — no write behavior changed
+  - [x] No secrets / PII / tokens logged or returned — static UI layout only
+  - [x] SSRF-safe for any URL-based config — no outbound URL behavior changed
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Hard-refresh `index.html#connectors` (`Ctrl+F5`) and visually confirm the KPI strip now has five cards.
+- **Author:** copilot-agent
+- **Correlation:** session-20260615-connectors-remove-degraded-kpi
+
+### 2026-06-15 — Align Connectors Header Controls in One Row
+- **Phase:** Phase 1
+- **Module(s):** `frontend/connectors`, `docs`
+- **Type:** fix | frontend | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Moved Add Connector into the same Connectors header control row as search, status/type/scope filters, and the table/card toggle. Removed the separate below-KPI Add Connector row so all primary controls sit next to each other in the header.
+- **Files touched:**
+  - `src/main/resources/static/pages/connectors/connectors.js`
+  - `src/main/resources/static/pages/connectors/connectors.css`
+  - `docs/UI_PAGES.md`
+  - `docs/PROGRESS-002.md`
+  - `.github/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** No tests added for static UI layout refinement; `get_errors` showed only existing style/lint warnings, `mvnw.cmd -DskipTests package` passed, and `mvnw.cmd test` passed with 87 tests.
+- **Docs updated:** `docs/UI_PAGES.md`, `docs/PROGRESS-002.md`, `.github/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — no API/backend behavior changed
+  - [x] RBAC checked at service layer — no service behavior changed
+  - [x] Inputs validated (Bean Validation) — no input contracts changed
+  - [x] Audit log written for write actions — no write behavior changed
+  - [x] No secrets / PII / tokens logged or returned — static UI layout only
+  - [x] SSRF-safe for any URL-based config — no outbound URL behavior changed
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Hard-refresh `index.html#connectors` (`Ctrl+F5`) and visually confirm Add Connector sits next to the search/filter controls.
+- **Author:** copilot-agent
+- **Correlation:** session-20260615-connectors-header-controls-row
+
+### 2026-06-15 — Move Connectors Add Action Below KPI Strip
+- **Phase:** Phase 1
+- **Module(s):** `frontend/connectors`, `docs`
+- **Type:** fix | frontend | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Kept Connectors search, filters, and table/card view toggle inside the compact header while moving the single Add Connector action directly below the KPI cards. Removed duplicate Add Connector buttons from the header, table top, and empty state to keep one clear primary action location.
+- **Files touched:**
+  - `src/main/resources/static/pages/connectors/connectors.js`
+  - `src/main/resources/static/pages/connectors/connectors.css`
+  - `docs/UI_PAGES.md`
+  - `docs/PROGRESS-002.md`
+  - `.github/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** No tests added for static UI layout refinement; `get_errors` showed only existing style/lint warnings, `mvnw.cmd -DskipTests package` passed, and `mvnw.cmd test` passed with 87 tests.
+- **Docs updated:** `docs/UI_PAGES.md`, `docs/PROGRESS-002.md`, `.github/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — no API/backend behavior changed
+  - [x] RBAC checked at service layer — no service behavior changed
+  - [x] Inputs validated (Bean Validation) — no input contracts changed
+  - [x] Audit log written for write actions — no write behavior changed
+  - [x] No secrets / PII / tokens logged or returned — static UI layout only
+  - [x] SSRF-safe for any URL-based config — no outbound URL behavior changed
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Hard-refresh `index.html#connectors` (`Ctrl+F5`) and visually confirm the Add Connector button sits below the KPI strip.
+- **Author:** copilot-agent
+- **Correlation:** session-20260615-connectors-add-below-kpi
+
+### 2026-06-15 — Compact Connectors Header and KPI Cards
+- **Phase:** Phase 1
+- **Module(s):** `frontend/connectors`, `docs`
+- **Type:** fix | frontend | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Tightened the redesigned Connectors page by removing the eyebrow, long subtitle, and health-chip row from the header. Moved search, status/type/scope filters, and table/card toggle into the header card, then reduced header padding and KPI card height for a cleaner Audit/User Management-style layout.
+- **Files touched:**
+  - `src/main/resources/static/pages/connectors/connectors.js`
+  - `src/main/resources/static/pages/connectors/connectors.css`
+  - `docs/UI_PAGES.md`
+  - `docs/PROGRESS-002.md`
+  - `.github/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** No tests added for static UI refinement; `get_errors` showed only existing style/lint warnings, `mvnw.cmd -DskipTests package` passed, and `mvnw.cmd test` passed with 87 tests.
+- **Docs updated:** `docs/UI_PAGES.md`, `docs/PROGRESS-002.md`, `.github/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — no API/backend behavior changed
+  - [x] RBAC checked at service layer — no service behavior changed
+  - [x] Inputs validated (Bean Validation) — no input contracts changed
+  - [x] Audit log written for write actions — no write behavior changed
+  - [x] No secrets / PII / tokens logged or returned — static UI layout only
+  - [x] SSRF-safe for any URL-based config — no outbound URL behavior changed
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Hard-refresh `index.html#connectors` (`Ctrl+F5`) and visually confirm the compact header height in browser.
+- **Author:** copilot-agent
+- **Correlation:** session-20260615-connectors-header-compact
+
+### 2026-06-15 — Redesign Connectors Management Page
+- **Phase:** Phase 1
+- **Module(s):** `frontend/connectors`, `docs`
+- **Type:** fix | frontend | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Redesigned the Connectors page to match the newer Audit Activity and User Management visual language. Added a compact management header, health chips, refreshed KPI cards, filter card, default modern table view, responsive card view, polished actions, and updated documentation while preserving existing connector API/action handlers.
+- **Files touched:**
+  - `src/main/resources/static/pages/connectors/connectors.js`
+  - `src/main/resources/static/pages/connectors/connectors.css`
+  - `docs/UI_PAGES.md`
+  - `docs/PROGRESS-002.md`
+  - `.github/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** No tests added for static UI redesign; `get_errors` showed only existing style/lint warnings, `mvnw.cmd -DskipTests package` passed, and `mvnw.cmd test` passed with 87 tests. A direct `node --check` could not run because Node.js is not installed in the current shell.
+- **Docs updated:** `docs/UI_PAGES.md`, `docs/PROGRESS-002.md`, `.github/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — no API/backend behavior changed; existing API client context remains in use
+  - [x] RBAC checked at service layer — no service behavior changed
+  - [x] Inputs validated (Bean Validation) — no backend input contracts changed
+  - [x] Audit log written for write actions — no write behavior changed
+  - [x] No secrets / PII / tokens logged or returned — static UI redesign does not expose connector secrets
+  - [x] SSRF-safe for any URL-based config — no outbound URL validation behavior changed
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Hard-refresh open browser sessions (`Ctrl+F5`) and visually review `index.html#connectors`; consider adding browser/UI snapshot tests when a frontend test runner is available.
+- **Author:** copilot-agent
+- **Correlation:** session-20260615-connectors-page-redesign
+
+### 2026-06-15 — Rename Sidebar Collapse Toggle Labels
+- **Phase:** Phase 1
+- **Module(s):** `frontend/shell`, `docs`
+- **Type:** fix | frontend | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Updated the sidebar collapse control wording from generic `Collapse sidebar` / `Expand sidebar` language to the requested `Collapse in` and `Collapse out` labels. The visible text, `title`, and `aria-label` now stay synchronized across initial render and runtime collapse state changes.
+- **Files touched:**
+  - `src/main/resources/static/index.html`
+  - `src/main/resources/static/shared/js/sidebar-collapse.js`
+  - `docs/PROGRESS-002.md`
+  - `.github/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** No tests added for label-only shell fix; `get_errors` showed no JS errors and only existing SPA hash-route/style warnings in `index.html`, `mvnw.cmd -DskipTests package` passed, and `mvnw.cmd test` passed with 87 tests.
+- **Docs updated:** `docs/PROGRESS-002.md`, `.github/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — no API/backend behavior changed
+  - [x] RBAC checked at service layer — no service behavior changed
+  - [x] Inputs validated (Bean Validation) — no input contracts changed
+  - [x] Audit log written for write actions — no write behavior changed
+  - [x] No secrets / PII / tokens logged or returned — static shell text only
+  - [x] SSRF-safe for any URL-based config — no outbound URL behavior changed
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Hard-refresh open browser sessions (`Ctrl+F5`) if cached HTML/JS keeps the old labels.
+- **Author:** copilot-agent
+- **Correlation:** session-20260615-sidebar-collapse-labels
+
+### 2026-06-15 — Remove Collapsed Sidebar Audit Artifact
+- **Phase:** Phase 1
+- **Module(s):** `frontend/shell`, `docs`
+- **Type:** fix | frontend | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Removed a stray literal `l` text node before the sidebar user profile markup. In collapsed mode the text rendered as a small artifact/gap under the Audit Logs icon, so removing the accidental character clears the visual issue without changing sidebar layout behavior.
+- **Files touched:**
+  - `src/main/resources/static/index.html`
+  - `docs/PROGRESS-002.md`
+  - `.github/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** No tests added for markup-only shell fix; `get_errors` showed only existing SPA hash-route/style warnings, `mvnw.cmd -DskipTests package` passed, and `mvnw.cmd test` passed with 87 tests.
+- **Docs updated:** `docs/PROGRESS-002.md`, `.github/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — no API/backend behavior changed
+  - [x] RBAC checked at service layer — no service behavior changed
+  - [x] Inputs validated (Bean Validation) — no input contracts changed
+  - [x] Audit log written for write actions — no write behavior changed
+  - [x] No secrets / PII / tokens logged or returned — static markup only
+  - [x] SSRF-safe for any URL-based config — no outbound URL behavior changed
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Hard-refresh open browser sessions (`Ctrl+F5`) if cached `index.html` remains visible.
+- **Author:** copilot-agent
+- **Correlation:** session-20260615-sidebar-audit-artifact
+
+### 2026-06-15 — Remove Collapsed Sidebar Icon Padding Gap
+- **Phase:** Phase 1
+- **Module(s):** `frontend/shell`, `frontend/theme`, `docs`
+- **Type:** fix | frontend | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Fixed the collapsed sidebar so the canonical `#sidebar-container` shrinks to the compact icon-only width instead of keeping the expanded 253px width after labels are hidden. Added ID-specific collapsed width/flex overrides to beat the fixed-width parity selector and remove the large horizontal padding gap around menu icons.
+- **Files touched:**
+  - `src/main/resources/static/shared/css/kfh-aiops-parity.css`
+  - `docs/PROGRESS-002.md`
+  - `.github/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** No tests added for CSS-only shell fix; `get_errors` reported no CSS errors, `mvnw.cmd -DskipTests package` passed, and `mvnw.cmd test` passed with 87 tests.
+- **Docs updated:** `docs/PROGRESS-002.md`, `.github/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — no API/backend behavior changed
+  - [x] RBAC checked at service layer — no service behavior changed
+  - [x] Inputs validated (Bean Validation) — no input contracts changed
+  - [x] Audit log written for write actions — no write behavior changed
+  - [x] No secrets / PII / tokens logged or returned — static CSS only
+  - [x] SSRF-safe for any URL-based config — no outbound URL behavior changed
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Browser hard-refresh (`Ctrl+F5`) may be needed on already-open sessions to clear cached CSS.
+- **Author:** copilot-agent
+- **Correlation:** session-20260615-sidebar-collapsed-icon-gap
+
+### 2026-06-15 — Finalize Collapsed Sidebar Footer Styling
+- **Phase:** Phase 1
+- **Module(s):** `frontend/shell`, `frontend/theme`, `docs`
+- **Type:** fix | frontend | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Moved the canonical sidebar collapse/expand control below the user profile panel so the chevron is the final sidebar control. Removed the legacy pseudo `Collapse` footer text and updated collapsed styling so the avatar and logout button remain visible in an icon-only user card while the collapsed menu uses compact green active/hover states matching the reference sidebar.
+- **Files touched:**
+  - `src/main/resources/static/index.html`
+  - `src/main/resources/static/shared/css/kfh-aiops-parity.css`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** No tests added for CSS/markup-only shell fix; `mvnw.cmd -DskipTests package`, `mvnw.cmd test`, and `mvnw.cmd verify` passed with 87 tests.
+- **Docs updated:** `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — no API/backend behavior changed
+  - [x] RBAC checked at service layer — no service behavior changed
+  - [x] Inputs validated (Bean Validation) — no input contracts changed
+  - [x] Audit log written for write actions — no write behavior changed
+  - [x] No secrets / PII / tokens logged or returned — static UI styling only
+  - [x] SSRF-safe for any URL-based config — no outbound URL behavior changed
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Consider consolidating the legacy standalone page sidebar fragments into the canonical shell in a later frontend refactor.
+- **Author:** copilot-agent
+- **Correlation:** session-20260615-sidebar-footer-collapse-final
+
+### 2026-06-15 — Align Sidebar Collapse Control Above User Panel
+- **Phase:** Phase 1
+- **Module(s):** `frontend/shell`, `frontend/theme`, `docs`
+- **Type:** fix | frontend | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Reconciled the canonical shell markup with the intended sidebar layout by placing the global collapse/expand control below the navigation and above the user profile panel. Added the visible expanded-state label and synchronized its text with the accessible label/title so the control remains clear in expanded mode and compact in collapsed mode.
+- **Files touched:**
+  - `src/main/resources/static/index.html`
+  - `src/main/resources/static/shared/js/sidebar-collapse.js`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** No backend tests required for static shell adjustment; full `mvnw.cmd verify` passed with 87 tests.
+- **Docs updated:** `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — no API/backend behavior changed
+  - [x] RBAC checked at service layer — no service behavior changed
+  - [x] Inputs validated (Bean Validation) — no input contracts changed
+  - [x] Audit log written for write actions — no write behavior changed
+  - [x] No secrets / PII / tokens logged or returned — no data handling changed
+  - [x] SSRF-safe for any URL-based config — no outbound URL behavior changed
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Consider replacing legacy duplicate sidebar renderers with the canonical shell component in a later refactor.
+- **Author:** copilot-agent
+- **Correlation:** session-20260615-sidebar-collapse-placement
+
+### 2026-06-15 — Move Sidebar Collapse Control Below Menu
+- **Phase:** Phase 1
+- **Module(s):** `frontend/shell`, `frontend/theme`, `docs`
+- **Type:** fix | frontend | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Moved the global sidebar collapse/expand control from the logo area to a lower control row below the navigation, above the user panel. Polished collapsed icon-only navigation spacing, active/hover states, centered icons, and bottom collapse button styling so the collapsed menu no longer appears top-heavy or poorly aligned.
+- **Files touched:**
+  - `src/main/resources/static/index.html`
+  - `src/main/resources/static/shared/css/kfh-aiops-parity.css`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** No backend tests required for UI-only shell adjustment; full `mvnw.cmd verify` passed.
+- **Docs updated:** `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — no API/backend behavior changed
+  - [x] RBAC checked at service layer — no service behavior changed
+  - [x] Inputs validated (Bean Validation) — no input contracts changed
+  - [x] Audit log written for write actions — no write behavior changed
+  - [x] No secrets / PII / tokens logged or returned — no data behavior changed
+  - [x] SSRF-safe for any URL-based config — no outbound URL behavior changed
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** N/A
+- **Author:** copilot-agent
+- **Correlation:** session-20260615-sidebar-collapse-bottom
+
+### 2026-06-15 — Implement Global Sidebar Collapse Expand
+- **Phase:** Phase 1
+- **Module(s):** `frontend/shell`, `frontend/theme`, `docs`
+- **Type:** feature | frontend | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Added a working collapse/expand control to the canonical SPA sidebar, including persisted user preference, accessible ARIA labels, centered icon-only collapsed navigation, and final parity CSS overrides so collapsed width wins over fixed sidebar rules. The Settings internal sidebar remains independent from the global app sidebar collapse state.
+- **Files touched:**
+  - `src/main/resources/static/index.html`
+  - `src/main/resources/static/shared/js/sidebar-collapse.js`
+  - `src/main/resources/static/shared/css/kfh-aiops-parity.css`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** No backend tests required for shell-only UI behavior; full `mvnw.cmd verify` passed and packaged 217 static resources.
+- **Docs updated:** `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — no API/backend behavior changed
+  - [x] RBAC checked at service layer — no service behavior changed
+  - [x] Inputs validated (Bean Validation) — no input contracts changed
+  - [x] Audit log written for write actions — no write behavior changed
+  - [x] No secrets / PII / tokens logged or returned — collapse state stores only a boolean UI preference in localStorage
+  - [x] SSRF-safe for any URL-based config — no outbound URL behavior changed
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Consider replacing legacy duplicate sidebar renderers with the canonical shell component in a later refactor.
+- **Author:** copilot-agent
+- **Correlation:** session-20260615-sidebar-collapse
+
+### 2026-06-15 — Stack Settings Form Fields with Two Column Maximum
+- **Phase:** Phase 1
+- **Module(s):** `frontend/settings`, `docs`
+- **Type:** fix | frontend | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Adjusted Settings form layouts so fields stack vertically by default and never exceed two fields side by side on wide screens. Modal connector forms now use one column for better readability, System Variables uses a maximum two-column grid, and utility grid overrides collapse cleanly on mobile.
+- **Files touched:**
+  - `src/main/resources/static/pages/settings/settings.css`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** No backend tests required for CSS-only layout change; `SettingsServiceTest` and full `mvnw.cmd verify` passed.
+- **Docs updated:** `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — no API behavior changed
+  - [x] RBAC checked at service layer — no service behavior changed
+  - [x] Inputs validated (Bean Validation) — no input contracts changed
+  - [x] Audit log written for write actions — no write behavior changed
+  - [x] No secrets / PII / tokens logged or returned — no data handling changed
+  - [x] SSRF-safe for any URL-based config — no outbound URL behavior changed
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** N/A
+- **Author:** copilot-agent
+- **Correlation:** session-20260615-settings-field-layout
+
+### 2026-06-15 — Simplify Settings Sections and Enable Item Auto Save
+- **Phase:** Phase 1 / Phase 5
+- **Module(s):** `frontend/settings`, `docs`
+- **Type:** fix | frontend | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Removed the Settings section toolbar text and Save Changes buttons, including the Artificial Intelligence header block, and enabled item-level auto-save for field changes and connector Add/Edit/Remove actions. Removed the Configuration Ownership panel from System Variables, merged runtime/server variables into one compact System Variables card, and reduced page/card padding and margins.
+- **Files touched:**
+  - `src/main/resources/static/pages/settings/settings.js`
+  - `src/main/resources/static/pages/settings/settings.css`
+  - `docs/API_CONTRACTS.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A — Settings UI still uses `PUT /api/v1/settings`, now through item-level auto-save.
+- **Tests added/updated:** No backend tests required for UI-only simplification; `SettingsServiceTest` and full `mvnw.cmd verify` passed.
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/RUNBOOKS.md`, `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — no API behavior changed
+  - [x] RBAC checked at service layer — no service behavior changed
+  - [x] Inputs validated (Bean Validation) — existing popup required-field validation remains in place
+  - [x] Audit log written for write actions — Settings auto-save still calls audited `PUT /api/v1/settings`
+  - [x] No secrets / PII / tokens logged or returned — no secret handling changed
+  - [x] SSRF-safe for any URL-based config — no outbound URL behavior changed
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Consider a subtle “Saved” inline indicator if operators need explicit save confirmation without reintroducing section save buttons.
+- **Author:** copilot-agent
+- **Correlation:** session-20260615-settings-autosave-compact
+
+### 2026-06-15 — Separate Redis Kafka and Index Storage Settings Menu
+- **Phase:** Phase 5
+- **Module(s):** `frontend/settings`, `docs`
+- **Type:** fix | frontend | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Split Redis, Kafka, and custom index storage out of System Variables into a dedicated **Servers & Index** Settings menu. Removed automatic dummy connector-row derivation from default startup/fallback properties such as Redis `localhost`, Neo4j defaults, SharePoint fallback values, and index path `/data/aiops-index`; connector rows now appear only when metadata is loaded or an operator explicitly adds one.
+- **Files touched:**
+  - `src/main/resources/static/pages/settings/settings.js`
+  - `src/main/resources/static/pages/settings/settings.css`
+  - `docs/API_CONTRACTS.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** No backend test changes required for UI-only menu separation; `SettingsServiceTest` and full `mvnw.cmd verify` passed.
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/RUNBOOKS.md`, `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — no API behavior changed
+  - [x] RBAC checked at service layer — no service behavior changed
+  - [x] Inputs validated (Bean Validation) — existing popup required-field validation remains in place
+  - [x] Audit log written for write actions — existing Settings save/test audit remains in backend
+  - [x] No secrets / PII / tokens logged or returned — no secret handling changed
+  - [x] SSRF-safe for any URL-based config — no outbound URL behavior changed
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** N/A
+- **Author:** copilot-agent
+- **Correlation:** session-20260615-settings-infrastructure-menu
+
+### 2026-06-15 — Clarify Primary PostgreSQL Startup Ownership
+- **Phase:** Phase 1
+- **Module(s):** `platform.config`, `frontend/settings`, `docs`
+- **Type:** fix | docs | test
+- **Country/Tenant scope:** ALL
+- **Summary:** Clarified that the primary PostgreSQL datasource cannot be Settings metadata because the application needs it first to boot and to read `config.integration_settings`. Removed primary PostgreSQL from derived database connector rows and updated Settings copy/docs so database metadata rows mean optional monitored/additional database connectors only.
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/platform/config/SettingsService.java`
+  - `src/main/resources/static/pages/settings/settings.js`
+  - `docs/API_CONTRACTS.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** Clarified `configurationOwnership.startupPolicy` text; no endpoint shape change.
+- **Tests added/updated:** Existing `SettingsServiceTest` coverage verified; no new test class added.
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/RUNBOOKS.md`, `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — no API authorization behavior changed
+  - [x] RBAC checked at service layer — no service-layer permission behavior changed
+  - [x] Inputs validated (Bean Validation) — no input contracts changed
+  - [x] Audit log written for write actions — no write/audit behavior changed
+  - [x] No secrets / PII / tokens logged or returned — primary datasource remains masked in Settings response
+  - [x] SSRF-safe for any URL-based config — no outbound URL behavior changed
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** N/A
+- **Author:** copilot-agent
+- **Correlation:** session-20260615-primary-postgresql-ownership
+
+### 2026-06-15 — Split Startup Properties from Settings Metadata
+- **Phase:** Phase 1 / Phase 5
+- **Module(s):** `platform.config`, `frontend/settings`, `docs`
+- **Type:** feature | security | test | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Split configuration ownership so production startup depends only on primary PostgreSQL/bootstrap application properties while optional integrations are tenant-scoped Settings metadata after login. Added DB-backed Settings metadata persistence through `config.integration_settings`, retained degraded runtime fallback, exposed a Settings UI ownership panel, and documented which variables remain in `application.properties` versus database metadata.
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/platform/config/SettingsMetadataStore.java`
+  - `src/main/java/org/kfh/aiops/platform/config/JdbcSettingsMetadataStore.java`
+  - `src/main/java/org/kfh/aiops/platform/config/SettingsService.java`
+  - `src/main/resources/application.properties`
+  - `src/main/resources/static/pages/settings/settings.js`
+  - `src/main/resources/static/pages/settings/settings.css`
+  - `src/test/java/org/kfh/aiops/platform/config/SettingsServiceTest.java`
+  - `docs/API_CONTRACTS.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A — reused existing `config.integration_settings` table from `V1__init_aiops_schema.sql`
+- **API changes:** `GET /api/v1/settings` now includes `configurationOwnership`; `PUT /api/v1/settings` persists metadata-owned sections (`azureOpenAI`, `databases`, `neo4j`, `sharepoint`, `teams`, `infrastructure`) into `config.integration_settings` when PostgreSQL metadata storage is available.
+- **Tests added/updated:** `SettingsServiceTest` coverage for metadata persistence ownership and startup-property exclusion
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/RUNBOOKS.md`, `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — metadata load/save uses active `TenantContext`
+  - [x] RBAC checked at service layer — `SETTINGS_READ` and `SETTINGS_WRITE` remain enforced
+  - [x] Inputs validated (Bean Validation) — existing Settings sanitization and UI required-field validation remain in place
+  - [x] Audit log written for write actions — Settings updates/tests remain audited with safe key names
+  - [x] No secrets / PII / tokens logged or returned — metadata save receives sanitized values and logs only error type/scope metadata
+  - [x] SSRF-safe for any URL-based config — Azure test SSRF validation remains server-side; metadata persistence does not call external URLs
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Replace masked secret metadata persistence with encrypted secret storage before production secret persistence is enabled.
+- **Author:** copilot-agent
+- **Correlation:** session-20260615-settings-config-ownership
+
+### 2026-06-15 — Convert Settings Integrations to Popup-Added Connector Rows
+- **Phase:** Phase 5
+- **Module(s):** `platform.config`, `frontend/settings`, `docs`
+- **Type:** feature | frontend | test | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Removed blank default Azure OpenAI connector creation and converted Settings integrations to a consistent enterprise connector pattern: Add opens a popup form, and saved items appear as compact rows with Test/Edit/Remove actions. The pattern now covers Azure OpenAI, databases, SharePoint, Teams, Redis, Kafka, and custom index storage pointers.
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/platform/config/SettingsService.java`
+  - `src/main/resources/application.properties`
+  - `src/main/resources/static/pages/settings/settings.js`
+  - `src/main/resources/static/pages/settings/settings.css`
+  - `src/test/java/org/kfh/aiops/platform/config/SettingsServiceTest.java`
+  - `docs/API_CONTRACTS.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** `GET /api/v1/settings` no longer returns blank default Azure OpenAI legacy connector rows; `system` now includes Kafka and custom index storage configuration pointers.
+- **Tests added/updated:** `SettingsServiceTest` regression coverage for no blank default Azure OpenAI connector rows
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/RUNBOOKS.md`, `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — existing Settings APIs remain tenant/user scoped
+  - [x] RBAC checked at service layer — `SETTINGS_READ`/`SETTINGS_WRITE` checks remain in `SettingsService`
+  - [x] Inputs validated (Bean Validation) — UI validates required connector fields before adding rows; backend secret/test validation remains unchanged
+  - [x] Audit log written for write actions — Settings save/test audit behavior remains unchanged
+  - [x] No secrets / PII / tokens logged or returned — secret fields stay masked and are sanitized in updates/audit details
+  - [x] SSRF-safe for any URL-based config — Azure test SSRF validation remains server-side; other connector tests remain queued/secret-safe
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Add encrypted tenant-scoped persistence for runtime connector rows when production Settings persistence is introduced.
+- **Author:** copilot-agent
+- **Correlation:** session-20260615-settings-connector-rows
+
+### 2026-06-15 — Redesign Azure OpenAI Add Flow as Popup and Connector Rows
+- **Phase:** Phase 5
+- **Module(s):** `frontend/settings`, `docs`
+- **Type:** feature | frontend | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Changed the Azure OpenAI Settings experience so clicking Add opens a popup connector form first, where operators choose provider/model usage and enter endpoint, deployment, API version, timeout, API key, and enabled state. Saved integrations now render as compact connector-style rows with Test Connection, Edit, and Remove actions instead of expanding blank inline cards immediately.
+- **Files touched:**
+  - `src/main/resources/static/pages/settings/settings.js`
+  - `src/main/resources/static/pages/settings/settings.css`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** No backend tests required for UI-only interaction redesign; Settings JS/CSS diagnostics passed and `mvnw.cmd verify` completed successfully with 85 tests.
+- **Docs updated:** `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — no API/backend behavior changed
+  - [x] RBAC checked at service layer — no service-layer behavior changed
+  - [x] Inputs validated (Bean Validation) — UI requires connector name, endpoint, and deployment before adding row
+  - [x] Audit log written for write actions — unchanged Settings save/test audit behavior remains in backend
+  - [x] No secrets / PII / tokens logged or returned — UI keeps secret handling masked and backend behavior unchanged
+  - [x] SSRF-safe for any URL-based config — unchanged Azure test endpoint SSRF validation remains in backend
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Consider adding browser-level UI tests when a frontend test harness is introduced.
+- **Author:** copilot-agent
+- **Correlation:** session-20260615-settings-azure-popup
+
+### 2026-06-15 — Add Multiple Azure OpenAI Settings Integrations
+- **Phase:** Phase 5
+- **Module(s):** `ai.azureopenai`, `platform.config`, `frontend/settings`, `docs`
+- **Type:** feature | security | test | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Added a multi-entry Azure OpenAI integration model to Settings so operators can add named providers, choose Azure OpenAI usage, enter endpoint/deployment/API-version parameters, and test each connection. Backend Settings now returns secret-safe `azureOpenAI.integrations[]` entries from indexed properties plus legacy GPT/Embeddings fallbacks, and Azure tests use HTTPS-only SSRF validation with bounded timeout/retry and secret-free results.
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/ai/azureopenai/AzureOpenAiConnectionTester.java`
+  - `src/main/java/org/kfh/aiops/ai/azureopenai/HttpAzureOpenAiConnectionTester.java`
+  - `src/main/java/org/kfh/aiops/platform/config/SettingsService.java`
+  - `src/main/resources/application.properties`
+  - `src/main/resources/static/pages/settings/settings.js`
+  - `src/main/resources/static/pages/settings/settings.css`
+  - `src/test/java/org/kfh/aiops/ai/azureopenai/HttpAzureOpenAiConnectionTesterTest.java`
+  - `src/test/java/org/kfh/aiops/platform/config/SettingsServiceTest.java`
+  - `docs/API_CONTRACTS.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** Changed `GET /api/v1/settings` response to include `azureOpenAI.integrations[]`; changed `POST /api/v1/settings/{section}/test` so `azureOpenAI.*` sections perform a live Azure OpenAI deployment metadata test with secret-safe results.
+- **Tests added/updated:** `HttpAzureOpenAiConnectionTesterTest`, `SettingsServiceTest`
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/RUNBOOKS.md`, `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — Settings APIs still require `TenantContext` and return correlation IDs
+  - [x] RBAC checked at service layer — Settings read/write/test still enforce `SETTINGS_READ` / `SETTINGS_WRITE`
+  - [x] Inputs validated (Bean Validation) — Azure test payload is validated for provider, endpoint, deployment, API version, timeout bounds, and HTTPS host rules
+  - [x] Audit log written for write actions — settings updates and test requests append secret-safe audit records
+  - [x] No secrets / PII / tokens logged or returned — API keys are masked in Settings responses and omitted from test/audit result details
+  - [x] SSRF-safe for any URL-based config — Azure test endpoint requires HTTPS, allowed Azure host suffixes, no user-info/query/fragment, and public DNS resolution by default
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Persist tenant-scoped integration secrets in encrypted configuration storage instead of Phase 1 in-memory runtime overrides when production tenant config persistence is introduced.
+- **Author:** copilot-agent
+- **Correlation:** session-20260615-settings-azure-openai
+
+### 2026-06-15 — Reduce Page and Settings Padding
+- **Phase:** Phase 1
+- **Module(s):** `frontend/settings`, `frontend/theme`, `docs`
+- **Type:** fix | frontend | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Reduced the shared routed-page gutter and compacted the Settings page spacing between the configuration menu, section toolbar, and content cards. The Settings internal sidebar is narrower with smaller gaps and card/subsection padding while preserving the current responsive layout and KFH theme styling.
+- **Files touched:**
+  - `src/main/resources/static/shared/css/kfh-aiops-parity.css`
+  - `src/main/resources/static/pages/settings/settings.css`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** No tests added for CSS-only adjustment; CSS editor diagnostics passed and `mvnw.cmd -q -DskipTests package` completed successfully.
+- **Docs updated:** `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced — no API/backend behavior changed
+  - [x] RBAC checked at service layer — no service-layer behavior changed
+  - [x] Inputs validated (Bean Validation) — no input contracts changed
+  - [x] Audit log written for write actions — no write actions changed
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config — no URL handling changed
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context — existing context behavior unchanged
+  - [x] Clear DTOs and validation — N/A for CSS-only change
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions — no write actions changed
+  - [x] No secrets exposed
+  - [x] Tests for core logic — N/A for CSS-only spacing; packaging validated
+  - [x] Correlation ID supported — no request handling changed
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice — frontend static asset boundary preserved
+- **Follow-ups / TODO:** Hard refresh after redeploy and visually confirm `index.html#settings` has reduced outer page gutter, narrower Settings menu, and tighter Azure OpenAI/content card spacing at desktop and responsive widths.
+- **Author:** copilot-agent
+- **Correlation:** user-request-2026-06-15-reduce-page-settings-padding
+
+### 2026-06-15 — Improve Settings Internal Sidebar Menu
+- **Phase:** Phase 1
+- **Module(s):** `frontend/settings`, `frontend/theme`, `docs`
+- **Type:** fix | frontend | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Replaced the Settings page horizontal tab strip with a modern internal sidebar menu beside the content. The new Settings menu has section labels, hints, icons, active state, sticky desktop behavior, and responsive stacking for smaller screens while preserving variable search and per-section save actions.
+- **Files touched:**
+  - `src/main/resources/static/pages/settings/settings.js`
+  - `src/main/resources/static/pages/settings/settings.css`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** No backend test changes required for UI-only adjustment; Settings JS/CSS diagnostics passed and full `mvnw.cmd verify` passed with 80 tests.
+- **Docs updated:** `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (Bean Validation)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Hard refresh after redeploy and verify `index.html#settings` shows the improved internal Settings sidebar menu for Azure OpenAI, Databases, SharePoint, Microsoft Teams, and System Variables.
+- **Author:** copilot-agent
+- **Correlation:** user-request-2026-06-15-settings-sidebar-menu-improvement
+
+### 2026-06-15 — Simplify Settings Header and Per-Tab Save Actions
+- **Phase:** Phase 1
+- **Module(s):** `frontend/settings`, `frontend/theme`, `docs`
+- **Type:** fix | frontend | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Removed the extra Settings header messaging and chips (`Enterprise configuration center`, property-backed subtitle, tenant/configured/protected/HTTPS badges). Enlarged the variable search field and moved `Save Changes` from the top header into each Settings section/tab so operators save from the area they are configuring.
+- **Files touched:**
+  - `src/main/resources/static/pages/settings/settings.js`
+  - `src/main/resources/static/pages/settings/settings.css`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** No backend test changes required for UI-only adjustment; Settings JS/CSS diagnostics passed and full `mvnw.cmd verify` passed with 80 tests.
+- **Docs updated:** `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (Bean Validation)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Hard refresh after redeploy and confirm `index.html#settings` shows only the compact `Settings` header, a larger variable search field, Reset in the header, and `Save Changes` inside Azure, Databases, SharePoint, Teams, and System Variables sections.
+- **Author:** copilot-agent
+- **Correlation:** user-request-2026-06-15-settings-header-remove-badges-per-tab-save
+
+### 2026-06-15 — Compact Settings Header and Variable Search
+- **Phase:** Phase 1
+- **Module(s):** `frontend/settings`, `frontend/theme`, `docs`
+- **Type:** fix | frontend | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Reduced the Settings page header from the oversized hero treatment to a compact enterprise header aligned with User Management and Audit. Updated the search placeholder and section matching to focus on variable/property names such as `redisHost`, `serverPort`, `aiMode`, `neo4j.boltUrl`, and Azure OpenAI deployment keys.
+- **Files touched:**
+  - `src/main/resources/static/pages/settings/settings.js`
+  - `src/main/resources/static/pages/settings/settings.css`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** No backend test changes required for UI-only adjustment; Settings JS/CSS diagnostics passed and full `mvnw.cmd verify` passed with 80 tests.
+- **Docs updated:** `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (Bean Validation)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Hard refresh after redeploy and verify `index.html#settings` header height matches the compact User Management/Audit scale; search for variables like `redisHost`, `serverPort`, `aiMode`, `deploymentA`, and `webhookUrl`.
+- **Author:** copilot-agent
+- **Correlation:** user-request-2026-06-15-compact-settings-header-variable-search
+
+### 2026-06-15 — Redesign Settings as Enterprise Configuration Console
+- **Phase:** Phase 1
+- **Module(s):** `frontend/settings`, `frontend/theme`, `docs`
+- **Type:** fix | frontend | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Redesigned `index.html#settings` into a modern enterprise configuration console with a dark KFH hero, tenant/security badges, summary KPI cards, glass-style tab rail, elevated cards, improved forms, modern tables, toggles, modals, and responsive behavior. Preserved the existing Settings API behavior, save/reset/test actions, and secret-safe masking.
+- **Files touched:**
+  - `src/main/resources/static/pages/settings/settings.js`
+  - `src/main/resources/static/pages/settings/settings.css`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** No backend test changes required for UI-only redesign; Settings JS/CSS diagnostics passed and full `mvnw.cmd verify` passed with 80 tests.
+- **Docs updated:** `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (Bean Validation)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Hard refresh after redeploy and visually review Settings tabs (Azure OpenAI, Databases, SharePoint, Teams, System Variables) at desktop and tablet widths.
+- **Author:** copilot-agent
+- **Correlation:** user-request-2026-06-15-enterprise-settings-redesign
+
+### 2026-06-15 — Back Settings Page with Application Properties
+- **Phase:** Phase 1
+- **Module(s):** `platform.config`, `frontend/settings`, `docs`
+- **Type:** feature | security | test | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Changed `/api/v1/settings` from an in-memory-only scaffold to a secret-safe snapshot built from Spring `Environment` / `application.properties` plus sanitized runtime overrides. Added real application variables for Azure OpenAI, PostgreSQL, Neo4j, Redis, SharePoint, Teams, UI refresh, incident quiet period, and AI mode; the Settings UI now includes a System Variables tab and masks every secret-bearing field.
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/platform/config/SettingsService.java`
+  - `src/main/resources/application.properties`
+  - `src/main/resources/static/pages/settings/settings.js`
+  - `src/test/java/org/kfh/aiops/platform/config/SettingsServiceTest.java`
+  - `docs/API_CONTRACTS.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** `GET /api/v1/settings` now returns property-backed sections (`azureOpenAI`, `neo4j`, `postgresql`, `sharepoint`, `teams`, `system`) with plaintext secrets masked; `PUT /api/v1/settings` sanitizes runtime overrides before storing/returning them.
+- **Tests added/updated:** `SettingsServiceTest`; focused settings tests passed with 4 tests and full `mvnw.cmd verify` passed with 80 tests.
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/RUNBOOKS.md`, `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (Bean Validation)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Set real deployment values through environment/deployment secrets (`AZURE_OPENAI_*`, `SHAREPOINT_*`, `TEAMS_DEFAULT_*`, `DB_*`, `NEO4J_*`, `REDIS_*`) and hard refresh `index.html#settings`; do not expect `PUT /api/v1/settings` to rewrite `application.properties`.
+- **Author:** copilot-agent
+- **Correlation:** user-request-2026-06-15-property-backed-settings-page
+
+### 2026-06-15 — Change Active Sidebar Menu from Gold to White
+- **Phase:** Phase 1
+- **Module(s):** `frontend/theme`, `docs`
+- **Type:** fix | frontend | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Changed the clicked/current sidebar menu element from the gold active pill to a clean white/off-white active state with KFH green text, icons, border, and shadow. Removed remaining hard-coded active gold values from the final sidebar CSS cascade.
+- **Files touched:**
+  - `src/main/resources/static/shared/css/kfh-aiops-parity.css`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** No backend test changes required for CSS-only change; CSS diagnostics found no errors and full `mvnw.cmd verify` passed with 78 tests.
+- **Docs updated:** `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (Bean Validation)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Hard refresh after redeploy and click Dashboard, Audit, Schedules, Reports, and Inventory to confirm the active menu item is white/off-white with KFH green text instead of gold.
+- **Author:** copilot-agent
+- **Correlation:** user-request-2026-06-15-white-active-sidebar-menu
+
+### 2026-06-15 — Align Sidebar Hover with KFH Beyond Horizons Green
+- **Phase:** Phase 1
+- **Module(s):** `frontend/theme`, `docs`
+- **Type:** fix | frontend | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Replaced the sidebar menu hover gold with KFH Beyond Horizons green/teal tones. Hover now uses primary green gradients, light green borders/icons, and white text while the active/current menu item remains visually distinct.
+- **Files touched:**
+  - `src/main/resources/static/shared/css/kfh-aiops-parity.css`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** No backend test changes required for CSS-only change; CSS diagnostics found no errors and full `mvnw.cmd verify` passed with 78 tests.
+- **Docs updated:** `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (Bean Validation)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Hard refresh after redeploy and hover over Dashboard, Audit, Schedules, Reports, and Inventory to confirm hover is green/white rather than gold.
+- **Author:** copilot-agent
+- **Correlation:** user-request-2026-06-15-kfh-green-sidebar-hover
+
+### 2026-06-15 — Consolidate Sidebar Shell and Menu State
+- **Phase:** Phase 1
+- **Module(s):** `frontend/shell`, `frontend/router`, `frontend/theme`, `docs`
+- **Type:** fix | frontend | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Removed the duplicate-menu behavior by making legacy standalone page HTML entry points redirect to the canonical `index.html#<page>` SPA shell. Removed page-level sidebar hover/active CSS from Inventory and Reports, aligned the final parity menu typography with the gold active state, and made router active-state handling apply to every matching route item if duplicate DOM entries ever appear.
+- **Files touched:**
+  - `src/main/resources/static/shared/js/router.js`
+  - `src/main/resources/static/shared/css/kfh-aiops-parity.css`
+  - `src/main/resources/static/pages/inventory/inventory.css`
+  - `src/main/resources/static/pages/reports/reports.css`
+  - `src/main/resources/static/pages/alerts/alerts.html`
+  - `src/main/resources/static/pages/applications/applicationconfig.html`
+  - `src/main/resources/static/pages/applications/applications.html`
+  - `src/main/resources/static/pages/audit/audit.html`
+  - `src/main/resources/static/pages/connectors/connectors.html`
+  - `src/main/resources/static/pages/dashboard/dashboard.html`
+  - `src/main/resources/static/pages/incidents/incidents.html`
+  - `src/main/resources/static/pages/inventory/inventory.html`
+  - `src/main/resources/static/pages/reports/reports.html`
+  - `src/main/resources/static/pages/schedules/schedules.html`
+  - `src/main/resources/static/pages/settings/settings.html`
+  - `src/main/resources/static/pages/users/users.html`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** No backend test changes required for static routing/style consolidation; editor diagnostics found no new CSS errors and full `mvnw.cmd verify` passed with 78 tests.
+- **Docs updated:** `docs/RUNBOOKS.md`, `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (Bean Validation)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Hard refresh after redeploy, then navigate via `index.html#dashboard`, `#audit`, `#schedules`, `#reports`, and `#inventory` to confirm the same sidebar remains visible and the gold current-page style appears consistently.
+- **Author:** copilot-agent
+- **Correlation:** user-request-2026-06-15-single-sidebar-menu-style
+
+### 2026-06-15 — Replace Sidebar Logo and Tune Menu States
+- **Phase:** Phase 1
+- **Module(s):** `frontend/shell`, `frontend/theme`, `docs`
+- **Type:** fix | frontend | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Replaced the sidebar placeholder mark with the provided `kfh-logo.png` image across the main SPA, shared shell/layout renderers, reusable sidebar component, and standalone static page copies. Updated the final sidebar menu styling so hover uses a gold/green highlight and the current/open page uses a cream-gold active pill with stronger KFH-aligned typography.
+- **Files touched:**
+  - `src/main/resources/static/index.html`
+  - `src/main/resources/static/shared/css/kfh-aiops-parity.css`
+  - `src/main/resources/static/shared/js/shell.js`
+  - `src/main/resources/static/shared/js/layout.js`
+  - `src/main/resources/static/shared/components/sidebar.js`
+  - `src/main/resources/static/pages/audit/audit.html`
+  - `src/main/resources/static/pages/applications/applications.html`
+  - `src/main/resources/static/pages/connectors/connectors.html`
+  - `src/main/resources/static/pages/dashboard/dashboard.html`
+  - `src/main/resources/static/pages/incidents/incidents.html`
+  - `src/main/resources/static/pages/inventory/inventory.html`
+  - `src/main/resources/static/pages/reports/reports.html`
+  - `src/main/resources/static/pages/settings/settings.html`
+  - `src/main/resources/static/pages/users/users.html`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** No backend test changes required for static UI styling; editor diagnostics found no new CSS errors and full `mvnw.cmd verify` passed with 78 tests.
+- **Docs updated:** `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (Bean Validation)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Hard refresh the browser after redeploy to reload `kfh-logo.png` and `shared/css/kfh-aiops-parity.css`; visually confirm the active/current menu item and hover states on Dashboard, Audit, Users, and Applications.
+- **Author:** copilot-agent
+- **Correlation:** user-request-2026-06-15-sidebar-kfh-logo-menu-state
+
+### 2026-06-15 — Show Readable Login Audit Activity
+- **Phase:** Phase 1
+- **Module(s):** `platform.audit`, `platform.identity`, `frontend/audit`, `docs`
+- **Type:** fix | security | test | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Fixed login audit rows so datasource-backed Audit Activity no longer renders successful/failed sign-ins as UUID-only rows. Login writes now persist secret-safe actor/target/message display metadata, legacy persisted login rows are normalized on read, and the Audit UI defensively prefers readable login display fields while preserving tenant/country/environment/correlation scope.
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/platform/identity/IdentityAuthService.java`
+  - `src/main/java/org/kfh/aiops/platform/audit/AuditActivityRepository.java`
+  - `src/main/resources/static/pages/audit/audit.js`
+  - `src/test/java/org/kfh/aiops/platform/identity/IdentityAuthServiceTest.java`
+  - `src/test/java/org/kfh/aiops/platform/audit/AuditActivityRepositoryTest.java`
+  - `docs/API_CONTRACTS.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** No endpoint path change; `GET /api/v1/audit` rows now expose secret-safe display fields (`actorName`, `actorUsername`, `targetName`, `targetType`, `targetId`, `message`, `result`, `severity`) for readable login activity rendering.
+- **Tests added/updated:** `IdentityAuthServiceTest`, `AuditActivityRepositoryTest`; focused identity/audit tests passed with 9 tests and full `mvnw.cmd verify` passed with 78 tests.
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/RUNBOOKS.md`, `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (Bean Validation)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Restart/redeploy the running webserver, sign in again, and hard refresh the browser before rechecking `index.html#audit`; old persisted login rows should also display `Authentication` instead of UUID-only targets after the new build serves the API/UI.
+- **Author:** copilot-agent
+- **Correlation:** user-request-2026-06-15-readable-login-audit
+
+### 2026-06-15 — Tune Sidebar Font Weight to Reference
+- **Phase:** Phase 1
+- **Module(s):** `frontend/shell`, `frontend/theme`, `docs`
+- **Type:** fix | frontend | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Tuned the screenshot-match sidebar typography to be less bold and closer to the supplied reference. Updated the final sidebar font stack toward Inter/Segoe UI style and reduced weights for menu items, active state, section labels, country scope text, user card, avatar, badges, and collapse hint.
+- **Files touched:**
+  - `src/main/resources/static/shared/css/kfh-aiops-parity.css`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** No code tests required for CSS-only change; `get_errors` reported no CSS errors and full `mvnw.cmd verify` passed with 75 tests.
+- **Docs updated:** `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (Bean Validation)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Hard refresh the browser after redeploy to reload the final sidebar CSS and compare normal/active menu weights against the supplied reference image.
+- **Author:** copilot-agent
+- **Correlation:** user-request-2026-06-15-sidebar-font-weight-reference
+
+### 2026-06-15 — Match Sidebar Menu to Reference Design
+- **Phase:** Phase 1
+- **Module(s):** `frontend/shell`, `frontend/theme`, `docs`
+- **Type:** fix | frontend | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Restyled the main shell sidebar to closely match the supplied vertical menu reference while preserving KFH branding, routes, RBAC, and tenant/country behavior. Added the dark green rail, compact logo treatment, section headers with divider rules, white icon/label rows, rounded active pill, bottom user card, logout control, and visual collapse hint.
+- **Files touched:**
+  - `src/main/resources/static/shared/css/kfh-aiops-parity.css`
+  - `docs/PROGRESS.md`
+  - `docs/PROGRESS-002.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** No code tests required for CSS-only change; `get_errors` reported no CSS errors and full `mvnw.cmd verify` passed with 75 tests.
+- **Docs updated:** `docs/PROGRESS.md`, `docs/PROGRESS-002.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (Bean Validation)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Hard refresh the browser after redeploy to reload `shared/css/kfh-aiops-parity.css`; visually compare Dashboard, Users, Audit, Connectors, and Reports menu states with the reference.
+- **Author:** copilot-agent
+- **Correlation:** user-request-2026-06-15-reference-sidebar-menu
+

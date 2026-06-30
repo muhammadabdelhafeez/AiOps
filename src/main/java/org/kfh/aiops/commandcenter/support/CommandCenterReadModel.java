@@ -172,10 +172,14 @@ public class CommandCenterReadModel {
     }
 
     public Map<String, Object> createConnector(TenantContext ctx, String name, Map<String, Object> fields) {
-        var safe = new LinkedHashMap<>(fields);
-        safe.remove("secretsPlain");
-        safe.put("secretsMask", "configured");
-        return create(connectors, ctx, ctx.countryCode(), ctx.environment(), name, safe);
+        return createConnector(ctx, ctx.countryCode(), ctx.environment(), name, fields);
+    }
+
+    public Map<String, Object> createConnector(TenantContext ctx, String country, String environment,
+            String name, Map<String, Object> fields) {
+        var safe = safeConnectorFields(fields);
+        safe.putIfAbsent("secretsMask", "configured");
+        return create(connectors, ctx, country, environment, name, safe);
     }
 
     public Map<String, Object> createSchedule(TenantContext ctx, String name, Map<String, Object> fields) {
@@ -212,8 +216,13 @@ public class CommandCenterReadModel {
     }
 
     public Map<String, Object> updateConnector(UUID id, Map<String, Object> fields) {
-        var safe = new LinkedHashMap<>(fields);
-        safe.remove("secretsPlain");
+        var safe = safeConnectorFields(fields);
+        if (fields.containsKey("countryCode")) {
+            safe.put("countryCode", normalize(String.valueOf(fields.get("countryCode"))));
+        }
+        if (fields.containsKey("environment")) {
+            safe.put("environment", normalize(String.valueOf(fields.get("environment"))));
+        }
         return update(connectors, id, safe);
     }
 
@@ -282,7 +291,8 @@ public class CommandCenterReadModel {
         var requestedCountry = normalize(country);
         var requestedEnvironment = normalize(environment);
         return sorted(source).stream()
-                .filter(row -> requestedCountry.equals(row.get("countryCode")))
+                .filter(row -> CountryAccessGuard.ALL_COUNTRIES_SCOPE.equals(requestedCountry)
+                        || requestedCountry.equals(row.get("countryCode")))
                 .filter(row -> requestedEnvironment.equals(row.get("environment")))
                 .toList();
     }
@@ -336,6 +346,40 @@ public class CommandCenterReadModel {
         return safe;
     }
 
+    private static Map<String, Object> safeConnectorFields(Map<String, Object> fields) {
+        var safe = new LinkedHashMap<String, Object>();
+        if (fields == null || fields.isEmpty()) {
+            return safe;
+        }
+        fields.forEach((key, value) -> {
+            if ("tenantId".equals(key) || "countryCode".equals(key) || "countryName".equals(key)
+                    || "environment".equals(key) || "secretsPlain".equals(key)) {
+                return;
+            }
+            if ("secretsMask".equals(key) || !isSecretLike(key)) {
+                safe.put(key, sanitizeConnectorValue(value));
+            }
+        });
+        return safe;
+    }
+
+    private static Object sanitizeConnectorValue(Object value) {
+        if (value instanceof Map<?, ?> map) {
+            var sanitized = new LinkedHashMap<String, Object>();
+            map.forEach((nestedKey, nestedValue) -> {
+                var key = String.valueOf(nestedKey);
+                if ("secretsMask".equals(key) || !isSecretLike(key)) {
+                    sanitized.put(key, sanitizeConnectorValue(nestedValue));
+                }
+            });
+            return sanitized;
+        }
+        if (value instanceof List<?> list) {
+            return list.stream().map(CommandCenterReadModel::sanitizeConnectorValue).toList();
+        }
+        return value;
+    }
+
     private static boolean isSecretLike(String key) {
         var normalized = key == null ? "" : key.toLowerCase();
         return normalized.contains("password") || normalized.contains("token") || normalized.contains("secret")
@@ -370,8 +414,6 @@ public class CommandCenterReadModel {
         alerts.put(alertId, row(alertId, "KW", "PROD", "Storage latency high", Map.of(
                 "severity", "CRITICAL", "status", "OPEN", "sourceSystem", "SolarWinds", "resourceId", storage.toString(),
                 "message", "SAN-STORAGE-02 latency exceeded baseline", "rawRef", "object://evidence/kw/prod/2026-06-10/storage-latency.json.gz")));
-        connectors.put(UUID.fromString("50000000-0000-0000-0000-000000000001"), row(UUID.fromString("50000000-0000-0000-0000-000000000001"), "KW", "PROD", "SolarWinds KW", Map.of(
-                "pluginType", "SOLARWINDS", "enabled", true, "lastTestStatus", "PASS", "health", "HEALTHY", "secretsMask", "configured")));
         schedules.put(UUID.fromString("60000000-0000-0000-0000-000000000001"), row(UUID.fromString("60000000-0000-0000-0000-000000000001"), "KW", "PROD", "Hourly production collection", Map.of(
                 "cronExpression", "0 0 * * * *", "timezone", "Asia/Kuwait", "enabled", true, "lastRunStatus", "SUCCESS")));
         reports.put(UUID.fromString("70000000-0000-0000-0000-000000000001"), row(UUID.fromString("70000000-0000-0000-0000-000000000001"), "KW", "PROD", "Executive RCA pack", Map.of(

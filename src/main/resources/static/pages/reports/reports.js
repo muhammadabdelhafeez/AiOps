@@ -923,8 +923,8 @@ var Reports = (function() {
   }
 
   function bindEvents() {
-    document.getElementById('reports-search')?.addEventListener('input', e => {
-      state.searchQuery = e.target.value || '';
+    KFHUtils.bindLiveSearch('reports-search', function(value) {
+      state.searchQuery = value || '';
       applyFilters();
       render();
     });

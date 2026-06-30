@@ -29,6 +29,8 @@ if (-not (Test-Path -LiteralPath $certPath)) {
 $securePassword = Read-Host "Enter PFX password" -AsSecureString
 $passwordPointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($securePassword)
 $scriptSetDbPassword = $false
+$scriptSetSecretKey = $false
+$defaultSecretKeyFile = Join-Path ([Environment]::GetFolderPath('UserProfile')) '.kfh-aiops\secret-key.txt'
 try {
     $plainPassword = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($passwordPointer)
     $certUri = "file:" + ((Resolve-Path -LiteralPath $certPath).Path -replace "\\", "/")
@@ -57,10 +59,28 @@ try {
     if (-not $env:KFH_BOOTSTRAP_ADMIN_COUNTRY) { $env:KFH_BOOTSTRAP_ADMIN_COUNTRY = "ALL" }
     if (-not $env:KFH_BOOTSTRAP_ADMIN_ENVIRONMENT) { $env:KFH_BOOTSTRAP_ADMIN_ENVIRONMENT = "PROD" }
     if (-not $env:KFH_BOOTSTRAP_ADMIN_ROLE) { $env:KFH_BOOTSTRAP_ADMIN_ROLE = "GLOBAL_ADMIN" }
+    $secretKeyFileConfigured = -not [string]::IsNullOrWhiteSpace($env:KFH_AIOPS_SECRET_KEY_FILE)
+    $defaultSecretKeyFilePresent = Test-Path -LiteralPath $defaultSecretKeyFile -PathType Leaf
+    if ([string]::IsNullOrWhiteSpace($env:KFH_AIOPS_SECRET_KEY) -and -not $secretKeyFileConfigured -and -not $defaultSecretKeyFilePresent) {
+        Write-Host "KFH_AIOPS_SECRET_KEY is required to encrypt and test connector secrets. Use the same value across restarts. You can also create %USERPROFILE%\.kfh-aiops\secret-key.txt or set KFH_AIOPS_SECRET_KEY_FILE." -ForegroundColor Yellow
+        $secureSecretKey = Read-Host -Prompt "KFH_AIOPS_SECRET_KEY" -AsSecureString
+        $secretKeyPointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureSecretKey)
+        try { $env:KFH_AIOPS_SECRET_KEY = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($secretKeyPointer) }
+        finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($secretKeyPointer) }
+        if ([string]::IsNullOrWhiteSpace($env:KFH_AIOPS_SECRET_KEY)) {
+            Remove-Item Env:KFH_AIOPS_SECRET_KEY -ErrorAction SilentlyContinue
+            throw "KFH_AIOPS_SECRET_KEY cannot be blank because connector credentials are encrypted at rest."
+        }
+        $scriptSetSecretKey = $true
+    }
     Write-Host "Starting KFH AIOps over HTTPS with database-backed identity storage." -ForegroundColor Green
     Write-Host ("DB_URL      = {0}" -f $DbUrl)
     Write-Host ("DB_USERNAME = {0}" -f $DbUsername)
     Write-Host "DB_PASSWORD = ***"
+    Write-Host "KFH_AIOPS_SECRET_KEY = ***"
+    if ([string]::IsNullOrWhiteSpace($env:KFH_AIOPS_SECRET_KEY)) {
+        Write-Host "KFH_AIOPS_SECRET_KEY_FILE = configured/default deployment secret file"
+    }
     Write-Host "Profiles    = https-local (local profile disabled)" -ForegroundColor Yellow
     .\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=https-local"
 }
@@ -69,6 +89,7 @@ finally {
         [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($passwordPointer)
     }
     if ($scriptSetDbPassword) { Remove-Item Env:\DB_PASSWORD -ErrorAction SilentlyContinue }
+    if ($scriptSetSecretKey) { Remove-Item Env:\KFH_AIOPS_SECRET_KEY -ErrorAction SilentlyContinue }
     Remove-Item Env:\SERVER_SSL_KEY_STORE_PASSWORD -ErrorAction SilentlyContinue
 }
 

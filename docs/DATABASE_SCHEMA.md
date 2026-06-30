@@ -65,7 +65,7 @@ Indexes: `(tenant_id, country_code, environment)`, `(tenant_id, country_code, en
 ### identity.roles
 | id UUID PK | tenant_id UUID | name VARCHAR(80) | description TEXT |
 
-Predefined Phase 1 local roles: `GLOBAL_ADMIN`, `COUNTRY_ADMIN`, `NOC_OPERATOR`, `VIEWER`. The UI shows simplified labels (`Admin`, `Operator`, `Viewer`) and the backend maps them to canonical stored role names based on country scope.
+Predefined Phase 1 local roles: `GLOBAL_ADMIN`, `COUNTRY_ADMIN`, `NOC_OPERATOR`, `VIEWER`. The UI shows simplified labels (`Admin`, `Operator`, `Viewer`) and the backend maps them to canonical stored role names based on country scope. `COUNTRY_ADMIN` includes `AUDIT_READ` for same-country audit review but does not include `COUNTRY_GLOBAL_VIEW`; `GLOBAL_ADMIN` retains `*` permissions for all-country audit visibility.
 
 ### identity.role_permissions
 | tenant_id UUID FK | role_id UUID FK | permission TEXT | PRIMARY KEY (tenant_id, role_id, permission) |
@@ -96,10 +96,19 @@ Index: `(tenant_id, at DESC)` plus `V6__repair_audit_log_activity_schema.sql` ex
 
 UNIQUE: `(tenant_id, name)`.
 
+Country is a connector configuration scope, not a tenant boundary. Global/all-country connector inventory uses the same `tenant_id` and reads all physical `config->>'countryCode'` values for the selected environment. `V9__normalize_connector_country_scope_tenant.sql` repairs Phase 1 scaffold rows saved under the old hard-coded Bahrain/Egypt country tenant IDs by moving known scaffold connector rows, secrets, runs, and connector outbox events back to the KFH group tenant.
+
 ### config.connector_secrets
 | id UUID PK | connector_id UUID FK | secret_key VARCHAR(80) | secret_ciphertext BYTEA NOT NULL | kms_key_id VARCHAR(120) | created_at | rotated_at |
 
 Never SELECT this table from controllers.
+
+### config.integration_settings
+| setting_id UUID PK | tenant_id UUID FK | country_code TEXT | environment TEXT | key TEXT | value JSONB | updated_at |
+
+UNIQUE: `(tenant_id, country_code, environment, key)` from `V12__country_environment_scoped_integration_settings.sql`.
+
+Settings metadata configured from the Command Center is permanently stored here. `country_code='ALL'` is the all-country fallback, while physical country rows such as `KW`, `BH`, and `EG` override or extend the fallback for the selected environment. `environment='ALL'` is the environment fallback, while `PROD`, `UAT`, and `DEV` rows are environment-specific. JSON values may contain Settings-managed provider metadata such as `azureOpenAI.integrations[]`, `databases.connections[]`, `sharepoint.connections[]`, `teams.mappings[]`, `neo4j`, and `infrastructure.connections[]`. Plaintext provider secrets are never stored in JSON; Settings-managed row secrets are encrypted into `apiKeySecret`, `passwordSecret`, or `secretSecret` server-side and removed from API responses.
 
 ### config.schedules
 | id UUID PK | tenant_id | connector_id FK | cron_expression VARCHAR(60) | timezone VARCHAR(60) | enabled BOOLEAN | last_run_at | next_run_at |

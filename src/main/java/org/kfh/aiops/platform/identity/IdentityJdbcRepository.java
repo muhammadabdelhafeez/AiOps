@@ -24,7 +24,7 @@ public class IdentityJdbcRepository {
 
     private static final Map<String, RoleDefinition> DEFAULT_ROLES = Map.of(
             "GLOBAL_ADMIN", new RoleDefinition("KFH Global Admin", List.of("*")),
-            "COUNTRY_ADMIN", new RoleDefinition("Country Admin", List.of("DASHBOARD_READ", "INCIDENT_READ", "ALERT_READ", "IDENTITY_READ", "IDENTITY_WRITE")),
+            "COUNTRY_ADMIN", new RoleDefinition("Country Admin", List.of("DASHBOARD_READ", "INCIDENT_READ", "ALERT_READ", "IDENTITY_READ", "IDENTITY_WRITE", "AUDIT_READ")),
             "NOC_OPERATOR", new RoleDefinition("NOC Operator", List.of("DASHBOARD_READ", "INCIDENT_READ", "ALERT_READ", "IDENTITY_READ")),
             "VIEWER", new RoleDefinition("Viewer", List.of("DASHBOARD_READ", "INCIDENT_READ", "ALERT_READ")));
 
@@ -223,6 +223,16 @@ public class IdentityJdbcRepository {
     }
 
     public Optional<IdentitySignInResponse> signIn(IdentitySignInRequest request) {
+        var requestedCountry = normalize(request.countryCode());
+        var requestedEnvironment = normalize(request.environment());
+        var exact = acceptedSignInCandidate(request, requestedCountry, requestedEnvironment);
+        if (exact.isPresent() || "ALL".equals(requestedCountry)) {
+            return exact.map(this::toSignInResponse);
+        }
+        return acceptedSignInCandidate(request, "ALL", requestedEnvironment).map(this::toSignInResponse);
+    }
+
+    private Optional<SignInCandidate> acceptedSignInCandidate(IdentitySignInRequest request, String countryCode, String environment) {
         var rows = jdbcTemplate.query("""
                 SELECT u.user_id, u.tenant_id, u.username, u.display_name, u.email, u.country_code, u.environment,
                        u.password_hash, u.is_active,
@@ -235,18 +245,19 @@ public class IdentityJdbcRepository {
                 LEFT JOIN identity.role_permissions rp ON rp.tenant_id = r.tenant_id AND rp.role_id = r.role_id
                 WHERE lower(u.username) = lower(?) AND u.country_code = ? AND u.environment = ?
                 GROUP BY u.user_id
-                """, (rs, rowNum) -> signInCandidate(rs), request.username(), normalize(request.countryCode()), normalize(request.environment()));
+                """, (rs, rowNum) -> signInCandidate(rs), request.username(), countryCode, environment);
         return rows.stream()
                 .filter(candidate -> candidate.active() && candidate.passwordHash() != null)
                 .filter(candidate -> passwordEncoder.matches(request.password(), candidate.passwordHash()))
-                .findFirst()
-                .map(candidate -> {
-                    jdbcTemplate.update("UPDATE identity.users SET last_login_at = now() WHERE tenant_id = ? AND user_id = ?",
-                            candidate.tenantId(), candidate.userId());
-                    return new IdentitySignInResponse(candidate.tenantId(), candidate.userId(), candidate.username(), candidate.displayName(),
-                            candidate.email(), candidate.countryCode(), countryName(candidate.countryCode()), "KFH Group", candidate.environment(),
-                            candidate.roleId(), roleDisplayName(candidate.roleName()), candidate.permissions(), Instant.now());
-                });
+                .findFirst();
+    }
+
+    private IdentitySignInResponse toSignInResponse(SignInCandidate candidate) {
+        jdbcTemplate.update("UPDATE identity.users SET last_login_at = now() WHERE tenant_id = ? AND user_id = ?",
+                candidate.tenantId(), candidate.userId());
+        return new IdentitySignInResponse(candidate.tenantId(), candidate.userId(), candidate.username(), candidate.displayName(),
+                candidate.email(), candidate.countryCode(), countryName(candidate.countryCode()), "KFH Group", candidate.environment(),
+                candidate.roleId(), roleDisplayName(candidate.roleName()), candidate.permissions(), Instant.now());
     }
 
     public SignInFailureDiagnostics signInFailureDiagnostics(IdentitySignInRequest request) {

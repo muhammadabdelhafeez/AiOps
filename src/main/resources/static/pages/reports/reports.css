@@ -4,27 +4,7 @@
  * Page-specific styles for the Reports / Run Outputs module
  */
 
-/* ============================================
-   Sidebar Navigation
-   ============================================*/
-.sidebar-nav-item {
-  color: rgba(255, 255, 255, 0.75);
-  font-weight: 500;
-  transition: all 0.2s ease;
-  margin: 4px 0;
-}
-
-.sidebar-nav-item:hover {
-  background: rgba(255, 255, 255, 0.15);
-  color: white;
-  font-weight: 600;
-}
-
-.sidebar-nav-item.active {
-  background: #e2f7dd;
-  color: #0E6B42;
-  font-weight: 600;
-}
+/* Sidebar navigation is owned by shared/css/kfh-aiops-parity.css. */
 
 /* ============================================
    Animations

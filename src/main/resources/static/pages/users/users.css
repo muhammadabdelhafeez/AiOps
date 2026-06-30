@@ -402,6 +402,20 @@
   box-shadow: 0 0 0 4px rgba(18, 135, 84, 0.12);
 }
 
+.users-scope-locked {
+  display: inline-flex;
+  align-items: center;
+  min-height: 42px;
+  padding: 0 13px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  background: var(--surface-off-white);
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 800;
+  text-transform: none;
+}
+
 .user-create-scope {
   display: flex;
   flex-wrap: wrap;
@@ -1918,6 +1932,14 @@
 .users-filter-select:focus {
   border-color: var(--kfh-primary);
   box-shadow: 0 0 0 4px rgba(18, 135, 84, 0.12);
+}
+
+.users-filter-select[role="status"] {
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  color: var(--text-secondary);
+  white-space: nowrap;
 }
 
 .users-toolbar {

@@ -1,0 +1,885 @@
+# Redis 7.2.5 Offline/Restricted Network Installation Guide on RHEL 10
+
+## 1. Purpose
+
+This document explains the full steps performed to install, run, validate, and troubleshoot **Redis 7.2.5** on a restricted **Red Hat Enterprise Linux 10** server.
+
+The environment has:
+
+- Restricted internet access
+- Corporate SSL inspection
+- Limited external repository access
+- Default RHEL repositories only
+- Redis package unavailable through `yum/dnf`
+
+Because of these restrictions, Redis was installed from source using the official Redis download URL with SSL bypass for testing.
+
+---
+
+## 2. Environment Example
+
+Example server:
+
+```bash
+utvcapap02
+```
+
+Example user:
+
+```bash
+sun92338
+```
+
+Example Redis version:
+
+```bash
+redis-7.2.5
+```
+
+Default Redis port:
+
+```bash
+6379
+```
+
+---
+
+## 3. Initial Attempt Using yum/dnf
+
+### Command used
+
+```bash
+sudo yum install redis
+sudo systemctl enable redis
+sudo systemctl start redis
+```
+
+### Result
+
+```bash
+No match for argument: redis
+Error: Unable to find a match: redis
+Failed to enable unit: Unit redis.service does not exist
+Failed to start redis.service: Unit redis.service not found.
+```
+
+### Why this happened
+
+Redis was not available in the enabled RHEL 10 repositories:
+
+- BaseOS
+- AppStream
+- Microsoft RHEL repository
+
+The `redis.service` also did not exist because Redis was never installed by the package manager.
+
+### Key point
+
+This was not a Redis runtime issue. The installation failed because the package was not found in the configured repositories.
+
+---
+
+## 4. Checking Redis Module Availability
+
+### Command used
+
+```bash
+sudo dnf module list redis
+```
+
+### Result
+
+```bash
+Error: No matching Modules to list
+```
+
+Then:
+
+```bash
+sudo dnf module enable redis -y
+sudo dnf install redis -y
+```
+
+Result:
+
+```bash
+missing groups or modules: redis
+No match for argument: redis
+Error: Unable to find a match: redis
+```
+
+### Why this was checked
+
+Some older RHEL versions provided software through DNF modules. We checked whether Redis was available as a module.
+
+### Conclusion
+
+Redis was not available as a package or module in the configured RHEL 10 repositories.
+
+---
+
+## 5. Testing Internet URL Access
+
+Before downloading Redis manually, we tested whether the server could reach the Redis download site.
+
+### Commands used
+
+```bash
+curl -I https://redis.io
+curl -I https://download.redis.io
+curl -I https://repo.maven.apache.org
+curl -I https://apache.maven.org
+```
+
+### Result example
+
+```bash
+curl: (60) SSL certificate problem: self-signed certificate in certificate chain
+```
+
+For Maven repository:
+
+```bash
+HTTP/2 200
+server: cloudflare
+```
+
+For Apache Maven:
+
+```bash
+curl: (6) Could not resolve host: apache.maven.org
+```
+
+### Explanation
+
+There were two different issues:
+
+1. **SSL certificate issue**
+   - The corporate firewall/proxy was doing SSL inspection.
+   - The Linux server did not trust the corporate root CA certificate.
+   - This caused `curl: (60)` certificate errors.
+
+2. **DNS issue for some domains**
+   - Some domains did not resolve from the server.
+   - Example: `apache.maven.org` returned DNS resolution failure.
+
+---
+
+## 6. Confirming SSL Inspection Issue
+
+### Command without SSL bypass
+
+```bash
+curl -I https://download.redis.io
+```
+
+Expected failure in this environment:
+
+```bash
+curl: (60) SSL certificate problem: self-signed certificate in certificate chain
+```
+
+### Command with SSL bypass
+
+```bash
+curl -k -I https://download.redis.io
+```
+
+Result:
+
+```bash
+HTTP/1.1 200 OK
+```
+
+### Why we used `-k`
+
+The `-k` option tells curl to skip certificate validation.
+
+This was used only as a temporary workaround to confirm that:
+
+- DNS works for `download.redis.io`
+- TCP port 443 is open
+- The firewall allows the connection
+- The real problem is certificate trust
+
+### Important note
+
+Using `-k` is acceptable for testing or temporary installation in a restricted environment, but it is not the recommended long-term production solution.
+
+The proper fix is to import the corporate root CA certificate into the Linux trust store.
+
+---
+
+## 7. Download Redis Source Package
+
+### Command used
+
+```bash
+curl -k -O https://download.redis.io/releases/redis-7.2.5.tar.gz
+```
+
+### Why we did this
+
+Since Redis was unavailable from `yum/dnf`, we downloaded the Redis source package directly from the Redis official download site.
+
+The `-O` option saves the file using the original remote filename:
+
+```bash
+redis-7.2.5.tar.gz
+```
+
+### Real example
+
+After download, verify the file exists:
+
+```bash
+ls -lh redis-7.2.5.tar.gz
+```
+
+Expected output example:
+
+```bash
+-rw-r--r-- 1 root root 3.2M Jun 28 11:00 redis-7.2.5.tar.gz
+```
+
+---
+
+## 8. Extract Redis Package
+
+### Command used
+
+```bash
+tar -xzf redis-7.2.5.tar.gz
+cd redis-7.2.5
+```
+
+### Why we did this
+
+Redis was downloaded as a compressed archive file.
+
+The command extracts it into a directory named:
+
+```bash
+redis-7.2.5
+```
+
+Then we moved into that directory to compile and run Redis.
+
+### Verify
+
+```bash
+pwd
+```
+
+Expected example:
+
+```bash
+/root/redis-7.2.5
+```
+
+or:
+
+```bash
+/home/sun92338/redis-7.2.5
+```
+
+depending on where the package was extracted.
+
+---
+
+## 9. Install Build Tools
+
+### Command used
+
+```bash
+sudo dnf install -y gcc make
+```
+
+### Why we did this
+
+Redis was installed from source code, so the server needed build tools:
+
+- `gcc` to compile C source code
+- `make` to run the Redis build process
+
+### Expected result
+
+The packages should install from the internal RHEL repositories.
+
+If they are already installed, DNF may show:
+
+```bash
+Package gcc is already installed.
+Package make is already installed.
+```
+
+---
+
+## 10. Compile Redis
+
+### Command used
+
+```bash
+make
+```
+
+### Why we did this
+
+The Redis source package contains source code. The `make` command compiles the code and creates executable binaries such as:
+
+```bash
+src/redis-server
+src/redis-cli
+```
+
+### Expected successful signs
+
+You should see output similar to:
+
+```bash
+LINK redis-server
+LINK redis-cli
+```
+
+### Verify binaries
+
+```bash
+ls -lh src/redis-server src/redis-cli
+```
+
+Expected example:
+
+```bash
+-rwxr-xr-x 1 root root ... src/redis-server
+-rwxr-xr-x 1 root root ... src/redis-cli
+```
+
+---
+
+## 11. Run Redis in Background
+
+### Command used
+
+```bash
+src/redis-server --daemonize yes
+```
+
+### Why we did this
+
+By default, Redis runs in the foreground. If you close the terminal, the process may stop.
+
+Using:
+
+```bash
+--daemonize yes
+```
+
+starts Redis as a background process.
+
+### Real output received
+
+```bash
+WARNING Memory overcommit must be enabled!
+```
+
+### Important explanation
+
+This warning does not mean Redis failed.
+
+Redis started, but Linux kernel memory overcommit was not enabled. Redis recommends enabling it because background save or replication may fail if memory overcommit is disabled.
+
+---
+
+## 12. Fix Redis Memory Overcommit Warning
+
+### Temporary fix without reboot
+
+```bash
+sysctl vm.overcommit_memory=1
+```
+
+### Permanent fix
+
+```bash
+echo "vm.overcommit_memory = 1" >> /etc/sysctl.conf
+sysctl -p
+```
+
+### Verify
+
+```bash
+sysctl vm.overcommit_memory
+```
+
+Expected output:
+
+```bash
+vm.overcommit_memory = 1
+```
+
+### Why we did this
+
+Redis may use background processes for persistence and replication.
+
+If memory overcommit is disabled, Redis can fail during:
+
+- RDB snapshot
+- replication
+- background save
+- high memory pressure situations
+
+Setting this value improves Redis stability.
+
+---
+
+## 13. Verify Redis Process Is Running
+
+### Command used
+
+```bash
+ps -ef | grep redis
+```
+
+### Expected output example
+
+```bash
+root      53741     1  0 11:07 ?        00:00:00 src/redis-server *:6379
+```
+
+### Why we did this
+
+This confirms that the Redis server process is active.
+
+---
+
+## 14. Verify Redis Port 6379 Is Listening
+
+### Command used
+
+```bash
+ss -tulnp | grep 6379
+```
+
+### Expected output example
+
+```bash
+tcp LISTEN 0 511 0.0.0.0:6379 0.0.0.0:* users:(("redis-server",pid=53741,fd=6))
+```
+
+### Why we did this
+
+Redis uses TCP port `6379` by default.
+
+This command confirms that the service is listening on the expected port.
+
+---
+
+## 15. Test Redis with redis-cli
+
+### Command used
+
+```bash
+src/redis-cli ping
+```
+
+### Expected result
+
+```bash
+PONG
+```
+
+### Why we did this
+
+This is the simplest Redis health check.
+
+If Redis responds with `PONG`, it means:
+
+- Redis server is running
+- Redis CLI can connect
+- Redis command processing is working
+
+---
+
+## 16. Real Redis Test Example
+
+### Set a test key
+
+```bash
+src/redis-cli set aiops_test "Redis is working for KFH AIOps"
+```
+
+Expected output:
+
+```bash
+OK
+```
+
+### Retrieve the test key
+
+```bash
+src/redis-cli get aiops_test
+```
+
+Expected output:
+
+```bash
+"Redis is working for KFH AIOps"
+```
+
+### Delete the test key
+
+```bash
+src/redis-cli del aiops_test
+```
+
+Expected output:
+
+```bash
+(integer) 1
+```
+
+### Why this test is useful
+
+This proves Redis can perform real read/write operations, not only respond to ping.
+
+For AIOps usage, Redis can be used for:
+
+- alert deduplication cache
+- temporary correlation keys
+- event session storage
+- throttling repeated alerts
+- short-lived RCA context cache
+
+---
+
+## 17. Optional: Stop Redis
+
+### Command
+
+```bash
+src/redis-cli shutdown
+```
+
+### Alternative
+
+```bash
+pkill redis-server
+```
+
+### Why this may be needed
+
+Use this when restarting Redis after configuration changes.
+
+---
+
+## 18. Optional: Restart Redis in Background
+
+### Command
+
+```bash
+src/redis-server --daemonize yes
+```
+
+### Test again
+
+```bash
+src/redis-cli ping
+```
+
+Expected:
+
+```bash
+PONG
+```
+
+---
+
+## 19. Optional: Create a systemd Service
+
+For production usage, Redis should be managed by `systemd` instead of running manually.
+
+### Example service file
+
+Create the file:
+
+```bash
+sudo nano /etc/systemd/system/redis.service
+```
+
+Paste the following content. Update the path if Redis was extracted somewhere else.
+
+```ini
+[Unit]
+Description=Redis Server
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/root/redis-7.2.5/src/redis-server --daemonize no
+ExecStop=/root/redis-7.2.5/src/redis-cli shutdown
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### Enable and start service
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable redis
+sudo systemctl start redis
+```
+
+### Check status
+
+```bash
+sudo systemctl status redis
+```
+
+### Why we do this
+
+Using systemd allows Redis to:
+
+- start automatically after reboot
+- restart automatically if it crashes
+- be managed using standard Linux service commands
+
+---
+
+## 20. Optional: Proper SSL Certificate Fix
+
+The temporary installation used:
+
+```bash
+curl -k
+```
+
+This bypasses SSL validation. The proper enterprise fix is to import the corporate proxy/root CA certificate.
+
+### Copy certificate to Linux
+
+```bash
+scp corp-root-ca.crt sun92338@utvcapap02:/tmp/
+```
+
+### Install certificate
+
+```bash
+sudo cp /tmp/corp-root-ca.crt /etc/pki/ca-trust/source/anchors/
+sudo update-ca-trust
+```
+
+### Test again without `-k`
+
+```bash
+curl -I https://download.redis.io
+```
+
+Expected:
+
+```bash
+HTTP/1.1 200 OK
+```
+
+### Why this is better
+
+This avoids bypassing certificate validation and allows secure package downloads through the corporate inspection proxy.
+
+---
+
+## 21. Troubleshooting Summary
+
+### Issue: Redis package not found
+
+Cause:
+
+```bash
+Redis is not available in configured RHEL 10 repositories.
+```
+
+Fix:
+
+```bash
+Install from source or enable approved external repository.
+```
+
+---
+
+### Issue: SSL certificate problem
+
+Error:
+
+```bash
+curl: (60) SSL certificate problem: self-signed certificate in certificate chain
+```
+
+Cause:
+
+```bash
+Corporate SSL inspection certificate is not trusted by Linux.
+```
+
+Temporary workaround:
+
+```bash
+curl -k
+```
+
+Permanent fix:
+
+```bash
+Import corporate root CA certificate.
+```
+
+---
+
+### Issue: Domain cannot resolve
+
+Error:
+
+```bash
+curl: (6) Could not resolve host
+```
+
+Cause:
+
+```bash
+DNS resolution blocked or missing for that domain.
+```
+
+Fix:
+
+```bash
+Ask network/DNS team to allow DNS resolution for required domains.
+```
+
+---
+
+### Issue: Redis memory warning
+
+Warning:
+
+```bash
+WARNING Memory overcommit must be enabled!
+```
+
+Fix:
+
+```bash
+sysctl vm.overcommit_memory=1
+echo "vm.overcommit_memory = 1" >> /etc/sysctl.conf
+sysctl -p
+```
+
+---
+
+## 22. Final Validation Checklist
+
+Run these commands after installation:
+
+```bash
+ps -ef | grep redis
+ss -tulnp | grep 6379
+src/redis-cli ping
+src/redis-cli set aiops_test "Redis is working"
+src/redis-cli get aiops_test
+src/redis-cli del aiops_test
+```
+
+Expected results:
+
+```bash
+redis-server process is running
+Port 6379 is listening
+PONG
+OK
+"Redis is working"
+(integer) 1
+```
+
+---
+
+## 23. Final Status
+
+Redis installation from source is complete when all below are true:
+
+- Redis source package downloaded successfully
+- Redis compiled successfully using `make`
+- Redis started in background
+- Port `6379` is listening
+- `redis-cli ping` returns `PONG`
+- Memory overcommit warning is fixed
+- Optional systemd service is configured for restart/reboot persistence
+
+---
+
+## 24. Recommended Next Steps for Production
+
+For production or enterprise use, complete these additional steps:
+
+1. Move Redis from temporary/root directory to a standard path such as:
+
+```bash
+/opt/redis/redis-7.2.5
+```
+
+2. Create a dedicated Redis user.
+
+3. Create a proper Redis configuration file.
+
+4. Set Redis password using `requirepass`.
+
+5. Bind Redis to the required interface only.
+
+6. Open firewall port `6379` only from approved application servers.
+
+7. Configure systemd service.
+
+8. Import corporate CA certificate to avoid future `curl -k` usage.
+
+9. Document Redis server IP, port, owner, and purpose.
+
+---
+
+## 25. Example Architecture Usage for AIOps
+
+Redis can be used in the AIOps platform as a fast in-memory cache.
+
+Example use cases:
+
+- Store alert fingerprints for deduplication
+- Cache recent RCA correlation results
+- Track repeated alerts within a time window
+- Store temporary session/context data
+- Reduce repeated database lookups
+
+Example key design:
+
+```bash
+alert:dedup:<source>:<ci>:<alert_hash>
+```
+
+Example value:
+
+```json
+{
+  "first_seen": "2026-06-28T11:00:00",
+  "last_seen": "2026-06-28T11:05:00",
+  "count": 15,
+  "severity": "Critical"
+}
+```
+
+TTL example:
+
+```bash
+src/redis-cli setex alert:dedup:scom:server01:cpu_high 900 "active"
+```
+
+This keeps the key for 900 seconds, then automatically expires it.
+
+---
+
+# End of Document

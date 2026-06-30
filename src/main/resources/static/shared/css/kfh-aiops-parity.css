@@ -1,3 +1,164 @@
+﻿/* =========================================================
+   Canonical sidebar collapse/expand behavior
+   ========================================================= */
+.kfh-sidebar-collapse-toggle {
+  position: absolute !important;
+  right: 10px !important;
+  top: 22px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 30px !important;
+  height: 30px !important;
+  border: 1px solid rgba(226, 247, 221, 0.28) !important;
+  border-radius: 10px !important;
+  background: rgba(255, 255, 255, 0.10) !important;
+  color: rgba(255, 255, 255, 0.90) !important;
+  cursor: pointer !important;
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease !important;
+  z-index: 5 !important;
+}
+
+.kfh-sidebar-collapse-toggle:hover,
+.kfh-sidebar-collapse-toggle:focus-visible {
+  background: rgba(255, 255, 255, 0.20) !important;
+  border-color: rgba(226, 247, 221, 0.58) !important;
+  color: #ffffff !important;
+  outline: none !important;
+}
+
+.kfh-sidebar-collapse-icon {
+  width: 16px !important;
+  height: 16px !important;
+  transition: transform 0.2s ease !important;
+}
+
+.kfh-app-layout.kfh-settings-focus-mode .kfh-sidebar,
+.kfh-app-layout.kfh-settings-focus-mode #sidebar-container,
+#sidebar-container.kfh-settings-focus-mode {
+  display: flex !important;
+}
+
+.kfh-app-layout.kfh-settings-focus-mode .kfh-main-content {
+  flex: 1 1 auto !important;
+  width: auto !important;
+  max-width: none !important;
+}
+
+.kfh-app-layout .kfh-sidebar,
+.kfh-sidebar {
+  transition: width 0.22s ease, min-width 0.22s ease, max-width 0.22s ease !important;
+}
+
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar,
+.kfh-app-layout.kfh-sidebar-collapsed #sidebar-container,
+.kfh-sidebar.kfh-sidebar-collapsed,
+#sidebar-container.kfh-sidebar-collapsed {
+  width: 76px !important;
+  min-width: 76px !important;
+  max-width: 76px !important;
+  flex: 0 0 76px !important;
+  padding-left: 10px !important;
+  padding-right: 10px !important;
+  overflow-x: hidden !important;
+}
+
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-collapse-toggle,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-collapse-toggle {
+  right: 8px !important;
+  top: 20px !important;
+}
+
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-collapse-icon,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-collapse-icon {
+  transform: rotate(180deg) !important;
+}
+
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-logo,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-logo {
+  justify-content: center !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-logo-icon,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-logo-icon {
+  margin: 0 auto !important;
+}
+
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-logo-text,
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-scope,
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-group-title,
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-nav-label,
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-badge,
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-user-info,
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-logout-btn,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-logo-text,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-scope,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-group-title,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-nav-label,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-badge,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-user-info,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-logout-btn {
+  display: none !important;
+}
+
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-nav,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-nav {
+  padding-top: 8px !important;
+}
+
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-group,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-group {
+  margin-bottom: 8px !important;
+}
+
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-nav-item,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-nav-item {
+  width: 48px !important;
+  min-width: 48px !important;
+  height: 46px !important;
+  padding: 0 !important;
+  margin: 0 auto 6px !important;
+  justify-content: center !important;
+  grid-template-columns: 1fr !important;
+  border-radius: 16px !important;
+}
+
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-nav-icon,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-nav-icon {
+  margin: 0 auto !important;
+}
+
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-user,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-user {
+  padding: 10px 0 !important;
+}
+
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-user-content,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-user-content {
+  justify-content: center !important;
+  padding: 0 !important;
+}
+
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-user::after,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-user::after {
+  content: "" !important;
+  display: none !important;
+}
+
+@media (max-width: 760px) {
+  .kfh-sidebar-collapse-toggle {
+    display: none !important;
+  }
+
+  .kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar,
+  .kfh-sidebar.kfh-sidebar-collapsed {
+    width: 258px !important;
+    min-width: 258px !important;
+    max-width: 258px !important;
+  }
+}
 /*
  * KFH AiOps / app.css final parity layer
  * Loaded last by the SPA router so page-level CSS cannot override the requested
@@ -79,24 +240,23 @@ body,
 .kfh-sidebar-logo-icon {
   width: 48px !important;
   height: 48px !important;
-  border: none !important;
-  border-radius: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  border-radius: 14px !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16) !important;
+  padding: 6px !important;
+  overflow: hidden !important;
+}
+
+.kfh-sidebar-logo-icon img {
+  width: 100% !important;
+  height: 100% !important;
+  display: block !important;
+  object-fit: contain !important;
 }
 
 .kfh-sidebar-logo-icon svg {
-  width: 48px !important;
-  height: 48px !important;
-  filter: brightness(0) invert(1) !important;
-}
-
-.kfh-sidebar-logo-icon svg rect {
-  fill: transparent !important;
-}
-
-.kfh-sidebar-logo-icon svg path {
-  fill: #ffffff !important;
+  display: none !important;
 }
 
 .kfh-sidebar-logo-title {
@@ -169,8 +329,9 @@ body,
   gap: 12px !important;
   border-radius: 12px !important;
   border: 1px solid transparent !important;
-  color: #ffffff !important;
+  color: rgba(255, 255, 255, 0.86) !important;
   background: transparent !important;
+  font-family: "Inter", "Segoe UI", "Outfit", system-ui, sans-serif !important;
   font-size: 13px !important;
   font-weight: 650 !important;
   line-height: 1.2 !important;
@@ -180,20 +341,22 @@ body,
 .kfh-sidebar-nav-item:hover,
 .sidebar-nav-item:hover,
 .nav-item:hover {
-  background: rgba(255, 255, 255, 0.08) !important;
-  border-color: rgba(255, 255, 255, 0.08) !important;
+  background: rgba(18, 135, 84, 0.24) !important;
+  border-color: rgba(226, 247, 221, 0.34) !important;
   color: #ffffff !important;
-  transform: translateX(2px) !important;
+  transform: translateX(3px) !important;
 }
 
 .kfh-sidebar-nav-item.active,
 .sidebar-nav-item.active,
 .nav-item.active {
-  background: #00634A !important;
-  border-color: rgba(255, 255, 255, 0.15) !important;
-  color: #ffffff !important;
-  box-shadow: 0 4px 20px rgba(0, 99, 74, 0.40) !important;
+  background: linear-gradient(135deg, #ffffff 0%, #e8f5ef 100%) !important;
+  border-color: rgba(226, 247, 221, 0.78) !important;
+  color: #0E6B42 !important;
+  box-shadow: 0 8px 22px rgba(18, 135, 84, 0.22) !important;
+  font-family: "Inter", "Segoe UI", "Outfit", system-ui, sans-serif !important;
   font-weight: 800 !important;
+  letter-spacing: 0.01em !important;
 }
 
 .kfh-sidebar-nav-icon,
@@ -204,6 +367,28 @@ body,
   height: 20px !important;
   color: #ffffff !important;
   stroke: currentColor !important;
+}
+
+.kfh-sidebar-nav-item:hover .kfh-sidebar-nav-icon,
+.kfh-sidebar-nav-item:hover .kfh-sidebar-nav-icon svg,
+.sidebar-nav-item:hover svg,
+.nav-item:hover svg {
+  color: #e2f7dd !important;
+}
+
+.kfh-sidebar-nav-item.active .kfh-sidebar-nav-icon,
+.kfh-sidebar-nav-item.active .kfh-sidebar-nav-icon svg,
+.sidebar-nav-item.active svg,
+.nav-item.active svg {
+  color: #0E6B42 !important;
+  stroke-width: 2 !important;
+}
+
+.kfh-sidebar-nav-item.active .kfh-sidebar-nav-label,
+.sidebar-nav-item.active .nav-item-label,
+.nav-item.active .nav-item-label {
+  color: #0E6B42 !important;
+  font-weight: 800 !important;
 }
 
 .kfh-sidebar-badge {
@@ -293,13 +478,13 @@ body,
 }
 
 .kfh-header {
-  min-height: 68px !important;
-  margin: 16px 16px 12px !important;
-  padding: 12px 16px !important;
+  min-height: 62px !important;
+  margin: 10px 10px 8px !important;
+  padding: 10px 12px !important;
 }
 
 .kfh-content-area {
-  padding: 16px !important;
+  padding: 10px !important;
 }
 
 .kfh-card,
@@ -955,3 +1140,1649 @@ textarea:focus,
   }
 }
 
+/* Modern Command Center menu typography and interaction layer. */
+.kfh-sidebar,
+#sidebar,
+#sidebar-container {
+  background:
+    radial-gradient(circle at 20% 0%, rgba(200, 168, 78, 0.16), transparent 30%),
+    linear-gradient(180deg, #00523f 0%, #003d2e 48%, #002f25 100%) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.10) !important;
+  box-shadow: 18px 0 42px rgba(0, 47, 37, 0.16) !important;
+  font-family: 'Outfit', 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif !important;
+  font-feature-settings: "ss01" 1, "cv01" 1;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+}
+
+.kfh-sidebar-logo {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015)) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.10) !important;
+}
+
+.kfh-sidebar-logo-title::before {
+  font-size: 18.5px !important;
+  font-weight: 850 !important;
+  letter-spacing: -0.035em !important;
+}
+
+.kfh-sidebar-logo-subtitle::before,
+.kfh-sidebar-group-title,
+.kfh-sidebar-scope .kfh-sidebar-group-title {
+  font-weight: 780 !important;
+  letter-spacing: 0.18em !important;
+}
+
+.kfh-sidebar-group-title,
+.kfh-sidebar-scope .kfh-sidebar-group-title {
+  color: rgba(244, 246, 245, 0.62) !important;
+  font-size: 9.5px !important;
+}
+
+.kfh-sidebar-nav-item,
+.sidebar-nav-item,
+.nav-item {
+  position: relative !important;
+  min-height: 42px !important;
+  padding: 10px 12px !important;
+  border: 1px solid transparent !important;
+  border-radius: 14px !important;
+  color: rgba(255, 255, 255, 0.78) !important;
+  font-size: 13px !important;
+  font-weight: 620 !important;
+  letter-spacing: -0.012em !important;
+  line-height: 1.15 !important;
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease !important;
+}
+
+.kfh-sidebar-nav-label {
+  font-weight: inherit !important;
+}
+
+.kfh-sidebar-nav-item::before,
+.sidebar-nav-item::before,
+.nav-item::before {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 50%;
+  width: 3px;
+  height: 0;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #f2d581, #c8a84e);
+  transform: translateY(-50%);
+  transition: height 0.18s ease;
+}
+
+.kfh-sidebar-nav-item:hover,
+.sidebar-nav-item:hover,
+.nav-item:hover {
+  background: rgba(255, 255, 255, 0.095) !important;
+  border-color: rgba(255, 255, 255, 0.10) !important;
+  color: #ffffff !important;
+  transform: translateX(2px) !important;
+}
+
+.kfh-sidebar-nav-item.active,
+.sidebar-nav-item.active,
+.nav-item.active {
+  background: linear-gradient(135deg, rgba(15, 126, 98, 0.98), rgba(0, 103, 79, 0.94)) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  color: #ffffff !important;
+  font-weight: 760 !important;
+  box-shadow: 0 12px 28px rgba(0, 25, 20, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.14) !important;
+}
+
+.kfh-sidebar-nav-item.active::before,
+.sidebar-nav-item.active::before,
+.nav-item.active::before {
+  height: 20px;
+}
+
+.kfh-sidebar-nav-icon,
+.kfh-sidebar-nav-icon svg,
+.sidebar-nav-item svg,
+.nav-item svg {
+  color: currentColor !important;
+  opacity: 0.92 !important;
+  stroke-width: 1.85 !important;
+}
+
+.kfh-sidebar-scope .kfh-scope-button,
+.kfh-scope-button {
+  border: 1px solid rgba(255, 255, 255, 0.11) !important;
+  border-radius: 15px !important;
+  background: rgba(255, 255, 255, 0.075) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10) !important;
+  transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease !important;
+}
+
+.kfh-scope-button:hover,
+.kfh-scope-button[aria-expanded="true"] {
+  background: rgba(255, 255, 255, 0.115) !important;
+  border-color: rgba(226, 247, 221, 0.42) !important;
+  box-shadow: 0 0 0 3px rgba(18, 135, 84, 0.18) !important;
+}
+
+.kfh-session-badge {
+  background: rgba(232, 245, 240, 0.96) !important;
+  color: #004232 !important;
+  font-size: 10.5px !important;
+  font-weight: 820 !important;
+  letter-spacing: 0.055em !important;
+}
+
+.kfh-scope-name {
+  color: rgba(255, 255, 255, 0.74) !important;
+  font-size: 11.5px !important;
+  font-weight: 650 !important;
+  letter-spacing: -0.01em !important;
+}
+
+.kfh-scope-menu {
+  border: 1px solid rgba(15, 23, 42, 0.08) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 22px 54px rgba(0, 47, 37, 0.24) !important;
+}
+
+.kfh-scope-option {
+  border-radius: 14px !important;
+  font-weight: 620 !important;
+}
+
+.kfh-scope-option strong {
+  font-size: 13.5px !important;
+  font-weight: 760 !important;
+  letter-spacing: -0.02em !important;
+}
+
+.kfh-scope-option small {
+  font-size: 11px !important;
+  font-weight: 560 !important;
+}
+
+.kfh-sidebar-user-content {
+  border: 1px solid rgba(255, 255, 255, 0.10) !important;
+  background: rgba(255, 255, 255, 0.082) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10) !important;
+}
+
+.kfh-sidebar-user-name {
+  font-size: 12.5px !important;
+  font-weight: 760 !important;
+  letter-spacing: -0.02em !important;
+}
+
+.kfh-sidebar-user-role {
+  font-size: 9.5px !important;
+  font-weight: 620 !important;
+  letter-spacing: 0.06em !important;
+}
+
+.kfh-logout-btn {
+  border-radius: 12px !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  transition: background 0.18s ease, transform 0.18s ease !important;
+}
+
+.kfh-logout-btn:hover {
+  background: rgba(255, 255, 255, 0.14) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Screenshot-match shell menu: SIGNL4-style structure adapted to KFH Command Center. */
+.kfh-sidebar,
+#sidebar,
+#sidebar-container {
+  width: 258px !important;
+  min-width: 258px !important;
+  max-width: 258px !important;
+  background: #004734 !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.14) !important;
+  box-shadow: none !important;
+  color: #ffffff !important;
+  overflow: hidden !important;
+}
+
+.kfh-sidebar::before,
+#sidebar::before,
+#sidebar-container::before {
+  display: none !important;
+}
+
+.kfh-sidebar-logo {
+  min-height: 89px !important;
+  padding: 20px 14px 18px !important;
+  gap: 13px !important;
+  background: #004734 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.13) !important;
+}
+
+.kfh-sidebar-logo-icon {
+  position: relative !important;
+  width: 48px !important;
+  height: 48px !important;
+  flex: 0 0 48px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 6px !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16) !important;
+  overflow: hidden !important;
+}
+
+.kfh-sidebar-logo-icon svg,
+.kfh-sidebar-logo-icon span {
+  display: none !important;
+}
+
+.kfh-sidebar-logo-icon img {
+  position: relative !important;
+  z-index: 1 !important;
+  width: 100% !important;
+  height: 100% !important;
+  display: block !important;
+  object-fit: contain !important;
+}
+
+.kfh-sidebar-logo-icon::before {
+  display: none !important;
+  content: none !important;
+}
+
+.kfh-sidebar-logo-icon::after {
+  display: none !important;
+  content: none !important;
+}
+
+.kfh-sidebar-logo-title,
+.kfh-sidebar-logo-subtitle {
+  color: transparent !important;
+  font-size: 0 !important;
+  line-height: 1 !important;
+}
+
+.kfh-sidebar-logo-title::before {
+  content: "KFH AIOps" !important;
+  display: block !important;
+  color: #ffffff !important;
+  font-size: 18px !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.025em !important;
+  line-height: 1.05 !important;
+  text-transform: none !important;
+}
+
+.kfh-sidebar-logo-subtitle::before {
+  content: "COMMAND CENTER" !important;
+  display: block !important;
+  margin-top: 6px !important;
+  color: rgba(234, 222, 158, 0.95) !important;
+  font-size: 10px !important;
+  font-weight: 850 !important;
+  letter-spacing: 0.22em !important;
+  line-height: 1 !important;
+}
+
+.kfh-sidebar-scope {
+  padding: 13px 12px 0 !important;
+  border-bottom: 0 !important;
+}
+
+.kfh-sidebar-nav {
+  padding: 11px 12px 10px !important;
+  overflow-y: auto !important;
+  scrollbar-width: none !important;
+}
+
+.kfh-sidebar-group {
+  margin-bottom: 23px !important;
+}
+
+.kfh-sidebar-group-title,
+.kfh-sidebar-scope .kfh-sidebar-group-title {
+  display: grid !important;
+  grid-template-columns: auto 1fr !important;
+  align-items: center !important;
+  column-gap: 10px !important;
+  padding: 0 4px !important;
+  margin: 0 0 11px !important;
+  color: rgba(235, 241, 239, 0.82) !important;
+  font-size: 10px !important;
+  font-weight: 820 !important;
+  letter-spacing: 0.32em !important;
+  line-height: 1 !important;
+  text-transform: uppercase !important;
+}
+
+.kfh-sidebar-group-title::after,
+.kfh-sidebar-scope .kfh-sidebar-group-title::after {
+  content: "" !important;
+  display: block !important;
+  height: 1px !important;
+  background: rgba(255, 255, 255, 0.14) !important;
+}
+
+.kfh-sidebar-group-items {
+  display: grid !important;
+  gap: 4px !important;
+}
+
+.kfh-sidebar-nav-item,
+.sidebar-nav-item,
+.nav-item {
+  min-height: 42px !important;
+  padding: 9px 15px !important;
+  margin: 0 !important;
+  gap: 13px !important;
+  border: 1px solid transparent !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: rgba(255, 255, 255, 0.86) !important;
+  font-family: "Inter", "Segoe UI", "Outfit", system-ui, sans-serif !important;
+  font-size: 13px !important;
+  font-weight: 650 !important;
+  letter-spacing: 0 !important;
+  line-height: 1 !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.kfh-sidebar-nav-label {
+  color: inherit !important;
+  font-weight: inherit !important;
+  white-space: nowrap !important;
+}
+
+.kfh-sidebar-nav-item::before,
+.sidebar-nav-item::before,
+.nav-item::before {
+  display: none !important;
+}
+
+.kfh-sidebar-nav-item:hover,
+.sidebar-nav-item:hover,
+.nav-item:hover {
+  background: linear-gradient(135deg, rgba(18, 135, 84, 0.30) 0%, rgba(14, 107, 66, 0.22) 100%) !important;
+  border-color: rgba(226, 247, 221, 0.34) !important;
+  border-radius: 12px !important;
+  color: #ffffff !important;
+  transform: translateX(3px) !important;
+  box-shadow: 0 8px 18px rgba(18, 135, 84, 0.18) !important;
+}
+
+.kfh-sidebar-nav-item.active,
+.sidebar-nav-item.active,
+.nav-item.active {
+  min-height: 42px !important;
+  background: linear-gradient(135deg, #ffffff 0%, #e8f5ef 100%) !important;
+  border-color: rgba(226, 247, 221, 0.78) !important;
+  border-radius: 13px !important;
+  color: #0E6B42 !important;
+  font-family: "Inter", "Segoe UI", "Outfit", system-ui, sans-serif !important;
+  font-weight: 850 !important;
+  letter-spacing: 0.01em !important;
+  box-shadow: 0 8px 22px rgba(18, 135, 84, 0.22) !important;
+}
+
+.kfh-sidebar-nav-icon,
+.kfh-sidebar-nav-icon svg,
+.sidebar-nav-item svg,
+.nav-item svg {
+  width: 20px !important;
+  height: 20px !important;
+  color: currentColor !important;
+  opacity: 1 !important;
+  stroke-width: 1.9 !important;
+}
+
+.kfh-sidebar-nav-item.active .kfh-sidebar-nav-icon,
+.kfh-sidebar-nav-item.active .kfh-sidebar-nav-icon svg,
+.sidebar-nav-item.active svg,
+.nav-item.active svg {
+  color: #0E6B42 !important;
+  stroke-width: 2 !important;
+}
+
+.kfh-sidebar-badge {
+  min-width: 22px !important;
+  height: 20px !important;
+  padding: 0 7px !important;
+  background: rgba(255, 255, 255, 0.14) !important;
+  color: #ffffff !important;
+  font-size: 10px !important;
+  font-weight: 850 !important;
+}
+
+.kfh-sidebar-scope .kfh-scope-button,
+.kfh-scope-button {
+  min-height: 42px !important;
+  padding: 6px 10px !important;
+  border-radius: 13px !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  background: rgba(255, 255, 255, 0.065) !important;
+  box-shadow: none !important;
+}
+
+.kfh-scope-button:hover,
+.kfh-scope-button[aria-expanded="true"] {
+  background: rgba(255, 255, 255, 0.10) !important;
+  border-color: rgba(255, 255, 255, 0.24) !important;
+  box-shadow: none !important;
+}
+
+.kfh-session-badge {
+  min-height: 26px !important;
+  padding: 0 9px !important;
+  background: #ead56c !important;
+  color: #064331 !important;
+  font-size: 10px !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.035em !important;
+}
+
+.kfh-scope-name {
+  max-width: 118px !important;
+  color: rgba(255, 255, 255, 0.88) !important;
+  font-size: 11px !important;
+  font-weight: 780 !important;
+}
+
+.kfh-sidebar-user {
+  position: relative !important;
+  padding: 12px 7px 46px !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+
+.kfh-sidebar-user::after {
+  content: none !important;
+  display: none !important;
+}
+
+.kfh-sidebar-user-content {
+  min-height: 52px !important;
+  padding: 7px 8px !important;
+  gap: 9px !important;
+  border: 1px solid rgba(255, 255, 255, 0.13) !important;
+  border-radius: 16px !important;
+  background: rgba(255, 255, 255, 0.09) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10) !important;
+}
+
+.kfh-sidebar-user-avatar {
+  width: 34px !important;
+  height: 34px !important;
+  flex: 0 0 34px !important;
+  border-radius: 12px !important;
+  background: #e7cd69 !important;
+  color: #074331 !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+}
+
+.kfh-sidebar-user-name {
+  max-width: 132px !important;
+  color: #ffffff !important;
+  font-size: 12.5px !important;
+  font-weight: 900 !important;
+  letter-spacing: -0.03em !important;
+}
+
+.kfh-sidebar-user-role {
+  color: rgba(234, 213, 108, 0.96) !important;
+  font-size: 9px !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
+}
+
+.kfh-logout-btn {
+  width: 34px !important;
+  height: 34px !important;
+  flex: 0 0 34px !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  border-radius: 12px !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: rgba(255, 255, 255, 0.86) !important;
+}
+
+.kfh-logout-btn:hover {
+  background: rgba(255, 255, 255, 0.13) !important;
+  transform: none !important;
+}
+
+.kfh-scope-menu {
+  border-radius: 16px !important;
+  box-shadow: 0 24px 50px rgba(0, 35, 26, 0.28) !important;
+}
+
+.kfh-scope-option {
+  border-radius: 12px !important;
+}
+
+/* Reference typography tuning: less bold, closer to the supplied menu screenshot. */
+.kfh-sidebar,
+#sidebar,
+#sidebar-container {
+  font-family: 'Inter', 'Segoe UI Variable', 'Segoe UI', system-ui,
+               -apple-system, 'Outfit', sans-serif !important;
+  font-feature-settings: "kern" 1, "liga" 1, "cv11" 1;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.kfh-sidebar-logo-title::before {
+  font-weight: 740 !important;
+  letter-spacing: 0.01em !important;
+}
+
+.kfh-sidebar-logo-subtitle::before {
+  font-weight: 560 !important;
+  letter-spacing: 0.25em !important;
+}
+
+.kfh-sidebar-group-title,
+.kfh-sidebar-scope .kfh-sidebar-group-title {
+  font-weight: 560 !important;
+  letter-spacing: 0.31em !important;
+}
+
+.kfh-sidebar-nav-item,
+.sidebar-nav-item,
+.nav-item {
+  color: rgba(255, 255, 255, 0.86) !important;
+  font-weight: 650 !important;
+  letter-spacing: 0 !important;
+}
+
+.kfh-sidebar-nav-item.active,
+.sidebar-nav-item.active,
+.nav-item.active {
+  color: #0E6B42 !important;
+  font-weight: 850 !important;
+  letter-spacing: 0.01em !important;
+}
+
+.kfh-sidebar-nav-item:hover,
+.sidebar-nav-item:hover,
+.nav-item:hover {
+  color: #ffffff !important;
+}
+
+.kfh-sidebar-badge,
+.kfh-session-badge,
+.kfh-sidebar-user-avatar {
+  font-weight: 700 !important;
+}
+
+.kfh-scope-name {
+  font-weight: 540 !important;
+}
+
+.kfh-scope-option {
+  font-weight: 500 !important;
+}
+
+.kfh-scope-option strong {
+  font-weight: 620 !important;
+}
+
+.kfh-scope-option small {
+  font-weight: 450 !important;
+}
+
+
+.kfh-sidebar-user-name {
+  font-weight: 650 !important;
+  letter-spacing: -0.02em !important;
+}
+
+.kfh-sidebar-user-role {
+  font-weight: 600 !important;
+}
+
+/* Final override: keep last so collapsed sidebar wins over fixed-width parity rules. */
+.kfh-sidebar-collapse-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 10px 8px 12px !important;
+  margin-top: auto !important;
+  border-top: 1px solid rgba(226, 247, 221, 0.12) !important;
+}
+
+.kfh-sidebar-collapse-toggle {
+  position: static !important;
+  inset: auto !important;
+  width: 100% !important;
+  min-height: 40px !important;
+  height: 40px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  border-radius: 14px !important;
+  background: rgba(255, 255, 255, 0.10) !important;
+  border-color: rgba(226, 247, 221, 0.20) !important;
+}
+
+.kfh-sidebar-collapse-label {
+  color: rgba(255, 255, 255, 0.86) !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+}
+
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar,
+.kfh-app-layout.kfh-sidebar-collapsed #sidebar-container,
+.kfh-sidebar.kfh-sidebar-collapsed,
+#sidebar-container.kfh-sidebar-collapsed {
+  width: 76px !important;
+  min-width: 76px !important;
+  max-width: 76px !important;
+  flex: 0 0 76px !important;
+  padding-left: 10px !important;
+  padding-right: 10px !important;
+  overflow-x: hidden !important;
+}
+
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-logo,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-logo {
+  min-height: 82px !important;
+  padding: 16px 0 10px !important;
+  justify-content: center !important;
+}
+
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-nav,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-nav {
+  flex: 0 1 auto !important;
+  padding: 8px 0 4px !important;
+  gap: 6px !important;
+  overflow: visible !important;
+}
+
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-group,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-group {
+  margin: 0 0 4px !important;
+}
+
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-group-items,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-group-items {
+  display: grid !important;
+  gap: 6px !important;
+}
+
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-logo-text,
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-scope,
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-group-title,
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-nav-label,
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-badge,
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-user-info,
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-logout-btn,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-logo-text,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-scope,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-group-title,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-nav-label,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-badge,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-user-info,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-logout-btn {
+  display: none !important;
+}
+
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-nav-item,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-nav-item {
+  width: 46px !important;
+  min-width: 46px !important;
+  height: 44px !important;
+  padding: 0 !important;
+  margin: 0 auto !important;
+  justify-content: center !important;
+  grid-template-columns: 1fr !important;
+  border-radius: 15px !important;
+  background: transparent !important;
+  border-color: transparent !important;
+}
+
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-nav-item:hover,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-nav-item:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(226, 247, 221, 0.20) !important;
+}
+
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-nav-item.active,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-nav-item.active {
+  background: linear-gradient(135deg, #ffffff 0%, #e8f5ef 100%) !important;
+  border-color: rgba(226, 247, 221, 0.78) !important;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.16) !important;
+}
+
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-nav-icon,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-nav-icon,
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-logo-icon,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-logo-icon {
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-collapse-icon,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-collapse-icon {
+  transform: rotate(180deg) !important;
+}
+
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-collapse-row,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-collapse-row {
+  margin-top: auto !important;
+  padding: 8px 0 10px !important;
+}
+
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-collapse-toggle,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-collapse-toggle {
+  width: 46px !important;
+  min-width: 46px !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-collapse-toggle:hover,
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-collapse-toggle:focus-visible,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-collapse-toggle:hover,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-collapse-toggle:focus-visible {
+  background: rgba(255, 255, 255, 0.10) !important;
+  border-color: rgba(226, 247, 221, 0.16) !important;
+}
+/* ==========================================================================
+   KFH AIOps — Sidebar polish v2 (2026-06-21)
+   Targeted refinements ON TOP of existing parity styles. Does NOT touch
+   .kfh-sidebar-logo-title / .kfh-sidebar-logo-subtitle (those use the
+   font-size:0 + ::before content technique; overriding caused duplicated
+   "KFH AIOps / COMMAND CENTER" text).
+   Reference: SIGNL4-style sidebar — solid green active button, clean Inter
+   typography, hairline section dividers.
+   ========================================================================== */
+.kfh-sidebar,
+#sidebar,
+#sidebar-container {
+  font-family: 'Inter', 'Segoe UI Variable', 'Segoe UI', system-ui,
+               -apple-system, 'Outfit', sans-serif !important;
+  font-feature-settings: "kern" 1, "liga" 1, "cv11" 1;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+/* Section labels brighter so they read as headers, not noise. */
+.kfh-sidebar .kfh-sidebar-group-title,
+.kfh-sidebar .kfh-sidebar-scope .kfh-sidebar-group-title {
+  color: rgba(255, 255, 255, 0.58) !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.26em !important;
+}
+/* Nav item base — clean, slightly tighter, 20px icons preserved. */
+.kfh-sidebar .kfh-sidebar-nav-item,
+#sidebar .sidebar-nav-item,
+#sidebar-container .nav-item {
+  min-height: 42px !important;
+  padding: 10px 14px !important;
+  gap: 12px !important;
+  border: 1px solid transparent !important;
+  border-radius: 12px !important;
+  background: transparent !important;
+  color: rgba(255, 255, 255, 0.85) !important;
+  font-family: 'Inter', 'Segoe UI', 'Outfit', system-ui, sans-serif !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.005em !important;
+  box-shadow: none !important;
+  transform: none !important;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+.kfh-sidebar .kfh-sidebar-nav-item:hover,
+#sidebar .sidebar-nav-item:hover,
+#sidebar-container .nav-item:hover {
+  background: rgba(255, 255, 255, 0.07) !important;
+  border-color: transparent !important;
+  color: #ffffff !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+/* Active state — solid green button with white text + white icon
+   (SIGNL4-style). */
+.kfh-sidebar .kfh-sidebar-nav-item.active,
+#sidebar .sidebar-nav-item.active,
+#sidebar-container .nav-item.active {
+  background: linear-gradient(135deg, #0E7E62 0%, #00634A 100%) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.005em !important;
+  box-shadow:
+    0 10px 24px -8px rgba(0, 25, 20, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16) !important;
+}
+.kfh-sidebar .kfh-sidebar-nav-item.active .kfh-sidebar-nav-label,
+#sidebar .sidebar-nav-item.active .nav-item-label,
+#sidebar-container .nav-item.active .nav-item-label {
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
+.kfh-sidebar .kfh-sidebar-nav-item.active .kfh-sidebar-nav-icon,
+.kfh-sidebar .kfh-sidebar-nav-item.active .kfh-sidebar-nav-icon svg,
+#sidebar .sidebar-nav-item.active svg,
+#sidebar-container .nav-item.active svg {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+  stroke-width: 2 !important;
+  opacity: 1 !important;
+}
+/* Idle icons — bright on dark green, slightly thicker stroke. */
+.kfh-sidebar .kfh-sidebar-nav-icon,
+.kfh-sidebar .kfh-sidebar-nav-icon svg,
+#sidebar .sidebar-nav-item svg,
+#sidebar-container .nav-item svg {
+  width: 20px !important;
+  height: 20px !important;
+  color: rgba(255, 255, 255, 0.88) !important;
+  stroke: currentColor !important;
+  stroke-width: 1.9 !important;
+  opacity: 1 !important;
+}
+/* Notification badge — modern pill. */
+.kfh-sidebar .kfh-sidebar-badge {
+  min-width: 22px !important;
+  height: 20px !important;
+  padding: 0 7px !important;
+  border-radius: 999px !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 10.5px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.02em !important;
+  background: linear-gradient(135deg, #F87171 0%, #DC2626 100%) !important;
+  color: #ffffff !important;
+  box-shadow:
+    0 4px 10px -2px rgba(220, 38, 38, 0.50),
+    inset 0 1px 0 rgba(255, 255, 255, 0.20) !important;
+}
+.kfh-sidebar .kfh-sidebar-nav-item.active .kfh-sidebar-badge {
+  background: rgba(255, 255, 255, 0.20) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25) !important;
+}
+/* Scope button — calmer dark surface. */
+.kfh-sidebar .kfh-scope-button {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.10) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+.kfh-sidebar .kfh-scope-button:hover,
+.kfh-sidebar .kfh-scope-button[aria-expanded="true"] {
+  background: rgba(255, 255, 255, 0.10) !important;
+  border-color: rgba(255, 255, 255, 0.22) !important;
+  box-shadow: none !important;
+}
+/* Country pill (ALL / PROD). */
+.kfh-sidebar .kfh-session-badge {
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.06em !important;
+}
+/* User card softer. */
+.kfh-sidebar .kfh-sidebar-user-content {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.10) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+.kfh-sidebar .kfh-sidebar-user-name {
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-weight: 700 !important;
+  font-size: 12.5px !important;
+  letter-spacing: -0.01em !important;
+}
+.kfh-sidebar .kfh-sidebar-user-role {
+  font-weight: 700 !important;
+  letter-spacing: 0.12em !important;
+}
+/* Collapse button. */
+.kfh-sidebar .kfh-sidebar-collapse-toggle {
+  background: rgba(255, 255, 255, 0.07) !important;
+  border-color: rgba(255, 255, 255, 0.10) !important;
+}
+.kfh-sidebar .kfh-sidebar-collapse-toggle:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.20) !important;
+}
+.kfh-sidebar .kfh-sidebar-collapse-label {
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.01em !important;
+}
+/* Focus visible for keyboard. */
+.kfh-sidebar .kfh-sidebar-nav-item:focus-visible {
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(255, 226, 158, 0.55) inset !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .kfh-sidebar .kfh-sidebar-nav-item,
+  .kfh-sidebar .kfh-scope-button,
+  .kfh-sidebar .kfh-sidebar-collapse-toggle {
+    transition: none !important;
+  }
+}
+/* ==========================================================================
+   KFH AIOps — Reference-match calibration (2026-06-21)
+   Matches the supplied SIGNL4 Performance Hub screenshot:
+     - flat deep-green background (no radial/gradient overlays)
+     - solid darker-green filled "pill" for active item (not bright gradient)
+     - barely-visible hover, no transform, no shadow
+     - Inter 500/600, 10.5px UPPERCASE section headers with thin rule
+     - borderless "Collapse" pill at the bottom
+   ========================================================================== */
+.kfh-sidebar,
+#sidebar,
+#sidebar-container {
+  background: #073B2C !important;
+  background-image: none !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.06) !important;
+  box-shadow: none !important;
+  font-family: 'Inter', 'Segoe UI Variable', 'Segoe UI', system-ui,
+               -apple-system, 'Outfit', sans-serif !important;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  color: rgba(255, 255, 255, 0.90) !important;
+}
+.kfh-sidebar::before,
+#sidebar::before,
+#sidebar-container::before {
+  display: none !important;
+  background: none !important;
+  content: none !important;
+}
+/* Brand row */
+.kfh-sidebar .kfh-sidebar-logo {
+  min-height: 78px !important;
+  padding: 18px 18px 16px !important;
+  gap: 13px !important;
+  display: flex !important;
+  align-items: center !important;
+  background: transparent !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+.kfh-sidebar .kfh-sidebar-logo-title::before {
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 17px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.005em !important;
+  color: #ffffff !important;
+}
+.kfh-sidebar .kfh-sidebar-logo-subtitle::before {
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.20em !important;
+  color: rgba(168, 198, 184, 0.85) !important;
+  margin-top: 5px !important;
+}
+/* Section headers */
+.kfh-sidebar .kfh-sidebar-group {
+  margin-bottom: 22px !important;
+}
+.kfh-sidebar .kfh-sidebar-group-title,
+.kfh-sidebar .kfh-sidebar-scope .kfh-sidebar-group-title {
+  padding: 0 10px 0 14px !important;
+  margin: 0 0 10px !important;
+  color: rgba(168, 198, 184, 0.70) !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 10.5px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.24em !important;
+  text-transform: uppercase !important;
+  display: grid !important;
+  grid-template-columns: auto 1fr !important;
+  align-items: center !important;
+  column-gap: 12px !important;
+}
+.kfh-sidebar .kfh-sidebar-group-title::after,
+.kfh-sidebar .kfh-sidebar-scope .kfh-sidebar-group-title::after {
+  content: "" !important;
+  display: block !important;
+  height: 1px !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+/* Nav items — flat, no shadow, no border */
+.kfh-sidebar .kfh-sidebar-group-items {
+  padding: 0 8px !important;
+  gap: 2px !important;
+}
+.kfh-sidebar .kfh-sidebar-nav-item,
+#sidebar .sidebar-nav-item,
+#sidebar-container .nav-item {
+  position: relative !important;
+  min-height: 42px !important;
+  height: 42px !important;
+  margin: 0 !important;
+  padding: 0 14px !important;
+  gap: 14px !important;
+  border: 0 !important;
+  border-radius: 10px !important;
+  background: transparent !important;
+  color: rgba(229, 235, 232, 0.92) !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 13.5px !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.005em !important;
+  line-height: 1 !important;
+  box-shadow: none !important;
+  transform: none !important;
+  transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease !important;
+}
+.kfh-sidebar .kfh-sidebar-nav-item:hover,
+#sidebar .sidebar-nav-item:hover,
+#sidebar-container .nav-item:hover {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 0 !important;
+  border-color: transparent !important;
+  color: #ffffff !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+/* Active — solid darker-green filled pill (reference look) */
+.kfh-sidebar .kfh-sidebar-nav-item.active,
+#sidebar .sidebar-nav-item.active,
+#sidebar-container .nav-item.active {
+  background: #0F5642 !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.005em !important;
+  box-shadow: none !important;
+}
+.kfh-sidebar .kfh-sidebar-nav-item.active .kfh-sidebar-nav-label,
+#sidebar .sidebar-nav-item.active .nav-item-label,
+#sidebar-container .nav-item.active .nav-item-label {
+  color: #ffffff !important;
+  font-weight: 600 !important;
+}
+.kfh-sidebar .kfh-sidebar-nav-item.active .kfh-sidebar-nav-icon,
+.kfh-sidebar .kfh-sidebar-nav-item.active .kfh-sidebar-nav-icon svg,
+#sidebar .sidebar-nav-item.active svg,
+#sidebar-container .nav-item.active svg {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+  stroke-width: 1.75 !important;
+  opacity: 1 !important;
+}
+/* kill any decorative ::before rail from earlier layers */
+.kfh-sidebar .kfh-sidebar-nav-item::before,
+#sidebar .sidebar-nav-item::before,
+#sidebar-container .nav-item::before,
+.kfh-sidebar .kfh-sidebar-nav-item.active::before {
+  content: none !important;
+  display: none !important;
+  background: none !important;
+}
+/* Icons */
+.kfh-sidebar .kfh-sidebar-nav-icon,
+.kfh-sidebar .kfh-sidebar-nav-icon svg,
+#sidebar .sidebar-nav-item svg,
+#sidebar-container .nav-item svg {
+  width: 20px !important;
+  height: 20px !important;
+  flex-shrink: 0 !important;
+  color: rgba(229, 235, 232, 0.90) !important;
+  stroke: currentColor !important;
+  stroke-width: 1.75 !important;
+  opacity: 1 !important;
+}
+/* Badge stays red, but flatter */
+.kfh-sidebar .kfh-sidebar-badge {
+  min-width: 22px !important;
+  height: 20px !important;
+  padding: 0 7px !important;
+  border-radius: 999px !important;
+  background: #DC2626 !important;
+  color: #ffffff !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 10.5px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.02em !important;
+  box-shadow: none !important;
+}
+.kfh-sidebar .kfh-sidebar-nav-item.active .kfh-sidebar-badge {
+  background: rgba(255, 255, 255, 0.16) !important;
+  box-shadow: none !important;
+}
+/* Country / scope card — clean */
+.kfh-sidebar .kfh-sidebar-scope {
+  padding: 12px 14px 4px !important;
+  border-bottom: 0 !important;
+}
+.kfh-sidebar .kfh-scope-button {
+  min-height: 42px !important;
+  padding: 6px 10px !important;
+  border-radius: 11px !important;
+  background: rgba(255, 255, 255, 0.045) !important;
+  border: 1px solid rgba(255, 255, 255, 0.07) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+.kfh-sidebar .kfh-scope-button:hover,
+.kfh-sidebar .kfh-scope-button[aria-expanded="true"] {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+  box-shadow: none !important;
+}
+.kfh-sidebar .kfh-session-badge {
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.05em !important;
+}
+.kfh-sidebar .kfh-scope-name {
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.005em !important;
+}
+/* User card — flat, like the reference */
+.kfh-sidebar .kfh-sidebar-user {
+  padding: 10px 12px 8px !important;
+  background: transparent !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+.kfh-sidebar .kfh-sidebar-user-content {
+  min-height: 54px !important;
+  padding: 8px 10px !important;
+  gap: 10px !important;
+  border-radius: 12px !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.07) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+.kfh-sidebar .kfh-sidebar-user-avatar {
+  width: 36px !important;
+  height: 36px !important;
+  flex: 0 0 36px !important;
+  border-radius: 999px !important;
+  background: #D9B25B !important;
+  color: #073B2C !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  border: 0 !important;
+}
+.kfh-sidebar .kfh-sidebar-user-name {
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.01em !important;
+  color: #ffffff !important;
+}
+.kfh-sidebar .kfh-sidebar-user-role {
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 9.5px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.16em !important;
+  text-transform: uppercase !important;
+  color: rgba(217, 178, 91, 0.95) !important;
+}
+.kfh-sidebar .kfh-logout-btn {
+  width: 34px !important;
+  height: 34px !important;
+  flex: 0 0 34px !important;
+  border-radius: 10px !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  background: rgba(255, 255, 255, 0.065) !important;
+  color: rgba(255, 255, 255, 0.88) !important;
+}
+.kfh-sidebar .kfh-logout-btn:hover {
+  background: rgba(255, 255, 255, 0.11) !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  transform: none !important;
+}
+/* Collapse — borderless ghost like the reference */
+.kfh-sidebar .kfh-sidebar-collapse-row {
+  padding: 6px 14px 14px !important;
+  border-top: 0 !important;
+}
+.kfh-sidebar .kfh-sidebar-collapse-toggle {
+  width: 100% !important;
+  height: 36px !important;
+  min-height: 36px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 10px !important;
+  padding: 0 8px !important;
+  border-radius: 8px !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: rgba(229, 235, 232, 0.78) !important;
+  box-shadow: none !important;
+}
+.kfh-sidebar .kfh-sidebar-collapse-toggle:hover,
+.kfh-sidebar .kfh-sidebar-collapse-toggle:focus-visible {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 0 !important;
+  border-color: transparent !important;
+  color: #ffffff !important;
+  outline: none !important;
+}
+.kfh-sidebar .kfh-sidebar-collapse-icon svg {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+/* Collapsed rail: keep the collapse control icon-only so its text never clips. */
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar .kfh-sidebar-collapse-row,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-collapse-row,
+#sidebar-container.kfh-sidebar-collapsed .kfh-sidebar-collapse-row {
+  padding: 8px 0 12px !important;
+  justify-content: center !important;
+}
+
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar .kfh-sidebar-collapse-toggle,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-collapse-toggle,
+#sidebar-container.kfh-sidebar-collapsed .kfh-sidebar-collapse-toggle {
+  width: 46px !important;
+  min-width: 46px !important;
+  max-width: 46px !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  padding: 0 !important;
+  gap: 0 !important;
+  justify-content: center !important;
+  overflow: hidden !important;
+}
+
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar .kfh-sidebar-collapse-label,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-collapse-label,
+#sidebar-container.kfh-sidebar-collapsed .kfh-sidebar-collapse-label {
+  display: none !important;
+}
+
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar .kfh-sidebar-collapse-icon,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-collapse-icon,
+#sidebar-container.kfh-sidebar-collapsed .kfh-sidebar-collapse-icon {
+  display: block !important;
+  flex: 0 0 auto !important;
+  margin: 0 auto !important;
+}
+
+/* Collapsed rail color calibration: dark KFH rail, white active pill, green active icon. */
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar,
+.kfh-app-layout.kfh-sidebar-collapsed #sidebar-container,
+.kfh-sidebar.kfh-sidebar-collapsed,
+#sidebar-container.kfh-sidebar-collapsed {
+  background: #003D2E !important;
+  background-image: none !important;
+  border-right-color: rgba(226, 247, 221, 0.16) !important;
+}
+
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar .kfh-sidebar-nav-item,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-nav-item,
+#sidebar-container.kfh-sidebar-collapsed .kfh-sidebar-nav-item {
+  color: rgba(226, 247, 221, 0.88) !important;
+}
+
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar .kfh-sidebar-nav-item .kfh-sidebar-nav-icon,
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar .kfh-sidebar-nav-item .kfh-sidebar-nav-icon svg,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-nav-item .kfh-sidebar-nav-icon,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-nav-item .kfh-sidebar-nav-icon svg,
+#sidebar-container.kfh-sidebar-collapsed .kfh-sidebar-nav-item .kfh-sidebar-nav-icon,
+#sidebar-container.kfh-sidebar-collapsed .kfh-sidebar-nav-item .kfh-sidebar-nav-icon svg {
+  color: rgba(226, 247, 221, 0.88) !important;
+  stroke: currentColor !important;
+}
+
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar .kfh-sidebar-nav-item.active,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-nav-item.active,
+#sidebar-container.kfh-sidebar-collapsed .kfh-sidebar-nav-item.active {
+  background: #ffffff !important;
+  border-color: rgba(226, 247, 221, 0.78) !important;
+  color: #128754 !important;
+  box-shadow: 0 10px 22px rgba(0, 35, 26, 0.22) !important;
+}
+
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar .kfh-sidebar-nav-item.active .kfh-sidebar-nav-icon,
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar .kfh-sidebar-nav-item.active .kfh-sidebar-nav-icon svg,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-nav-item.active .kfh-sidebar-nav-icon,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-nav-item.active .kfh-sidebar-nav-icon svg,
+#sidebar-container.kfh-sidebar-collapsed .kfh-sidebar-nav-item.active .kfh-sidebar-nav-icon,
+#sidebar-container.kfh-sidebar-collapsed .kfh-sidebar-nav-item.active .kfh-sidebar-nav-icon svg {
+  color: #128754 !important;
+  stroke: #128754 !important;
+  opacity: 1 !important;
+}
+
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar .kfh-sidebar-collapse-toggle,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-collapse-toggle,
+#sidebar-container.kfh-sidebar-collapsed .kfh-sidebar-collapse-toggle {
+  color: rgba(226, 247, 221, 0.82) !important;
+}
+
+/* Focus ring for keyboard nav */
+.kfh-sidebar .kfh-sidebar-nav-item:focus-visible {
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(217, 178, 91, 0.55) inset !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .kfh-sidebar .kfh-sidebar-nav-item,
+  .kfh-sidebar .kfh-scope-button,
+  .kfh-sidebar .kfh-sidebar-collapse-toggle {
+    transition: none !important;
+  }
+}
+
+/* =========================================================================
+   Modern country scope switcher (button + dropdown)
+   Loaded last so it intentionally overrides legacy .kfh-scope-* styles in
+   shared/css/login.css.
+   ========================================================================= */
+
+/* --- Pill button on the sidebar --- */
+.kfh-sidebar-scope .kfh-scope-button,
+.kfh-scope-button {
+  position: relative;
+  width: 100%;
+  min-height: 48px !important;
+  padding: 8px 12px !important;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 14px !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.10) 0%, rgba(255, 255, 255, 0.04) 100%) !important;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  color: #ffffff !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 1px 2px rgba(0, 0, 0, 0.20) !important;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease,
+    transform 0.18s ease;
+}
+
+.kfh-sidebar-scope .kfh-scope-button:hover,
+.kfh-scope-button:hover,
+.kfh-sidebar-scope .kfh-scope-button[aria-expanded="true"],
+.kfh-scope-button[aria-expanded="true"] {
+  border-color: rgba(214, 178, 96, 0.55) !important; /* KFH gold accent */
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.06) 100%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    0 8px 22px rgba(0, 0, 0, 0.28),
+    0 0 0 3px rgba(214, 178, 96, 0.18) !important;
+}
+
+.kfh-sidebar-scope .kfh-scope-button:focus-visible,
+.kfh-scope-button:focus-visible {
+  outline: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    0 0 0 3px rgba(214, 178, 96, 0.55) !important;
+}
+
+.kfh-session-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 26px !important;
+  padding: 0 10px !important;
+  border-radius: 999px !important;
+  background: linear-gradient(135deg, #d6b260 0%, #b08a3a 100%) !important;
+  color: #1a2a26 !important;
+  font-size: 10.5px !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 1px 2px rgba(0, 0, 0, 0.25) !important;
+  white-space: nowrap;
+}
+
+.kfh-sidebar-scope .kfh-scope-name,
+.kfh-scope-name {
+  color: rgba(255, 255, 255, 0.92) !important;
+  font-size: 12.5px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.01em;
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kfh-sidebar-scope .kfh-scope-button svg,
+.kfh-scope-button svg {
+  width: 16px;
+  height: 16px;
+  margin-left: auto;
+  color: rgba(255, 255, 255, 0.72) !important;
+  transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1), color 0.18s ease;
+}
+
+.kfh-sidebar-scope .kfh-scope-button[aria-expanded="true"] svg,
+.kfh-scope-button[aria-expanded="true"] svg {
+  transform: rotate(180deg);
+  color: #d6b260 !important;
+}
+
+/* --- Dropdown menu container --- */
+.kfh-sidebar-scope .kfh-scope-menu,
+.kfh-scope-menu.kfh-scope-menu--modern {
+  left: 0 !important;
+  right: 0 !important;
+  top: calc(100% + 10px) !important;
+  min-width: auto !important;
+  padding: 14px !important;
+  border-radius: 18px !important;
+  border: 1px solid rgba(15, 23, 42, 0.06) !important;
+  background: #ffffff !important;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.06),
+    0 20px 50px rgba(15, 23, 42, 0.22) !important;
+  z-index: 60 !important;
+  transform-origin: top center;
+  animation: kfh-scope-menu-in 180ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes kfh-scope-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.kfh-scope-menu-header {
+  padding: 4px 6px 10px 6px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.kfh-scope-menu-eyebrow {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--kfh-primary-dark, #003D2E);
+}
+
+.kfh-scope-menu-subtitle {
+  font-size: 11px;
+  color: var(--text-muted, #6b7280);
+  line-height: 1.35;
+}
+
+.kfh-scope-menu-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* --- Individual option --- */
+.kfh-scope-option.kfh-scope-option--modern {
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text-primary, #111827);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.kfh-scope-option.kfh-scope-option--modern:hover:not(:disabled) {
+  background: #f6faf8;
+  border-color: rgba(0, 99, 74, 0.10);
+  transform: translateY(-1px);
+}
+
+.kfh-scope-option.kfh-scope-option--modern.is-active {
+  background: linear-gradient(135deg, #e8f5f0 0%, #d6ebe0 100%);
+  border-color: rgba(0, 99, 74, 0.20);
+}
+
+.kfh-scope-option.kfh-scope-option--modern:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(0, 99, 74, 0.25);
+}
+
+.kfh-scope-option-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.kfh-scope-option.kfh-scope-option--modern strong {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-primary, #111827);
+  line-height: 1.2;
+}
+
+.kfh-scope-option.kfh-scope-option--modern small {
+  font-size: 11px;
+  color: var(--text-muted, #6b7280);
+  line-height: 1.35;
+  margin-top: 2px;
+}
+
+/* --- Monogram badge (the small circle on the left of each option) --- */
+.kfh-scope-monogram {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #f1efe7 0%, #e3ddc9 100%);
+  color: #1a2a26;
+  font-weight: 900;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    0 1px 2px rgba(0, 0, 0, 0.10);
+  overflow: hidden;
+}
+
+.kfh-scope-monogram svg {
+  width: 18px;
+  height: 18px;
+  color: #00634A;
+}
+
+.kfh-scope-monogram-text {
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+}
+
+/* Per-country accent colors so the menu is scannable */
+.kfh-scope-monogram[data-country="ALL"] {
+  background: linear-gradient(135deg, #e8f5f0 0%, #c9e3d8 100%);
+}
+.kfh-scope-monogram[data-country="ALL"] svg { color: #00634A; }
+
+.kfh-scope-monogram[data-country="KW"] {
+  background: linear-gradient(135deg, #00634A 0%, #003D2E 100%);
+  color: #ffffff;
+}
+.kfh-scope-monogram[data-country="BH"] {
+  background: linear-gradient(135deg, #c0392b 0%, #8b2a1f 100%);
+  color: #ffffff;
+}
+.kfh-scope-monogram[data-country="EG"] {
+  background: linear-gradient(135deg, #1d3557 0%, #0f2236 100%);
+  color: #ffffff;
+}
+
+/* --- Check mark for active option --- */
+.kfh-scope-check {
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #00634A;
+  color: #ffffff;
+  opacity: 0;
+  transform: scale(0.6);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  box-shadow: 0 4px 10px rgba(0, 99, 74, 0.30);
+}
+
+.kfh-scope-check svg {
+  width: 14px;
+  height: 14px;
+}
+
+.kfh-scope-option.kfh-scope-option--modern.is-active .kfh-scope-check {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Hide the legacy "ACTIVE" word pill if it ever appears alongside the new check */
+.kfh-scope-option.kfh-scope-option--modern .kfh-scope-selected {
+  display: none;
+}
+
+/* Collapsed sidebar: hide the modern dropdown contents that would overflow */
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-scope-menu,
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-scope-menu {
+  display: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kfh-scope-menu.kfh-scope-menu--modern { animation: none !important; }
+  .kfh-scope-option.kfh-scope-option--modern,
+  .kfh-scope-check,
+  .kfh-scope-button svg { transition: none !important; }
+}

@@ -7,6 +7,7 @@ window.KFHConfig = (function() {
 
   // API Configuration
   const API_BASE_URL = '/api/v1';
+  const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
   // Default Headers (multi-tenancy support)
   const DEFAULT_TENANT_ID = '00000000-0000-4000-8000-000000000001';
@@ -15,12 +16,12 @@ window.KFHConfig = (function() {
 
   const COUNTRY_GROUP_NAME = 'KFH Group';
   const ALL_COUNTRIES_CODE = 'ALL';
-  const ALL_COUNTRY_SCOPE = { code: ALL_COUNTRIES_CODE, name: 'All countries', groupName: COUNTRY_GROUP_NAME, tenantId: DEFAULT_TENANT_ID, defaultUserId: DEFAULT_USER_ID, flag: '🌐', allCountries: true };
+  const ALL_COUNTRY_SCOPE = { code: ALL_COUNTRIES_CODE, name: 'All countries', groupName: COUNTRY_GROUP_NAME, tenantId: DEFAULT_TENANT_ID, defaultUserId: DEFAULT_USER_ID, flag: '', allCountries: true };
 
   const COUNTRIES = [
-    { code: 'KW', name: 'KFH Kuwait', groupName: COUNTRY_GROUP_NAME, tenantId: DEFAULT_TENANT_ID, defaultUserId: DEFAULT_USER_ID, flag: '🇰🇼' },
-    { code: 'BH', name: 'KFH Bahrain', groupName: COUNTRY_GROUP_NAME, tenantId: '00000000-0000-4000-8000-000000000002', defaultUserId: '00000000-0000-4000-8000-000000000102', flag: '🇧🇭' },
-    { code: 'EG', name: 'KFH Egypt', groupName: COUNTRY_GROUP_NAME, tenantId: '00000000-0000-4000-8000-000000000003', defaultUserId: '00000000-0000-4000-8000-000000000103', flag: '🇪🇬' }
+    { code: 'KW', name: 'KFH Kuwait', groupName: COUNTRY_GROUP_NAME, tenantId: DEFAULT_TENANT_ID, defaultUserId: DEFAULT_USER_ID, flag: '' },
+    { code: 'BH', name: 'KFH Bahrain', groupName: COUNTRY_GROUP_NAME, tenantId: DEFAULT_TENANT_ID, defaultUserId: '00000000-0000-4000-8000-000000000102', flag: '' },
+    { code: 'EG', name: 'KFH Egypt', groupName: COUNTRY_GROUP_NAME, tenantId: DEFAULT_TENANT_ID, defaultUserId: '00000000-0000-4000-8000-000000000103', flag: '' }
   ];
   const COUNTRY_SCOPES = [ALL_COUNTRY_SCOPE, ...COUNTRIES];
 
@@ -113,8 +114,9 @@ window.KFHConfig = (function() {
   // Connector types
   const CONNECTOR_TYPES = [
     { id: 'SCOM', label: 'SCOM', icon: 'server' },
-    { id: 'vROps', label: 'vROps', icon: 'cloud' },
+    { id: 'VROPS', label: 'vROps', icon: 'cloud' },
     { id: 'BMC', label: 'BMC Helix', icon: 'server' },
+    { id: 'APPDYNAMICS', label: 'AppDynamics', icon: 'activity' },
     { id: 'SolarWinds', label: 'SolarWinds', icon: 'monitor' },
     { id: 'Elastic', label: 'Elastic', icon: 'database' },
     { id: 'Azure', label: 'Azure Monitor', icon: 'cloud' },
@@ -199,7 +201,8 @@ window.KFHConfig = (function() {
         userName: 'Unauthenticated',
         userInitials: 'NA',
         userRole: 'Not signed in',
-        permissions: []
+        permissions: [],
+        homeCountryCode: 'KW'
       };
     },
 
@@ -216,15 +219,14 @@ window.KFHConfig = (function() {
         return this.getSession();
       }
       const session = this.getSession();
-      const canSwitch = Array.isArray(session.permissions)
-        && (session.permissions.includes('*') || session.permissions.includes('COUNTRY_GLOBAL_VIEW'));
+      const canSwitch = canUseGlobalCountryScope(session);
       if (!canSwitch && session.countryCode !== selected.code) {
         return session;
       }
       return this.setSession({
         ...session,
-        tenantId: selected.tenantId,
-        userId: selected.defaultUserId,
+        tenantId: session.tenantId || selected.tenantId,
+        userId: session.userId || selected.defaultUserId,
         countryCode: selected.code,
         countryName: selected.name,
         countryGroupName: selected.groupName
@@ -237,11 +239,21 @@ window.KFHConfig = (function() {
     },
 
     isAuthenticated: function() {
-      return Boolean(currentSession && currentSession.tenantId && currentSession.userId);
+      return hasValidApiContext(currentSession);
+    },
+
+    hasValidApiContext: function(session) {
+      return Boolean(session)
+        && UUID_PATTERN.test(String(session.tenantId || '').trim())
+        && UUID_PATTERN.test(String(session.userId || '').trim());
     },
 
     getCountry: function(countryCode) {
       return COUNTRY_SCOPES.find(country => country.code === String(countryCode || '').trim().toUpperCase()) || COUNTRIES[0];
+    },
+
+    canUseGlobalCountryScope: function(session) {
+      return canUseGlobalCountryScope(session || this.getSession());
     },
 
     getLoginRole: function(roleId) {
@@ -288,16 +300,20 @@ window.KFHConfig = (function() {
     const role = LOGIN_ROLES.find(item => item.id === session.roleId) || LOGIN_ROLES[2];
     const userName = String(session.userName || 'KFH Operator').trim();
     const environment = String(session.environment || 'PROD').toUpperCase();
+    const homeCountryCode = String(session.homeCountryCode || session.assignedCountryCode || country.code).trim().toUpperCase();
+    const tenantId = normalizeUuid(session.tenantId, country.tenantId);
+    const userId = normalizeUuid(session.userId, country.defaultUserId);
 
     return {
-      tenantId: session.tenantId || country.tenantId,
-      userId: session.userId || country.defaultUserId,
+      tenantId,
+      userId,
       userName,
       userInitials: session.userInitials || initials(userName),
       userRole: session.userRole || role.name,
       roleId: role.id,
       permissions: Array.isArray(session.permissions) && session.permissions.length > 0 ? session.permissions : role.permissions,
       countryCode: country.code,
+      homeCountryCode,
       countryName: country.name,
       countryGroupName: country.groupName,
       environment,
@@ -325,5 +341,26 @@ window.KFHConfig = (function() {
       .map(part => part[0])
       .join('')
       .toUpperCase() || 'KO';
+  }
+
+  function canUseGlobalCountryScope(session) {
+    const permissions = Array.isArray(session.permissions) ? session.permissions : [];
+    const homeCountryCode = String(session.homeCountryCode || session.assignedCountryCode || session.countryCode || '').trim().toUpperCase();
+    return homeCountryCode === ALL_COUNTRIES_CODE
+      && (permissions.includes('*') || permissions.includes('COUNTRY_GLOBAL_VIEW'));
+  }
+
+  function hasValidApiContext(session) {
+    return Boolean(session)
+      && UUID_PATTERN.test(String(session.tenantId || '').trim())
+      && UUID_PATTERN.test(String(session.userId || '').trim());
+  }
+
+  function normalizeUuid(value, fallback) {
+    const candidate = String(value || '').trim();
+    if (UUID_PATTERN.test(candidate)) {
+      return candidate;
+    }
+    return fallback;
   }
 })();

@@ -11,11 +11,11 @@ Update this file whenever a new support/cross-cutting class or endpoint is added
 
 | Class | Responsibility | Status |
 |-------|----------------|--------|
-| `SecurityConfig` | Spring Security filter chain, deny-by-default, CSRF rules. | 🟡 Skeleton (JWT/OIDC pending) |
-| `TenantContextFilter` | Reads `X-Tenant-Id`/`X-User-Id`/`X-Correlation-Id`, rejects if missing/invalid. | 🟡 Implemented as `TenantContextResolver` in `platform.tenant` |
-| `PermissionEvaluator` | Service-layer permission enforcement (RBAC). | 🟡 `TenantContext.requirePermission()` in place |
-| `SsrfGuard` | Validates outbound URLs against allowlist (connector configs). | 🟢 Implemented |
-| `SecretCipherService` | AES-GCM (or KMS) encryption for `config.connector_secrets`. | 🟢 Implemented |
+| `SecurityConfig` | Spring Security filter chain, deny-by-default, CSRF rules. |  Skeleton (JWT/OIDC pending) |
+| `TenantContextFilter` | Reads `X-Tenant-Id`/`X-User-Id`/`X-Correlation-Id`, rejects if missing/invalid. |  Implemented as `TenantContextResolver` in `platform.tenant` |
+| `PermissionEvaluator` | Service-layer permission enforcement (RBAC). |  `TenantContext.requirePermission()` in place |
+| `SsrfGuard` | Validates outbound URLs against allowlist (connector configs). |  Implemented |
+| `SecretCipherService` | AES-GCM encryption for `config.connector_secrets`; resolves the stable master key from startup environment/property or a protected deployment secret file without returning/logging key material. |  Implemented |
 
 > 2026-06-10: `SecurityConfig` currently permits `/api/v1/**` so the static frontend can call scaffold endpoints; service-layer `TenantContext`/RBAC remains enforced. Replace with enterprise JWT/OIDC before production.
 
@@ -23,71 +23,73 @@ Update this file whenever a new support/cross-cutting class or endpoint is added
 
 | Class | Responsibility | Status |
 |-------|----------------|--------|
-| `TenantContext` | Per-request tenant/user/country/correlationId holder. | 🟢 Implemented |
-| `TenantContextResolver` | Spring `HandlerMethodArgumentResolver`. | 🟢 Implemented |
-| `TenantWebMvcConfig` | Registers the resolver with Spring MVC. | 🟢 Implemented |
+| `TenantContext` | Per-request tenant/user/country/correlationId holder. |  Implemented |
+| `TenantContextResolver` | Spring `HandlerMethodArgumentResolver`. |  Implemented |
+| `TenantWebMvcConfig` | Registers the resolver with Spring MVC. |  Implemented |
 
 ## 3. platform.country (`org.kfh.aiops.platform.country`)
 
 | Class | Responsibility | Status |
 |-------|----------------|--------|
-| `CountryRegistry` | Allowed country codes (KW/BH/EG/…); enabled flags. | 🟢 Implemented |
-| `CountryAccessGuard` | Enforces "Kuwait users must not see Bahrain/Egypt unless permitted". | 🟢 Implemented |
+| `CountryRegistry` | Allowed country codes (KW/BH/EG/…); enabled flags. |  Implemented |
+| `CountryAccessGuard` | Enforces "Kuwait users must not see Bahrain/Egypt unless permitted". |  Implemented |
 
 ## 4. platform.audit (`org.kfh.aiops.platform.audit`)
 
 | Class | Responsibility | Status |
 |-------|----------------|--------|
-| `AuditService` | Writes `identity.audit_log` with before/after JSON (secret-stripped). | 🟡 Port defined; `LoggingAuditService` placeholder |
-| `LoggingAuditService` | Temporary structured-log audit until JPA adapter ships. | 🟢 Implemented |
+| `AuditService` | Writes `identity.audit_log` with before/after JSON (secret-stripped). |  Port defined; `LoggingAuditService` placeholder |
+| `LoggingAuditService` | Temporary structured-log audit until JPA adapter ships. |  Implemented |
 | `JpaAuditService` | JPA-backed adapter persisting to `identity.audit_log`. | ⚪ Not implemented |
 | `AuditAspect` | `@Auditable` annotation interceptor. | ⚪ Not implemented |
-| `AuditController`, `AuditQueryService` | Frontend-aligned audit list/detail/export endpoints backed by the Phase 1 in-memory audit view. | 🟡 Phase 1 scaffold |
+| `AuditController`, `AuditQueryService` | Frontend-aligned audit list/detail/export endpoints backed by the Phase 1 in-memory audit view. |  Phase 1 scaffold |
 
 ## 5. platform.config (`org.kfh.aiops.platform.config`)
 
 | Class | Responsibility | Status |
 |-------|----------------|--------|
-| `AppProperties` | `@ConfigurationProperties` root for tenant/country/env settings. | 🟡 Split across `CountryRegistry`, `SsrfProperties` |
-| `Resilience4jConfig` | Retry/CB/bulkhead defaults. | 🟡 Configured via `application.properties` defaults profile |
-| `WebClientConfig` | Async client with timeouts + SSRF guard. | 🟢 Implemented (timeouts); SSRF wiring in next task |
-| `ObjectMapperConfig` | JSR-310, snake_case, fail-on-unknown=false for inbound. | 🟢 Implemented |
-| `SettingsController`, `SettingsService` | Frontend-aligned settings get/update/test endpoints; writes are audited. | 🟡 Phase 1 scaffold (in-memory) |
+| `AppProperties` | `@ConfigurationProperties` root for tenant/country/env settings. |  Split across `CountryRegistry`, `SsrfProperties` |
+| `Resilience4jConfig` | Retry/CB/bulkhead defaults. |  Configured via `application.properties` defaults profile |
+| `WebClientConfig` | Async client with timeouts + SSRF guard. |  Implemented (timeouts); SSRF wiring in next task |
+| `ObjectMapperConfig` | JSR-310, snake_case, fail-on-unknown=false for inbound. |  Implemented |
+| `SettingsController`, `SettingsService`, `JdbcSettingsMetadataStore` | Frontend-aligned settings get/update/test endpoints; writes/tests are audited; metadata-owned sections are permanently scoped by tenant/country/environment in `config.integration_settings`; failed tests return secret-safe Java/unsupported-section messages for UI notification rows. `JdbcSettingsMetadataStore` reloads fallback + country/environment-specific rows with deterministic replacement semantics for list-backed sections so saved AI provider rows remain durable and consistent after restart. The repository is unconditionally registered (no `@ConditionalOnBean(JdbcTemplate.class)` — that guard was evaluated at component-scan time, before Spring Boot's `JdbcTemplateAutoConfiguration` ran, and caused `SettingsService` to receive an empty `Optional<SettingsMetadataStore>` and return HTTP 503). The `load(...)` query is `WHERE tenant_id = ?` only, with scope filtering and least-specific-first ordering done in Java, because the prior SQL had a 7-placeholder/5-argument mismatch that made PgJDBC throw `DataIntegrityViolationException` and the UI render blank Settings. |  Phase 1 scaffold (metadata-backed where configured) |
+| `InfrastructureConnectionTester`, `DefaultInfrastructureConnectionTester` | Bounded Settings infrastructure Test Connection port/adapter for Redis RESP ping, Kafka AdminClient metadata probes, and custom index-storage path/pointer validation with SSRF and secret-safe response guardrails. |  Implemented |
+| Static `KFHConfig` + `APIClient` + Settings SPA module | Browser-side tenant/user context normalization and fail-closed request guard for `/api/v1/settings`; invalid or missing UUID session headers are blocked client-side and surfaced as a re-sign-in message instead of sending malformed context to the backend. |  Implemented |
 
 ## 6. platform.exception (`org.kfh.aiops.platform.exception`)
 
 | Class | Responsibility | Status |
 |-------|----------------|--------|
-| `GlobalExceptionHandler` | `@RestControllerAdvice` → `problem+json` responses; preserves framework status exceptions and maps missing resources to 404. | 🟢 Implemented |
-| `MissingTenantContextException` | 400 on missing headers. | 🟢 Implemented |
-| `ForbiddenAccessException` | 403 on RBAC/country denial. | 🟢 Implemented |
-| `NotFoundException` | 404 with safe message. | 🟢 Implemented |
-| `ValidationException` | 422 with field details (no PII). | 🟢 Implemented |
-| `AiOpsException` | Base class with stable error code. | 🟢 Implemented |
+| `GlobalExceptionHandler` | `@RestControllerAdvice` → `problem+json` responses; preserves framework status exceptions and maps missing resources to 404. |  Implemented |
+| `MissingTenantContextException` | 400 on missing headers. |  Implemented |
+| `ForbiddenAccessException` | 403 on RBAC/country denial. |  Implemented |
+| `NotFoundException` | 404 with safe message. |  Implemented |
+| `ValidationException` | 422 with field details (no PII). |  Implemented |
+| `AiOpsException` | Base class with stable error code. |  Implemented |
 
 ## 7. platform.validation (`org.kfh.aiops.platform.validation`)
 
 | Class | Responsibility | Status |
 |-------|----------------|--------|
-| `@CountryCodeValid` | Bean Validation constraint (KW/BH/EG…). | 🟢 Implemented |
-| `@EnvironmentValid` | PROD/UAT/DEV. | 🟢 Implemented |
+| `@CountryCodeValid` | Bean Validation constraint (KW/BH/EG…). |  Implemented |
+| `@EnvironmentValid` | PROD/UAT/DEV. |  Implemented |
 | `@SafeUrl` | SSRF allowlist check. | ⚪ Not implemented (use `SsrfGuard.check()` directly for now) |
 
 ## 8. platform.observability (`org.kfh.aiops.platform.observability`)
 
 | Class | Responsibility | Status |
 |-------|----------------|--------|
-| `CorrelationIdFilter` | Generate/propagate `X-Correlation-Id` and MDC. | 🟢 Implemented |
-| `HttpActionLoggingFilter` | Secret-safe web action logging: one Java console log line per HTTP request with method, path, status, duration, tenant/user/country/environment, and correlation ID; excludes bodies, query strings, tokens, and passwords. | 🟢 Implemented |
-| `StructuredLoggingAppender` | JSON logs with required fields (§20). | 🟡 SLF4J MDC pattern in `application.properties` |
-| `MetricsConfig` | Micrometer + Prometheus exposition. | 🟡 Actuator + Prometheus enabled in properties |
+| `CorrelationIdFilter` | Generate/propagate `X-Correlation-Id` and MDC. |  Implemented |
+| `HttpActionLoggingFilter` | Secret-safe web action logging: one Java console log line per HTTP request with method, path, status, duration, tenant/user/country/environment, and correlation ID; excludes bodies, query strings, tokens, and passwords. |  Implemented |
+| `StructuredLoggingAppender` | JSON logs with required fields (§20). |  SLF4J MDC pattern in `application.properties` |
+| `MetricsConfig` | Micrometer + Prometheus exposition. |  Actuator + Prometheus enabled in properties |
 | `HealthIndicators` | DB/Redis/Neo4j/object-storage probes. | ⚪ Not implemented |
 
 ## 9. platform.outbox (`org.kfh.aiops.platform.outbox`)
 
 | Class | Responsibility | Status |
 |-------|----------------|--------|
-| `OutboxPublisher` | Port for transactional outbox writes (secret-stripped payload). | 🟢 Port defined |
+| `OutboxPublisher` | Port for transactional outbox writes (secret-stripped payload). |  Port defined |
 | `OutboxEventEntity` | Row in `ops.outbox_events`. | ⚪ Not implemented |
 | `JdbcOutboxPublisher` | Adapter writing to `ops.outbox_events`. | ⚪ Not implemented |
 | `OutboxRelay` | Scheduled drain → notification/AI workers. | ⚪ Not implemented |
@@ -115,11 +117,11 @@ Update this file whenever a new support/cross-cutting class or endpoint is added
 
 | Class | Responsibility | Status |
 |-------|----------------|--------|
-| `UserController`, `RoleController`, `IdentityAdminService` | Frontend-aligned user/role CRUD, user role list, and user permission lookup endpoints; user list/detail operations are country-guarded and login-user writes require `IdentityJdbcRepository` so created users persist in PostgreSQL and can sign in. | 🟡 Phase 1 scaffold with DB-required login-user writes |
-| `IdentityBootstrapProperties`, `IdentityBootstrapInitializer` | Datasource-backed startup bootstrap for the configured tenant, default RBAC roles, and optional configured admin create/reactivate/password-reset when `KFH_BOOTSTRAP_ADMIN_PASSWORD` is supplied. | 🟢 Implemented |
-| `BootstrapInMemoryAuthenticator` | In-memory bootstrap admin sign-in fallback that accepts the configured bootstrap username/password/country/environment regardless of database state. Disabled by clearing `kfh.identity.bootstrap.password`. | 🟢 Implemented |
-| `IdentityAuthService`, `IdentityJdbcRepository` | Datasource-backed sign-in with BCrypt verification and secret-safe diagnostic counters for rejected sign-ins. | 🟢 Implemented |
-| `AuditQueryService` | Query audit events with RBAC; JPA-backed `identity.audit_log` adapter pending. | 🟡 Phase 1 scaffold (in-memory) |
+| `UserController`, `RoleController`, `IdentityAdminService` | Frontend-aligned user/role CRUD, user role list, and user permission lookup endpoints; user list/detail operations are country-guarded and login-user writes require `IdentityJdbcRepository` so created users persist in PostgreSQL and can sign in. |  Phase 1 scaffold with DB-required login-user writes |
+| `IdentityBootstrapProperties`, `IdentityBootstrapInitializer` | Datasource-backed startup bootstrap for the configured tenant, default RBAC roles, and optional configured admin create/reactivate/password-reset when `KFH_BOOTSTRAP_ADMIN_PASSWORD` is supplied. |  Implemented |
+| `BootstrapInMemoryAuthenticator` | In-memory bootstrap admin sign-in fallback that accepts the configured bootstrap username/password/country/environment regardless of database state. Disabled by clearing `kfh.identity.bootstrap.password`. |  Implemented |
+| `IdentityAuthService`, `IdentityJdbcRepository` | Datasource-backed sign-in with BCrypt verification and secret-safe diagnostic counters for rejected sign-ins. |  Implemented |
+| `AuditQueryService` | Query audit events with RBAC; JPA-backed `identity.audit_log` adapter pending. |  Phase 1 scaffold (in-memory) |
 
 **Endpoints:** `/api/v1/users`, `/api/v1/roles`, `/api/v1/audit` implemented as Phase 1 scaffold endpoints.
 
@@ -127,8 +129,8 @@ Update this file whenever a new support/cross-cutting class or endpoint is added
 
 | Class | Responsibility | Status |
 |-------|----------------|--------|
-| `AiOpsApplication` | Main Spring Boot application entry point in the root package, using default scanning for `org.kfh.aiops.*`. | 🟢 Implemented |
-| `ServletInitializer` | WAR deployment initializer for managed servlet containers. | 🟢 Implemented |
+| `AiOpsApplication` | Main Spring Boot application entry point in the root package, using default scanning for `org.kfh.aiops.*`. |  Implemented |
+| `ServletInitializer` | WAR deployment initializer for managed servlet containers. |  Implemented |
 
 ---
 
@@ -144,5 +146,4 @@ Update this file whenever a new support/cross-cutting class or endpoint is added
 ---
 
 ## Status Legend
-🟢 Implemented · 🟡 In progress · 🔴 Blocked · ⚪ Not started
-
+ Implemented ·  In progress ·  Blocked · ⚪ Not started

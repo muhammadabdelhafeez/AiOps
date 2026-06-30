@@ -35,6 +35,11 @@ public class ConnectorController {
         return connectorService.list(ctx, page, size);
     }
 
+    @GetMapping("/types")
+    public Object types(TenantContext ctx) {
+        return connectorService.types(ctx);
+    }
+
     @GetMapping("/{id}")
     public Object get(TenantContext ctx, @PathVariable UUID id) {
         return connectorService.get(ctx, id);
@@ -65,6 +70,11 @@ public class ConnectorController {
     @PostMapping("/{id}/test")
     public Object test(TenantContext ctx, @PathVariable UUID id) {
         return connectorService.test(ctx, id);
+    }
+
+    @PostMapping("/heartbeat")
+    public Object heartbeat(TenantContext ctx) {
+        return connectorService.heartbeat(ctx);
     }
 
     @GetMapping("/{id}/logs")

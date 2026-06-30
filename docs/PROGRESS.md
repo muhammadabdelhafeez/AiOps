@@ -36,9 +36,11 @@ To keep this log readable for AI assistants (Copilot, Claude Code, OpenAI) and h
 
 | Volume | File | Range | Status |
 |--------|------|-------|--------|
-| 001 | `docs/PROGRESS.md` | 2026-06-10 → present | 🟢 Active |
+| 001 | `docs/PROGRESS.md` | 2026-06-10 → 2026-06-15 | 📦 Archived |
+| 002 | `docs/PROGRESS-002.md` | 2026-06-15 → 2026-06-18 | 📦 Archived |
+| 003 | `docs/PROGRESS-003.md` | 2026-06-18 → present | 🟢 Active |
 
-> When you create `PROGRESS-002.md`, add a row here and mark this file 📦 Archived.
+> **Latest Active Volume:** [`docs/PROGRESS-003.md`](PROGRESS-003.md)
 
 ---
 
@@ -104,6 +106,204 @@ Legend: 🟢 Done · 🟡 In progress · 🔴 Blocked · ⚪ Not started
 ## Task Log
 
 > Newest entries on top. Append your entry above the previous one.
+
+### 2026-06-15 — Modernize Sidebar Menu Typography
+- **Phase:** Phase 1
+- **Module(s):** `frontend/shell`, `frontend/theme`, `docs`
+- **Type:** fix | frontend | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Added a final Command Center menu styling layer to make the sidebar navigation feel more modern. Updated menu typography, font weights, active/hover treatments, scope switcher styling, user footer styling, and subtle KFH green/gold visual depth without changing navigation behavior or country/tenant logic.
+- **Files touched:**
+  - `src/main/resources/static/shared/css/kfh-aiops-parity.css`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** No code tests required for CSS-only change; `get_errors` reported no CSS errors and full `mvnw.cmd verify` passed with 75 tests.
+- **Docs updated:** `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (Bean Validation)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Hard refresh the browser after deployment to reload `shared/css/kfh-aiops-parity.css`; visually confirm active/hover menu states on Dashboard, Users, Audit, Connectors, and Reports.
+- **Author:** copilot-agent
+- **Correlation:** user-request-2026-06-15-modern-menu-style
+
+### 2026-06-15 — Harden Bootstrap Admin Sign-In
+- **Phase:** Phase 1
+- **Module(s):** `platform.identity`, `docs`
+- **Type:** fix | security | test | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Hardened `/api/v1/auth/sign-in` for the configured bootstrap/global admin path. The app now tests the configured bootstrap defaults without exposing the password, logs secret-safe bootstrap rejection diagnostics, and database-backed `ALL` identities can be found when the login screen submits a physical country and no exact physical-country identity matches.
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/platform/identity/IdentityAuthService.java`
+  - `src/main/java/org/kfh/aiops/platform/identity/IdentityJdbcRepository.java`
+  - `src/test/java/org/kfh/aiops/platform/identity/BootstrapInMemoryAuthenticatorTest.java`
+  - `src/test/java/org/kfh/aiops/platform/identity/IdentityJdbcRepositoryTest.java`
+  - `docs/API_CONTRACTS.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** No endpoint shape change; `POST /api/v1/auth/sign-in` has more robust all-country matching and secret-safe rejection diagnostics in server logs.
+- **Tests added/updated:** `BootstrapInMemoryAuthenticatorTest`, `IdentityJdbcRepositoryTest`; focused identity tests passed with 23 tests, full `mvnw.cmd verify` passed with 75 tests.
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/RUNBOOKS.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (Bean Validation)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Restart the running webserver and retry sign-in. If a `403` remains, check the secret-safe `sign-in rejected` log flags for username/country/environment/password match status.
+- **Author:** copilot-agent
+- **Correlation:** user-request-2026-06-15-bootstrap-admin-403
+
+### 2026-06-15 — Return ALL Scope for Bootstrap Global Admin
+- **Phase:** Phase 1
+- **Module(s):** `platform.identity`, `frontend/auth`, `docs`
+- **Type:** fix | security | test | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Fixed the configured bootstrap global admin session so an `ALL` bootstrap country accepts a physical login picker selection but returns `countryCode=ALL` to the SPA. This makes the sidebar country switcher and all-country User/Audit filters visible immediately after the bootstrap admin signs in, instead of locking the session to Kuwait.
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/platform/identity/BootstrapInMemoryAuthenticator.java`
+  - `src/test/java/org/kfh/aiops/platform/identity/BootstrapInMemoryAuthenticatorTest.java`
+  - `docs/API_CONTRACTS.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** No endpoint shape change; `POST /api/v1/auth/sign-in` now returns `countryCode: "ALL"` for an `ALL`-configured bootstrap admin even when the submitted login country was physical.
+- **Tests added/updated:** `BootstrapInMemoryAuthenticatorTest`; focused identity tests passed with 12 tests, full `mvnw.cmd verify` passed with 73 tests.
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/RUNBOOKS.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (Bean Validation)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Restart the webserver and sign in as the configured bootstrap admin; response/session should show `ALL / PROD`, and the country dropdown should be visible.
+- **Author:** copilot-agent
+- **Correlation:** user-request-2026-06-15-bootstrap-admin-all-country
+
+### 2026-06-15 — Lock Country Menus to All-Country Users
+- **Phase:** Phase 1
+- **Module(s):** `frontend/auth`, `frontend/users`, `platform.audit`, `docs`
+- **Type:** fix | security | test | docs
+- **Country/Tenant scope:** ALL, KW, BH, EG
+- **Summary:** Updated the SPA country-scope behavior so only sessions whose home country is `ALL` and have `COUNTRY_GLOBAL_VIEW` or `*` can see country switch/filter dropdowns. Physical-country users now see a locked Platform + assigned-country scope in the sidebar and User Management page, with no other countries exposed in menu, filter, create, or edit controls; persisted audit tests now explicitly verify country predicates.
+- **Files touched:**
+  - `src/main/resources/static/shared/js/config.js`
+  - `src/main/resources/static/shared/js/auth.js`
+  - `src/main/resources/static/pages/users/users.js`
+  - `src/main/resources/static/pages/users/users.css`
+  - `src/test/java/org/kfh/aiops/platform/audit/AuditActivityRepositoryTest.java`
+  - `docs/API_CONTRACTS.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** No endpoint shape change; frontend now sends cross-country/all-country headers only from an all-country home session, while backend audit reads continue to enforce `AUDIT_READ` plus all-country guard.
+- **Tests added/updated:** `AuditActivityRepositoryTest`; focused audit tests passed with 12 tests, full `mvnw.cmd verify` passed with 73 tests. JS syntax validation was attempted, but Node.js is not installed on the dev server; IDE validation reported no JS/CSS errors.
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/RUNBOOKS.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (Bean Validation)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Restart the webserver, sign in once as `countryCode=ALL` to verify dropdowns are visible, then sign in as a physical-country admin to verify the sidebar and User Management country controls are locked to that country.
+- **Author:** copilot-agent
+- **Correlation:** user-request-2026-06-15-country-menu-lock
+
+### 2026-06-15 — Enforce Country-Aware Audit Privileges
+- **Phase:** Phase 1
+- **Module(s):** `platform.audit`, `platform.identity`, `docs`
+- **Type:** feature | security | test | docs
+- **Country/Tenant scope:** ALL
+- **Summary:** Added explicit country-aware audit privilege behavior: country admins now receive `AUDIT_READ` for their own country/environment only, while all-country audit reads require `COUNTRY_GLOBAL_VIEW` or `*`. Audit list/detail/export now share the same read guard so all-country scope cannot bypass RBAC.
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/platform/audit/AuditQueryService.java`
+  - `src/main/java/org/kfh/aiops/platform/audit/AuditController.java`
+  - `src/main/java/org/kfh/aiops/platform/identity/IdentityJdbcRepository.java`
+  - `src/main/java/org/kfh/aiops/platform/identity/BootstrapInMemoryAuthenticator.java`
+  - `src/test/java/org/kfh/aiops/platform/audit/AuditQueryServiceTest.java`
+  - `src/test/java/org/kfh/aiops/platform/identity/BootstrapInMemoryAuthenticatorTest.java`
+  - `src/test/java/org/kfh/aiops/platform/identity/IdentityJdbcRepositoryTest.java`
+  - `docs/API_CONTRACTS.md`
+  - `docs/RUNBOOKS.md`
+  - `docs/DATABASE_SCHEMA.md`
+  - `docs/PROGRESS.md`
+- **DB migrations:** N/A
+- **API changes:** No endpoint shape change; `/api/v1/audit`, `/api/v1/audit/{id}`, and `/api/v1/audit/export` enforce `AUDIT_READ` plus `COUNTRY_GLOBAL_VIEW`/`*` for `X-Country-Code: ALL`. Country-admin audit reads are country/environment scoped.
+- **Tests added/updated:** `AuditQueryServiceTest`, `BootstrapInMemoryAuthenticatorTest`, `IdentityJdbcRepositoryTest`; full `mvnw.cmd verify` passed with 71 tests.
+- **Docs updated:** `docs/API_CONTRACTS.md`, `docs/RUNBOOKS.md`, `docs/DATABASE_SCHEMA.md`, `docs/PROGRESS.md`
+- **Security / OWASP checklist:**
+  - [x] Tenant + user context enforced
+  - [x] RBAC checked at service layer
+  - [x] Inputs validated (Bean Validation)
+  - [x] Audit log written for write actions
+  - [x] No secrets / PII / tokens logged or returned
+  - [x] SSRF-safe for any URL-based config
+- **Definition of Done checklist (from copilot-instructions §25):**
+  - [x] Supports tenant + country context
+  - [x] Clear DTOs and validation
+  - [x] Follows package/module boundaries
+  - [x] Audit logs for write actions
+  - [x] No secrets exposed
+  - [x] Tests for core logic
+  - [x] Correlation ID supported
+  - [x] Does not break incident lifecycle rules
+  - [x] Does not bypass custom index engine for telemetry search
+  - [x] Extractable into a future microservice
+- **Follow-ups / TODO:** Restart the datasource-backed dev server so default role reconciliation adds `AUDIT_READ` to existing `COUNTRY_ADMIN` roles, then sign in as a country admin and verify Audit Activity only shows that country.
+- **Author:** copilot-agent
+- **Correlation:** user-request-2026-06-15-audit-country-privilege
 
 ### 2026-06-15 — Repair Audit Activity database fallback
 - **Phase:** Phase 1

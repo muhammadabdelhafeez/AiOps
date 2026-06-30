@@ -1,5 +1,7 @@
 # Backend Modules & Packages
 
+> **Architecture authority:** [`docs/CAUSAL_PIPELINE.md`](./CAUSAL_PIPELINE.md). The package map below mirrors the funnel stages.
+
 ## Entry points
 - `org.kfh.aiops.AiOpsApplication` — Spring Boot application entry point at the root package, using default component scanning for `org.kfh.aiops.*`
 - `org.kfh.aiops.ServletInitializer` — WAR deployment initializer for managed servlet containers
@@ -9,9 +11,16 @@
 ## Package map (high level)
 - `org.kfh.aiops.platform` — security, tenant/country context, audit, configuration, exceptions, observability
 - `org.kfh.aiops.commandcenter` — dashboard, alerts, applications, inventory, reports, schedules read/write API scaffolding
-- `org.kfh.aiops.incident` — incident API, lifecycle/service contracts, model types
-- `org.kfh.aiops.plugin` — connector API/service scaffolding
-- Future bounded contexts follow the enterprise package map: ingestion, normalization, index, topology, health, RCA, AI, notification
+- `org.kfh.aiops.incident` — incident API, **deterministic lifecycle engine** (`incident.lifecycle`), service contracts, model types
+- `org.kfh.aiops.plugin` — connector API/service scaffolding (Stage 0 collectors per [CAUSAL_PIPELINE](./CAUSAL_PIPELINE.md))
+- `org.kfh.aiops.ingestion` — country gateway, batch validation, outbox push (Stage 0)
+- `org.kfh.aiops.normalization` — `CanonicalTelemetryEvent` + enrichment + `fingerprint` Redis SETNX dedup (Stages 1–2)
+- `org.kfh.aiops.index` — Custom Index Engine writer/reader/shard (Stage 3) — **not Elasticsearch**
+- `org.kfh.aiops.topology` — Neo4j blast radius + upstream dependencies (Stage 4)
+- `org.kfh.aiops.health` — Redis hot health state + scoring + baseline
+- `org.kfh.aiops.rca` — `evidence` (EvidencePackBuilder, ≤ 3 KB), `causal` (11-factor scoring), `service` (orchestration)
+- `org.kfh.aiops.ai` — `router` (AiRouter), `deepseek` (local), `azureopenai` (Azure OpenAI 5.5), `cost` (CostGuard), `prompt`, `model`
+- `org.kfh.aiops.notification` — Teams / email / SMS / webhook (outbox-driven)
 
 ## Cross-cutting requirements
 - Every request must include `X-Tenant-Id` and `X-User-Id`.

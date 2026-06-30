@@ -10,6 +10,16 @@ window.APIClient = (function() {
   // Get required headers for multi-tenancy
   function getHeaders() {
     const session = KFHConfig.getSession();
+    if (!KFHConfig.hasValidApiContext(session)) {
+      throw new APIError(
+        'Your session is missing valid tenant or user context. Sign in again and retry.',
+        401,
+        {
+          code: 'CLIENT_SESSION_CONTEXT_MISSING',
+          message: 'Your session is missing valid tenant or user context. Sign in again and retry.'
+        }
+      );
+    }
     return {
       'Content-Type': 'application/json',
       'X-Tenant-Id': session.tenantId,
@@ -182,11 +192,13 @@ window.APIClient = (function() {
   // Connectors
   const connectors = {
     list: () => get('/connectors'),
+    types: () => get('/connectors/types'),
     get: (id) => get(`/connectors/${id}`),
     create: (data) => post('/connectors', data),
     update: (id, data) => put(`/connectors/${id}`, data),
     delete: (id) => del(`/connectors/${id}`),
     toggle: (id, enabled) => patch(`/connectors/${id}/toggle`, { enabled }),
+    heartbeat: () => post('/connectors/heartbeat'),
     test: (id) => post(`/connectors/${id}/test`),
     getLogs: (id, params) => get(`/connectors/${id}/logs`, params)
   };
@@ -244,7 +256,7 @@ window.APIClient = (function() {
   const settings = {
     get: () => get('/settings'),
     update: (data) => put('/settings', data),
-    test: (section, data) => post(`/settings/${section}/test`, data)
+    test: (section, data) => post(`/settings/${encodeURIComponent(section)}/test`, data)
   };
 
   // Audit

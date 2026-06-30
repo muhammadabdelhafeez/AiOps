@@ -10,6 +10,7 @@ window.Router = (function() {
   let currentRoute = null;
   let pageCache = {};
   let loadedScripts = {};
+  const SETTINGS_FOCUS_CLASS = 'kfh-settings-focus-mode';
 
   // Page configuration - each page has a JS file and optional CSS
   const PAGES = {
@@ -80,6 +81,13 @@ window.Router = (function() {
       css: 'pages/audit/audit.css',
       title: 'Audit Logs',
       usesReactModule: false
+    },
+    'applicationconfig': {
+      js: 'pages/applications/applicationconfig.js',
+      css: 'pages/applications/applicationconfig.css',
+      title: 'Application Configuration',
+      usesReactModule: false,
+      sidebarPageId: 'applications' // keep "Applications" highlighted in sidebar
     }
   };
 
@@ -168,8 +176,11 @@ window.Router = (function() {
       existingPageRoot.innerHTML = '';
     }
 
-    // Show loading state
-    showLoading(contentArea);
+    // Show loading state only if the swap takes long enough for a user to
+    // notice. Wiping the content area to a spinner on every menu click makes
+    // navigation feel like a full page reload. With the deferred spinner the
+    // previous page stays visible until the new one is ready.
+    const loadingTimer = setTimeout(() => showLoading(contentArea), 200);
 
     // Update URL
     if (pushState) {
@@ -179,6 +190,7 @@ window.Router = (function() {
 
     // Update sidebar active state
     updateSidebarState(pageId);
+    updateShellMode(pageId);
 
     // Update header title
     updateHeaderTitle(pageConfig.title);
@@ -186,7 +198,11 @@ window.Router = (function() {
     try {
       // Load CSS if not already loaded
       await loadCSS(pageId, pageConfig.css);
-      ensureFinalThemeCSS();
+      // NOTE: We intentionally do NOT re-append the parity theme CSS on every
+      // navigation. Moving an existing <link> element triggers a style
+      // recalculation which causes a visible "menu flicker / refresh" effect
+      // in the sidebar. loadCSS() now inserts page CSS *before* the parity
+      // CSS link so the parity theme remains last-loaded automatically.
 
       // Check if this page uses the module pattern
       if (pageConfig.usesReactModule) {
@@ -247,8 +263,10 @@ window.Router = (function() {
 
       currentPage = pageId;
       currentRoute = rawPageId || pageId;
+      clearTimeout(loadingTimer);
       console.log(`[Router] Successfully loaded: ${pageId}`);
     } catch (error) {
+      clearTimeout(loadingTimer);
       console.error(`[Router] Failed to load page: ${pageId}`, error);
       showError(contentArea, pageId, error);
     }
@@ -357,7 +375,10 @@ window.Router = (function() {
     });
   }
 
-  // Load CSS file
+  // Load CSS file. Inserts the link BEFORE the parity-theme stylesheet
+  // (`#kfh-aiops-parity-css`) so the parity theme always stays last in <head>
+  // without needing to be moved on every navigation (which caused sidebar
+  // style flicker / "menu refresh" feel).
   function loadCSS(pageId, cssPath) {
     return new Promise((resolve) => {
       const linkId = `css-${pageId}`;
@@ -372,21 +393,24 @@ window.Router = (function() {
       link.href = cssPath;
       link.onload = resolve;
       link.onerror = resolve; // Don't fail if CSS doesn't exist
-      document.head.appendChild(link);
+
+      const parity = document.getElementById('kfh-aiops-parity-css');
+      if (parity && parity.parentNode) {
+        parity.parentNode.insertBefore(link, parity);
+      } else {
+        document.head.appendChild(link);
+      }
     });
   }
 
+  // Legacy helper retained for backwards compatibility. It now only ensures
+  // the parity stylesheet exists; it no longer reorders it on each call.
   function ensureFinalThemeCSS() {
-    const href = 'shared/css/kfh-aiops-parity.css';
-    const existing = document.getElementById('kfh-aiops-parity-css');
-    if (existing) {
-      document.head.appendChild(existing);
-      return;
-    }
+    if (document.getElementById('kfh-aiops-parity-css')) return;
     const link = document.createElement('link');
     link.id = 'kfh-aiops-parity-css';
     link.rel = 'stylesheet';
-    link.href = href;
+    link.href = 'shared/css/kfh-aiops-parity.css';
     document.head.appendChild(link);
   }
 
@@ -474,13 +498,34 @@ window.Router = (function() {
 
   // Update sidebar active state
   function updateSidebarState(pageId) {
+    const config = PAGES[pageId];
+    const sidebarId = (config && config.sidebarPageId) ? config.sidebarPageId : pageId;
     document.querySelectorAll('.sidebar-nav-item, .kfh-sidebar-nav-item').forEach(item => {
       item.classList.remove('active');
+      item.removeAttribute('aria-current');
     });
 
-    const activeItem = document.querySelector(`[data-page="${pageId}"]`);
-    if (activeItem) {
+    document.querySelectorAll(`[data-page="${sidebarId}"]`).forEach(activeItem => {
       activeItem.classList.add('active');
+      activeItem.setAttribute('aria-current', 'page');
+    });
+  }
+
+  function updateShellMode(pageId) {
+    const app = document.getElementById('app');
+    const sidebar = document.getElementById('sidebar-container');
+    const settingsFocus = pageId === 'settings';
+
+    if (app) {
+      app.classList.toggle(SETTINGS_FOCUS_CLASS, settingsFocus);
+    }
+    if (sidebar) {
+      sidebar.classList.toggle(SETTINGS_FOCUS_CLASS, settingsFocus);
+      sidebar.setAttribute('aria-hidden', 'false');
+    }
+
+    if (window.KFHSidebarCollapse?.setCollapsed) {
+      window.KFHSidebarCollapse.setCollapsed(settingsFocus ? true : null, { persist: false });
     }
   }
 

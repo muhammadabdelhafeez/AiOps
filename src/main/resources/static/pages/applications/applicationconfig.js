@@ -6,11 +6,41 @@
   const DOMAINS = ['Core Banking', 'Digital Channels', 'Treasury', 'Risk Management', 'HR Systems', 'Infrastructure'];
   const ENVIRONMENTS = ['Production', 'UAT', 'Development', 'DR'];
   const CRITICALITIES = ['Tier1', 'Tier2', 'Tier3', 'Tier4'];
+  // Read params from either the real query string (legacy standalone page)
+  // or from the SPA hash like "#applicationconfig?id=X&mode=Y".
+  function readParams() {
+    const result = { id: null, mode: null };
+    try {
+      const url = new URL(window.location.href);
+      result.id = url.searchParams.get('id');
+      result.mode = url.searchParams.get('mode');
+    } catch (e) { /* ignore */ }
+    if ((!result.id || !result.mode) && window.location.hash) {
+      const hash = window.location.hash.slice(1); // strip '#'
+      const qIdx = hash.indexOf('?');
+      if (qIdx >= 0) {
+        const hp = new URLSearchParams(hash.slice(qIdx + 1));
+        if (!result.id) result.id = hp.get('id');
+        if (!result.mode) result.mode = hp.get('mode');
+      }
+    }
+    return result;
+  }
   function params() {
-    const url = new URL(window.location.href);
-    return { id: url.searchParams.get('id') || 'new', mode: url.searchParams.get('mode') || (url.searchParams.get('id') ? 'edit' : 'create') };
+    const p = readParams();
+    return { id: p.id || 'new', mode: p.mode || (p.id ? 'edit' : 'create') };
   }
   function setUrlState(id, mode) {
+    // When mounted inside the SPA, update the hash so deep-links survive
+    // reloads; otherwise fall back to updating the query string.
+    if (window.location.hash && window.location.hash.indexOf('applicationconfig') !== -1) {
+      const parts = [];
+      if (id) parts.push('id=' + encodeURIComponent(id));
+      if (mode) parts.push('mode=' + encodeURIComponent(mode));
+      const next = '#applicationconfig' + (parts.length ? '?' + parts.join('&') : '');
+      window.history.replaceState({}, '', next);
+      return;
+    }
     const url = new URL(window.location.href);
     if (id) url.searchParams.set('id', id);
     if (mode) url.searchParams.set('mode', mode);

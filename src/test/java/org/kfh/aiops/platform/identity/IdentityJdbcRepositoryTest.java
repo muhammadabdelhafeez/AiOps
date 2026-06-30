@@ -2,6 +2,7 @@ package org.kfh.aiops.platform.identity;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
@@ -24,6 +25,7 @@ import org.kfh.aiops.platform.exception.ValidationException;
 import org.kfh.aiops.platform.tenant.TenantContext;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 class IdentityJdbcRepositoryTest {
@@ -54,6 +56,35 @@ class IdentityJdbcRepositoryTest {
         repository.ensureTenant(TENANT_ID, "KFH Group");
 
         verify(jdbcTemplate, never()).update(contains("INSERT INTO public.tenants"), any(), any());
+    }
+
+    @Test
+    void shouldEnsureDefaultRolesIncludeAuditReadForCountryAdmins() {
+        var jdbcTemplate = org.mockito.Mockito.mock(JdbcTemplate.class);
+        var roleId = UUID.fromString("00000000-0000-4000-8000-000000000010");
+        var repository = new IdentityJdbcRepository(jdbcTemplate, org.mockito.Mockito.mock(PasswordEncoder.class));
+        when(jdbcTemplate.query(contains("SELECT role_id FROM identity.roles"), anyUuidRowMapper(), eq(TENANT_ID), anyString()))
+                .thenReturn(java.util.List.of(roleId));
+
+        repository.ensureDefaultRoles(TENANT_ID);
+
+        verify(jdbcTemplate).update(contains("INSERT INTO identity.role_permissions"), eq(TENANT_ID), eq(roleId), eq("AUDIT_READ"));
+    }
+
+    @Test
+    void shouldTryAllCountryIdentityWhenPhysicalCountrySignInHasNoExactMatch() {
+        var jdbcTemplate = org.mockito.Mockito.mock(JdbcTemplate.class);
+        var repository = new IdentityJdbcRepository(jdbcTemplate, org.mockito.Mockito.mock(PasswordEncoder.class));
+        when(jdbcTemplate.query(contains("WHERE lower(u.username)"), anySignInCandidateRowMapper(), eq("Admin"), eq("KW"), eq("PROD")))
+                .thenReturn(java.util.List.of());
+        when(jdbcTemplate.query(contains("WHERE lower(u.username)"), anySignInCandidateRowMapper(), eq("Admin"), eq("ALL"), eq("PROD")))
+                .thenReturn(java.util.List.of());
+
+        var result = repository.signIn(new IdentitySignInRequest("Admin", "not-logged", "KW", "PROD"));
+
+        assertTrue(result.isEmpty());
+        verify(jdbcTemplate).query(contains("WHERE lower(u.username)"), anySignInCandidateRowMapper(), eq("Admin"), eq("KW"), eq("PROD"));
+        verify(jdbcTemplate).query(contains("WHERE lower(u.username)"), anySignInCandidateRowMapper(), eq("Admin"), eq("ALL"), eq("PROD"));
     }
 
     @Test
@@ -163,6 +194,14 @@ class IdentityJdbcRepositoryTest {
 
     private static TenantContext context() {
         return new TenantContext(TENANT_ID, UUID.randomUUID(), "KW", "PROD", "corr-users-create-test", Set.of("IDENTITY_WRITE"));
+    }
+
+    private static RowMapper<UUID> anyUuidRowMapper() {
+        return org.mockito.ArgumentMatchers.any();
+    }
+
+    private static RowMapper<?> anySignInCandidateRowMapper() {
+        return org.mockito.ArgumentMatchers.any();
     }
 }
 

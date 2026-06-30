@@ -1,5 +1,8 @@
 # UI Pages & Navigation Map
 
+> **Architecture authority:** [`docs/CAUSAL_PIPELINE.md`](./CAUSAL_PIPELINE.md).
+> Every page that shows AI output must display: business journey impacted, root cause entity, deterministic confidence, AI confidence, **cited evidence IDs**, the AI model used (DeepSeek vs Azure OpenAI 5.5), and a "cached / new narrative" indicator. UI must never show raw alert lists without business impact context.
+
 ## Implementation Status
 All pages implemented as modular SPA components in `/src/main/resources/static/pages/`.
 
@@ -19,21 +22,25 @@ The UI follows the **KFH Beyond Horizons** design identity:
 ### Font Stack
 The application uses a system font stack with local fallbacks to avoid external dependencies:
 ```css
-font-family: 'Outfit', 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+body {
+  font-family: 'Outfit', 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+}
 ```
 
 ### Color Variables
 ```css
---kfh-primary: #128754;
---kfh-primary-dark: #0E6B42;
---kfh-gold: #C4A962;
---kfh-sidebar-bg: #24604f;
---surface-bg: #f7f7f7;
---surface-card: #ffffff;
---surface-border: #e2e8f0;
---text-primary: #1f2937;
---text-secondary: #4b5563;
---text-muted: #6b7280;
+:root {
+  --kfh-primary: #128754;
+  --kfh-primary-dark: #0E6B42;
+  --kfh-gold: #C4A962;
+  --kfh-sidebar-bg: #24604f;
+  --surface-bg: #f7f7f7;
+  --surface-card: #ffffff;
+  --surface-border: #e2e8f0;
+  --text-primary: #1f2937;
+  --text-secondary: #4b5563;
+  --text-muted: #6b7280;
+}
 ```
 
 ## File Structure
@@ -192,21 +199,32 @@ Purpose:
 - Test connections and run manual data collection
 
 Key Features:
-- **KPI Strip**: 6 cards showing Total, Healthy, Degraded, Down, Disabled connectors and Events 24h
-- **Filter Bar**: Search, status filter (Healthy/Degraded/Down/Disabled), type filter, grid/table view toggle
-- **Grid View**: Connector cards with icon, name, type, status badge, toggle switch, scope badges, lag indicator, events/errors stats
-- **Table View**: Compact tabular view with all connector info and action buttons
+- **Management Header**: Compact Audit/User-style header card with title, search, one smart filter, view toggle, and Add Connector action in one horizontal desktop control row.
+- **Modern Visual Refresh**: Connectors inventory and Marketplace use a richer Command Center layout with gradient hero cards, compact KPI cards, marketplace statistics, category pills, modern connector product cards, and a full connector product-detail page.
+- **KPI Strip**: 5 compact cards showing Total, Healthy, Down, Disabled connectors and Events 24h.
+- **Smart Filter**: A single popover groups status (Healthy/Degraded/Down/Disabled), type, and scope filters as pill chips, replacing the three separate dropdowns.
+- **Header Controls**: Search, smart filter, table/card view toggle, and Add Connector live inside the page header for a shorter layout.
+- **Default Table View**: Modern card-wrapped inventory table with connector identity, health, enable toggle, scope, sync lag, events/errors, configure, and test actions.
+- **Card View**: Responsive compact-modern connector cards with icon, name, type, status badge, toggle switch, scope badges, lag indicator, and events/errors stats. Desktop card view renders **3 wider cards per row**, uses two-column detail chips to reduce card height, removes the old top accent line, and applies subtle status-tinted backgrounds (green healthy, amber degraded, red down, fully greyed-out disabled) while paginating at **10 connectors per page**; table view remains the full filtered inventory view.
 - **Add Connector Drawer**: Slide-in panel for adding new connectors:
-  - Type selection step (loads available plugins from API)
-  - Configuration form (dynamically generated from plugin schema)
-  - Test connection with visual feedback
-  - Secrets handling (encrypted at rest)
+  - The primary action opens an in-page **Connector Marketplace** rather than a compact modal.
+  - Marketplace loads available plugins from `GET /api/v1/connectors/types` and displays all connector cards with icon, category, availability, description, and details navigation.
+  - Each marketplace card opens a modern full connector detail page with hero, status, overview, capability cards, security/governance cards, installation scope, and Install/Configure/Uninstall actions.
+  - Current implemented connector creation types are **BMC Helix**, **AppDynamics**, **VMware vROps / Aria Operations**, **Microsoft SCOM**, and **EMCO Ping Monitor**. Lansweeper appears with an icon as a disabled/future connector card.
+  - Clicking **Install** on BMC Helix, AppDynamics, vROps, SCOM, or EMCO creates a `configurationStatus=PENDING` connector row for the active country/environment; **Uninstall** removes the installed row.
+  - Global/all-country admins can choose the target physical country (`KW`, `BH`, `EG`) on the connector detail page before installing. Country admins are locked to their signed-in country and cannot change the install country.
+  - Clicking an installed BMC/AppDynamics/vROps/SCOM/EMCO connector row/card or Configure opens the configuration drawer, where the operator enters endpoint settings, collection guardrails, owner team, notes, TLS/certificate mode, and write-only credentials. SCOM configuration includes management server, domain, WinRM port, HTTPS transport toggle, PowerShell authentication method, explicit **Disable certificate validation for this SCOM test** option, lookback window, and connection timeout. EMCO configuration includes SQL Server host/port, KFH and CCTV database names, encrypted KFH/CCTV SQL credential pairs, SQL encryption/trust-server-certificate toggles, lookback window, SQL login timeout, and query timeout.
+  - Connector Enablement uses state-based color cues: **Enabled** is green and **Disabled** is a polished neutral grey so operators can immediately distinguish active scheduled collection from intentionally paused/disabled collection without confusing it with warnings.
+  - Physical-country sessions are locked to their country; all-country admins with global-country permission may choose the target physical country so each country can maintain independent connector connection settings and alert collection.
+  - Credentials are sent only as `secretsPlain` or normalized server-side from known Basic Auth/access-key aliases, encrypted in the backend, stripped from responses, and shown only through the **Credential Status** row (`Encrypted credentials saved` / `Credentials not configured`). Password/access-key inputs intentionally render blank after Save.
 - **Connector Detail Drawer**: Slide-in panel for viewing/editing existing connectors:
+  - Header uses a compact modern connector identity block with status-aware icon, title, connector type, and an accessible modern close button.
   - Tab bar: OVERVIEW | CONFIGURATION | MAPPING | HEALTH | LOGS
   - Overview Tab: 2x2 KPI grid (Status, Events 24H, Errors 24H, Lag), Endpoints section with Active badge, Details section
-  - Configuration Tab: Editable form for connector settings
+  - Configuration Tab: Editable form for connector settings, including secure-default certificate verification. BMC, AppDynamics, and vROps show **Verify TLS Certificate Chain**; SCOM shows **Disable certificate validation for this SCOM test**, which maps to `verifySsl=false` and keeps HTTPS/5986 while passing `-SkipCACheck`, `-SkipCNCheck`, and `-SkipRevocationCheck` to PowerShell. Operators may use it only for governed dev/hybrid testing while PKI/CRL reachability is remediated; endpoint SSRF protections remain enforced and saved `verifySsl=false` values remain reflected after reload and during **Test Connection**.
+  - Save/test/update messages render as a slim modern feedback strip near the lower drawer content instead of crowding the top of the page.
   - Mapping Tab: Field mapping and severity mapping display
-  - Health Tab: Health checks status (DNS, Auth, API, Data Parsing) with Run Test button
+  - Health Tab: Health checks status (DNS, Auth, API/WinRM, Data Parsing) with Run Test button; failed tests display the backend-provided secret-safe Java/HTTP/PowerShell/PKIX message in the health result and toast.
   - Logs Tab: Recent connector activity logs
 
 Statuses:
@@ -224,10 +242,9 @@ API Integration:
 - `GET /connectors/types` - Get available plugin types and schemas
 
 Files:
-- `/pages/connectors/index.html` - React (UMD+Babel) page matching the KFH canvas; pulls React from `/vendor/js` and uses shared KFH theme/base CSS
-- `/pages/connectors/script.js` - Shared connector utilities (mock data generation, filters, validation) used by the page and Node tests
-- `/pages/connectors/connector-sidebar.js` - (legacy) drawer component hooks; retained only if older flows are reused
-- `/pages/connectors/__tests__/connectors.spec.js` - Frontend utility tests
+- `src/main/resources/static/pages/connectors/connectors.html` - Static route redirect into `index.html#connectors`.
+- `src/main/resources/static/pages/connectors/connectors.js` - SPA module for connector loading, filtering, table/card rendering, drawer/modal actions, test runs, and CRUD calls.
+- `src/main/resources/static/pages/connectors/connectors.css` - Connectors-specific styling, including the modern management-page override layer.
 
 ### Admin: Schedules
 Purpose:
@@ -243,7 +260,14 @@ Purpose:
 ### Settings (Admin)
 Purpose:
 - Configure Azure OpenAI, databases, SharePoint, Teams webhooks.
+- Uses a focused admin layout: when `/settings` is open, the global main navigation automatically collapses into the compact icon rail while the Settings section menu stays visible beside the settings content. Operators can use the normal sidebar collapse control if they need to expand the main navigation.
 - Enforce tenant-scoped loads, RBAC for edits (`settings:write`), audit on save, and outbox-queued tests.
+- Test actions store/display the backend test result message. Unsupported notification tests show an explicit “no Teams webhook call was sent” failure instead of a generic toast until a dedicated notifier adapter is implemented.
+- Settings cards and connector rows must remain visually static during **Test Connection**, **Test Only**, **Test & Save**, **Update**, and auto-save re-renders. Status/result areas reserve space, action buttons keep stable widths, and Settings-scoped hover/animation transforms are disabled so cards do not jump, move up/down, or vibrate while operators work.
+- The **Servers & Index** Add/Edit popup is type-aware: **Redis Server** shows host/IP, port, ACL username, password, database, and TLS fields; **Kafka Server** shows bootstrap servers, security protocol, SASL mechanism, username/principal, password/secret, client ID, and optional truststore/CA path; **Index Storage Server** shows provider, path/URI, bucket/share, region, and optional access credentials.
+- Database and infrastructure provider popups include **Test Connection** beside **Add/Update Connector**. Popup tests use the current unsaved draft and show a reserved pass/fail/latency message without closing the modal or persisting changes; saved rows keep their row-level **Test Connection** action for Neo4j, Redis, Kafka, and Index Storage providers.
+- Database, SharePoint, and **Servers & Index** provider popups include a multi-select **Countries** field. Selecting **KFH Kuwait** stores/uses the provider for Kuwait scope; selecting **All countries** marks the row as group-wide metadata for KW, BH, and EG. Connector rows display the technical type/provider plus the selected country scope so NOC operators can distinguish `KW Kafka` from all-country Kafka metadata.
+- Settings add/edit popups stay open until the operator uses an explicit close control such as **Cancel** or the modal **X** button. Clicking outside the popup on the blurred backdrop is absorbed by the Settings modal overlay and must not dismiss the dialog, which protects in-progress configuration edits for tenant- and country-scoped settings.
 Links:
 - Affects ingestion/automation across modules; degraded mode shows masked placeholders when backend unavailable.
 

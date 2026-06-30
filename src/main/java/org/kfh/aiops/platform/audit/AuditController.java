@@ -32,7 +32,7 @@ public class AuditController {
 
     @GetMapping("/export")
     public ResponseEntity<String> export(TenantContext ctx) {
-        ctx.requirePermission("AUDIT_READ");
+        auditQueryService.requireReadAccess(ctx);
         return ResponseEntity.ok("audit export placeholder for correlation " + ctx.correlationId());
     }
 }

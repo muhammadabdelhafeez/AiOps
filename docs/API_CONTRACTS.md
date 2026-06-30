@@ -1,5 +1,8 @@
 # API Contracts (v1)
 
+> **Architecture authority:** [`docs/CAUSAL_PIPELINE.md`](./CAUSAL_PIPELINE.md).
+> Endpoints under `/api/v1/rca/**` and `/api/v1/ai/**` accept and return **only the `EvidencePack` / RCA result contracts** defined in CAUSAL_PIPELINE §6–§7. They never accept raw telemetry payloads. They never return secrets, tokens, credentials, or raw log lines. AI calls are dispatched asynchronously through the outbox (§4 OUTBOX); endpoints return `202 Accepted` + `correlationId` for AI-bound work.
+
 ## Global rules
 ### Runtime scope
 - Full backend mode exposes the `/api/**` contracts below and requires tenant/user headers, RBAC enforcement, tenant-scoped persistence, and audit logging.
@@ -21,7 +24,7 @@ If missing: 400/401 (implementation choice) with standard error response.
 
 ### Authentication
 - POST `/api/v1/auth/sign-in` does not require tenant headers because it resolves the persisted identity profile by username, password, country, and environment.
-- Successful sign-in returns the user's `tenantId`, `userId`, `countryCode`, `environment`, role, and permission set. The frontend uses those values for subsequent tenant/country-aware API headers. `GLOBAL_ADMIN` users may sign in with `countryCode: "ALL"` when their identity profile is provisioned with all-country scope.
+- Successful sign-in returns the user's `tenantId`, `userId`, `countryCode`, `environment`, role, and permission set. The frontend uses those values for subsequent tenant/country-aware API headers and stores the sign-in `countryCode` as the immutable home country for the browser session. `GLOBAL_ADMIN` users may sign in with `countryCode: "ALL"` when their identity profile is provisioned with all-country scope. `COUNTRY_ADMIN` users receive `AUDIT_READ` but not `COUNTRY_GLOBAL_VIEW`, so audit reads remain limited to their signed-in country/environment.
 - In datasource-backed mode, User Management creates local identity users in PostgreSQL (`identity.users`, `identity.user_roles`, `identity.role_permissions`) with BCrypt password hashes. Passwords are never returned by APIs.
 - Startup bootstrap ensures the configured tenant/default roles exist. When `KFH_BOOTSTRAP_ADMIN_PASSWORD` is supplied through environment/deployment configuration, it creates the configured bootstrap admin if missing or reactivates/resets that configured bootstrap admin if it already exists with a different stored password hash.
 - The deprecated `local` profile no longer disables datasource/JDBC/Flyway; missing PostgreSQL should fail startup instead of serving memory-only login users.
@@ -45,7 +48,7 @@ If missing: 400/401 (implementation choice) with standard error response.
 - All endpoints require `X-Tenant-Id` and `X-User-Id` UUID headers through `TenantContext`; `X-Correlation-Id` is propagated when provided.
 - Service methods enforce RBAC permission checks. Until enterprise identity/JWT is wired, `TenantContextResolver` grants scaffold requests `*` permissions unless an `X-Permissions` header is supplied.
 - Write endpoints call `AuditService.recordWrite(...)`; the active adapter persists secret-safe activity rows to PostgreSQL `identity.audit_log` and also emits structured logs. The audit activity view is API-backed only and must not include seeded/demo audit rows. Authentication success/failure, bootstrap identity provisioning, settings update/test, and normal operator write actions append visible audit activity with secret-safe metadata only.
-- The static shell supports a sidebar KFH Group country switcher. Switching country updates `X-Tenant-Id`, `X-User-Id`, `X-Country-Code`, and `X-Environment` headers before reloading page data; backend services still enforce country access and deny cross-country reads without `COUNTRY_GLOBAL_VIEW` or `*`.
+- The static shell supports a sidebar KFH Group country switcher only when the signed-in home country is `ALL` and the session has `COUNTRY_GLOBAL_VIEW` or `*`. Switching between `ALL`, `KW`, `BH`, and `EG` changes only the active country header; it preserves the authenticated `tenantId` and `userId` so all physical-country data remains under the same tenant boundary. Physical-country users see a locked Platform + assigned-country scope with no dropdown options for other countries; backend services still enforce country access and deny cross-country reads without `COUNTRY_GLOBAL_VIEW` or `*`.
 
 ### Auth
 - Implemented path prefix: `/api/v1/auth`
@@ -60,9 +63,9 @@ If missing: 400/401 (implementation choice) with standard error response.
     }
     ```
   - Response body includes: `tenantId`, `userId`, `username`, `displayName`, `email`, `countryCode`, `countryName`, `countryGroupName`, `environment`, `roleId`, `userRole`, `permissions`, `authenticatedAt`.
-  - Invalid credentials, disabled users, or wrong country/environment return an authorization error. All-country sign-in uses `countryCode: "ALL"` and requires a matching all-country identity row.
+  - Invalid credentials, disabled users, or wrong country/environment return an authorization error. All-country database identities can sign in with `countryCode: "ALL"`; when a physical country is submitted and no exact physical-country identity matches, the backend also checks an `ALL`-scoped identity row and returns `countryCode: "ALL"` on success. The configured bootstrap admin also accepts physical country selections when its configured country is `ALL`, but its successful response returns `countryCode: "ALL"` so the SPA opens the all-country command scope instead of locking to the selected physical country.
   - Passwords are checked against the stored BCrypt hash and are not returned.
-  - Rejected sign-ins keep the client error generic, but backend logs include secret-safe counters for username, country/environment scope, active status, and password-hash readiness to support operations troubleshooting.
+  - Rejected sign-ins keep the client error generic, but backend logs include secret-safe bootstrap match flags plus database counters for username, country/environment scope, active status, and password-hash readiness to support operations troubleshooting. Logs never include submitted or configured passwords.
     - Sign-in first matches the request against the configured bootstrap admin (`kfh.identity.bootstrap.*`), then uses the mandatory database-backed lookup for persisted users.
 
 ### Users / Identity
@@ -86,6 +89,7 @@ If missing: 400/401 (implementation choice) with standard error response.
     }
     ```
   - The UI exposes only `Admin`, `Operator`, and `Viewer`. The backend canonicalizes submitted role aliases by country scope: `Admin` + physical country becomes `COUNTRY_ADMIN`; `Admin` + `ALL` becomes `GLOBAL_ADMIN`; `Operator` becomes `NOC_OPERATOR`; `Viewer` becomes `VIEWER`.
+    - User Management country filters and Create/Edit User country selectors are visible only for sessions whose home country is `ALL` and whose permissions include `COUNTRY_GLOBAL_VIEW` or `*`. Physical-country users see a read-only Platform + assigned-country label and cannot select or submit other countries from the UI.
   - Country and environment come from the tenant context headers, not from user payload fields. A global identity admin may use `X-Country-Code: ALL` to create an all-country sign-in user; service-layer authorization requires `*` or `COUNTRY_GLOBAL_VIEW` in addition to `IDENTITY_WRITE`.
   - Missing required identity fields such as `attributes.username` or `attributes.password` return a validation problem response. Duplicate usernames in the same tenant/country scope return `409 CONFLICT`; database integrity conflicts return a safe problem response and never include SQL details or password data. Framework status exceptions are preserved so expected operational failures do not collapse into generic `500 INTERNAL_ERROR` responses.
 - PATCH `/api/v1/users/{id}/toggle`
@@ -196,6 +200,54 @@ If missing: 400/401 (implementation choice) with standard error response.
 - GET `/api/v1/reports/artifacts/{artifactId}/download`
 - POST `/api/v1/reports/generate`
 
+### Settings
+- Implemented path prefix: `/api/v1/settings`
+- GET `/api/v1/settings`
+  - Requires tenant/user/country/environment headers. The backend loads permanent metadata from `config.integration_settings` for `(tenant_id, ALL, ALL)`, `(tenant_id, ALL, environment)`, `(tenant_id, countryCode, ALL)`, and `(tenant_id, countryCode, environment)` in fallback-to-specific order.
+  - Country-scoped list rows are filtered again at response time using the active request country. `azureOpenAI.integrations[]`, `databases.connections[]`, `sharepoint.connections[]`, and `infrastructure.connections[]` return only rows whose `countryCodes`/`countryCode` contain the active physical country or `ALL`, so switching the sidebar country shows only the providers/connectors allowed for that country while all-country rows remain visible everywhere.
+  - When multiple scope layers exist for the same section key, list-backed payloads are reloaded with deterministic replacement semantics instead of additive merge semantics. This prevents stale AI provider rows from surviving an overwrite and ensures the latest saved provider list is what the UI receives after Tomcat restart.
+  - The SPA now fails closed when browser session storage does not contain valid UUID `tenantId` and `userId` values: it does not intentionally send malformed Settings requests and instead prompts the operator to sign in again.
+  - The backend load query selects only `WHERE tenant_id = ?` and performs scope filtering and least-specific-first ordering in Java (2026-06-29). The earlier prepared statement bound 5 arguments against 7 `?` placeholders, which caused PgJDBC to throw and `SettingsService.loadMetadataSettings` to silently return an empty map (`settings metadata load unavailable … errorType=DataIntegrityViolationException`), so the UI rendered blank even when `config.integration_settings` already contained the saved rows. If that WARN ever returns, treat it as a regression of this fix rather than a configuration issue.
+- PUT `/api/v1/settings`
+  - Requires `SETTINGS_WRITE` and writes a secret-safe audit entry.
+  - Metadata-owned sections are permanently upserted into `config.integration_settings` using `(tenant_id, country_code, environment, key)`. Use country `ALL` for group-wide Settings and physical country codes such as `KW`, `BH`, or `EG` for country-specific Settings.
+  - AI provider metadata is stored under `azureOpenAI.integrations[]` with `countryCodes`/`countryCode` scope and masked API key responses only.
+  - Database, SharePoint, and infrastructure metadata rows also support `countryCodes`/`countryCode`; examples include Kafka for Kuwait only (`countryCodes:["KW"]`) or all countries (`countryCodes:["ALL"]`). Submitted row `secret` values are encrypted server-side into `secretSecret`, masked as `••••••••••••` in responses, and reused for masked Test Connection requests.
+  - Persistence scope follows the row payload, not only the current browser country header: when `azureOpenAI.integrations[]`, `databases.connections[]`, `sharepoint.connections[]`, or `infrastructure.connections[]` declare `countryCodes:["ALL"]`, the backend stores that section under `ALL` scope so it still reloads after a web-server restart for any matching country session. When rows declare physical countries such as `KW` or `BH`, the backend stores the section under those physical scopes so the same provider remains visible after restart only for those countries.
+  - Saving a scoped list-backed section replaces the previously persisted list for that same scope/key combination. Operators can edit or replace AI provider rows without leaving orphaned rows that disappear or conflict after restart.
+  - When persistence fails, the backend returns a problem response such as `SETTINGS_PERSISTENCE_UNAVAILABLE` or `SETTINGS_PERSISTENCE_FAILED`; the Settings UI now surfaces that backend message directly in the popup/toast instead of replacing it with a generic save error.
+  - `SETTINGS_PERSISTENCE_UNAVAILABLE` must not occur in a normally provisioned deployment: the `JdbcSettingsMetadataStore` `@Repository` is always wired when the primary PostgreSQL datasource is configured. The earlier `@ConditionalOnBean(JdbcTemplate.class)` guard was removed (2026-06-29) because it was evaluated during component scan, before Spring Boot's `JdbcTemplate` auto-configuration, and silently disabled Settings persistence even with PostgreSQL fully configured. If this code ever returns again, verify the primary datasource and Flyway migrations (including `V12__country_environment_scoped_integration_settings.sql`) before any other action.
+  - If the browser session is missing valid UUID tenant/user context, the SPA blocks the write locally and shows a re-authentication message instead of repeatedly issuing malformed `PUT /api/v1/settings` calls.
+- POST `/api/v1/settings/{section}/test`
+  - Requires `SETTINGS_WRITE` and writes a secret-safe audit entry.
+  - For `section` beginning with `azureOpenAI`, the backend validates Azure endpoint allowlists/SSRF controls and returns a sanitized test result with `correlationId`.
+  - For `section=neo4j` or `databases.connections.{index}` with `type=NEO4J`, the backend runs a bounded Neo4j Java Driver readiness probe and never returns the submitted password.
+  - The `neo4j` payload now also carries `countryCode` and `countryCodes` (one of `ALL`, `KW`, `BH`, `EG`). `PUT /api/v1/settings` persists the Neo4j row under that scope in `config.integration_settings` using the same `(tenant_id, country_code, environment, key)` unique row as `azureOpenAI.integrations[]` and `databases.connections[]`. A row saved with `countryCodes:["ALL"]` is reloaded for any country session for the same tenant/environment; `countryCodes:["KW"]` is reloaded only for Kuwait sessions (Bahrain / Egypt fall back to startup defaults unless an `ALL` row is also present).
+  - The Settings → Databases popups (Add/Edit Database, Add/Edit SharePoint, Add/Edit Server, and Edit Neo4j Topology Graph) now expose a `Cancel | Test Only | Test & Save` (or `Test & Update` when editing) button row instead of a separate save button. `Test & Save`/`Test & Update` invokes the matching `POST /api/v1/settings/{section}/test` call and only commits the row into the section list (followed by the normal debounced `PUT /api/v1/settings` autosave) when the test returns `Pass`. A `Fail` keeps the popup open with the secret-safe failure message rendered in the inline test status banner.
+  - For `section=infrastructure.connections.{index}` or draft preview payloads with `type=REDIS`, `KAFKA`, or `INDEX_STORAGE`, the backend returns a secret-safe result containing `section`, `status`, `pass`, `latencyMs`, `message`, `checkedEndpoint`, `type`, `testedAt`, and `correlationId`.
+    - `REDIS`: requires host/IP plus optional port/ACL fields; blocks URL syntax, loopback, link-local, multicast, and metadata targets before running bounded RESP `AUTH`/`PING`.
+    - `KAFKA`: requires comma-separated `host:port` bootstrap entries; blocks URL syntax, loopback, link-local, multicast, and metadata targets before running a bounded Kafka AdminClient metadata probe. If the client sends the masked secret placeholder for a saved infrastructure row, the backend decrypts the stored `secretSecret` only for the test call and never returns it.
+    - `INDEX_STORAGE`: for `LOCAL`/`NFS`, requires an absolute non-traversal path and checks directory readability/writability by the application process; for `S3`/`AZURE_BLOB`, validates allowed pointer schemes only in this phase and guards HTTPS metadata/loopback/link-local targets without performing a cloud object-storage call.
+  - The Settings UI exposes only operational GPT 5.4 integration fields: provider/model labels, country scope, endpoint URL, deployment/model name, API key, token controls, timeout, and enabled state. `purpose=GPT`, `authMode=API_KEY`, and `apiStyle=RESPONSES` are fixed internally and are not selectable controls in the popup.
+  - Azure OpenAI GPT 5.4 ready connector fields:
+    ```json
+    {
+      "provider": "AZURE_OPENAI",
+      "purpose": "GPT",
+      "modelName": "gpt-5.4",
+      "deployment": "gpt-5.4",
+      "endpoint": "https://<resource>.services.ai.azure.com/openai/v1",
+      "authMode": "API_KEY",
+      "apiStyle": "RESPONSES",
+      "apiKey": "not-returned-or-logged",
+      "countryCodes": ["ALL"],
+      "maxOutputTokens": 4096,
+      "monthlyTokenLimit": 1000000,
+      "timeoutSeconds": 5
+    }
+    ```
+  - Submitted API keys are encrypted server-side, masked in responses, omitted from audit/test details, and used only for the bounded Azure OpenAI Responses API readiness test. For GPT 5.4 / Azure AI Foundry `apiStyle=RESPONSES` tests, the endpoint may be the Azure portal resource root (`https://<resource>.cognitiveservices.azure.com/`) or the OpenAI v1 base (`https://<resource>.services.ai.azure.com/openai/v1`); root endpoints are normalized server-side to `/openai/v1/responses` and existing `/openai/v1` endpoints append `/responses` exactly once. The backend first sends the Azure `api-key` header and, if Azure returns `401 Unauthorized`, retries once with OpenAI v1-compatible `Authorization: Bearer <api-key>` authentication. Token limit fields are metadata for governed usage controls and are bounded by the frontend before save.
+
 ### Admin: Connectors
 - GET /api/v1/connectors — List connectors with optional filters
   - Query params: type, enabled, search, page, size, sort
@@ -209,24 +261,30 @@ If missing: 400/401 (implementation choice) with standard error response.
 - POST /api/v1/connectors — Create new connector
   - Body: { type, name, enabled, config, secretsPlain }
   - Validates: config via plugin, SSRF for URLs
+  - Persistence: writes to PostgreSQL `config.connectors`; if connector persistence is unavailable, returns `503 application/problem+json` with code `CONNECTOR_PERSISTENCE_UNAVAILABLE` instead of creating a volatile memory-only connector
   - Audit: CONNECTOR_CREATED
   - Outbox: CONNECTOR_CREATED event
   - Permission: connectors:edit
   
 - PUT /api/v1/connectors/{connectorId} — Update connector
   - Body: { name?, enabled?, config?, secretsPlain? }
+  - SCOM uses the existing boolean config field `verifySsl`; `false` means a governed test-only WinRM certificate-validation bypass while keeping HTTPS/5986 transport and using PowerShell `SkipCACheck`, `SkipCNCheck`, and `SkipRevocationCheck`.
+  - Persistence: updates PostgreSQL `config.connectors`; if connector persistence is unavailable, returns `503 application/problem+json` with code `CONNECTOR_PERSISTENCE_UNAVAILABLE`
   - Audit: CONNECTOR_UPDATED
   - Outbox: CONNECTOR_UPDATED event
   - Permission: connectors:edit
   
 - DELETE /api/v1/connectors/{connectorId} — Delete connector
   - Cascades: secrets, runs, logs
+  - Persistence: deletes from PostgreSQL `config.connectors`; if connector persistence is unavailable, returns `503 application/problem+json` with code `CONNECTOR_PERSISTENCE_UNAVAILABLE`
   - Audit: CONNECTOR_DELETED
   - Outbox: CONNECTOR_DELETED event
   - Permission: connectors:edit
   
 - POST /api/v1/connectors/{connectorId}/enable — Enable connector
 - POST /api/v1/connectors/{connectorId}/disable — Disable connector
+  - Implemented Phase 1 toggle path: `PATCH /api/v1/connectors/{connectorId}/toggle` with body `{ "enabled": true|false }`
+  - Persistence: updates PostgreSQL `config.connectors`; if connector persistence is unavailable, returns `503 application/problem+json` with code `CONNECTOR_PERSISTENCE_UNAVAILABLE`
   - Audit: CONNECTOR_TOGGLED
   - Outbox: CONNECTOR_TOGGLED event
   - Permission: connectors:edit
@@ -266,12 +324,48 @@ If missing: 400/401 (implementation choice) with standard error response.
 
 Implemented frontend-aligned connector endpoints in this scaffold:
 - GET `/api/v1/connectors?page=&size=`
+  - With `X-Country-Code: ALL` and `COUNTRY_GLOBAL_VIEW` / `*`, returns all connectors for the current tenant/environment across physical country configs (`KW`, `BH`, `EG`). With a physical country header, returns only that country.
 - GET `/api/v1/connectors/{id}`
+- GET `/api/v1/connectors/types`
+  - Requires `CONNECTOR_READ`.
+  - Returns connector type metadata for the Add Connector picker. `BMC`, `APPDYNAMICS`, `VROPS`, `SCOM`, and `EMCO` are enabled in this phase; Lansweeper is returned as a visible future connector card so operators can see the roadmap but cannot create it yet.
 - POST `/api/v1/connectors`
+  - Requires `CONNECTOR_WRITE`.
+  - Current implemented create types: `BMC` / BMC Helix, `APPDYNAMICS` / AppDynamics, `VROPS` / VMware vROps / Aria Operations, `SCOM` / Microsoft SCOM, and `EMCO` / EMCO Ping Monitor.
+  - Request uses `UiWriteRequest` with BMC attributes: `pluginType=BMC`, `countryCode`, `environment`, `baseUrl`, `loginEndpoint`, `eventsEndpoint`, `minutesBack`, `pageSize`, `maxEvents`, `timeoutSeconds`, `verifySsl`, `intervalMin`, `ownerTeam`, `notes`, and `secretsPlain.accessKey` / `secretsPlain.accessSecretKey`.
+  - Request uses `UiWriteRequest` with AppDynamics attributes: `pluginType=APPDYNAMICS`, `countryCode`, `environment`, `controllerUrl`, `durationMinutes`, `timeoutSeconds`, `verifySsl`, `maxWorkers`, `fetchErrors`, `fetchViolations`, `fetchSlowTransactions`, `intervalMin`, `ownerTeam`, `notes`, and `secretsPlain.username` / `secretsPlain.password` for Basic Auth.
+  - Request uses `UiWriteRequest` with vROps attributes: `pluginType=VROPS`, `countryCode`, `environment`, `host` or HTTPS `baseUrl` ending with `/suite-api/api`, `authSource`, `hours`, `pageSize`, `maxPages`, `maxWorkers`, `timeoutSeconds`, `verifySsl`, `intervalMin`, `ownerTeam`, `notes`, and `secretsPlain.username` / `secretsPlain.password`.
+  - Request uses `UiWriteRequest` with SCOM attributes: `pluginType=SCOM`, `countryCode`, `environment`, `managementServer` or WinRM `baseUrl` ending with `/wsman`, `domain`, `winrmPort`, `useHttps`, `verifySsl`, `authMethod`, `hoursBack`, `connectionTimeoutSeconds`, `intervalMin`, `ownerTeam`, `notes`, and `secretsPlain.username` / `secretsPlain.password` for the WinRM/PowerShell service account.
+  - Request uses `UiWriteRequest` with EMCO attributes: `pluginType=EMCO`, `countryCode`, `environment`, `sqlServer`, `sqlPort`, `kfhDatabase`, `cctvDatabase`, `minutesBack`, `connectionTimeoutSeconds`, `queryTimeoutSeconds`, `encrypt`, `trustServerCertificate`, `intervalMin`, `ownerTeam`, `notes`, and `secretsPlain.kfhUsername` / `secretsPlain.kfhPassword` / `secretsPlain.cctvUsername` / `secretsPlain.cctvPassword` for the two SQL Server EMCO domains.
+  - Compatibility rule: the service also normalizes known credential aliases submitted as top-level attributes (`accessKey`/`accessSecretKey` for BMC, `username`/`password` for AppDynamics Basic Auth, vROps, and SCOM, and `kfhUsername`/`kfhPassword`/`cctvUsername`/`cctvPassword` for EMCO) into `secretsPlain` before validation/persistence. They are encrypted into `config.connector_secrets.secret_enc` and are not stored in `config.connectors.config` or returned to the browser.
+  - Install-only marketplace flow may create an enabled placeholder using `attributes.installOnly=true` with `pluginType`, `countryCode`, and `environment` only. The response has `enabled=true`, `configurationStatus=PENDING`, and `secretsMask=not_configured`; operators then open Configure to enter BMC/AppDynamics/vROps/SCOM/EMCO connection details before live collection can run.
+  - Connector country must be a physical enabled country (`KW`, `BH`, `EG`); all-country sessions may select a physical country only when they have `COUNTRY_GLOBAL_VIEW` or `*`.
+  - BMC URL validation is HTTPS-only, rejects user-info/query/fragment/API path on `baseUrl`, rejects unsafe relative endpoint paths, and supports public or private KFH hybrid endpoints. Localhost, loopback, link-local, multicast, and metadata targets remain blocked for SSRF protection.
+  - AppDynamics URL validation is HTTPS-only, requires `controllerUrl` to end with `/controller`, rejects user-info/query/fragment/API paths beyond `/controller`, supports public or private KFH hybrid Controller hosts/IPs, and requires at least one fetch family to remain enabled. Localhost, loopback, link-local, multicast, and metadata targets remain blocked.
+  - `verifySsl` defaults to `true` for BMC, AppDynamics, vROps, and SCOM. When explicitly set to `false`, live tests keep endpoint SSRF protections but skip remote certificate-chain validation only for the relevant connector transport to support governed dev/hybrid testing while the corporate CA is not yet imported into the JVM/WinRM truststore.
+  - vROps URL validation is HTTPS-only, accepts a hostname/IP or HTTPS URL ending with `/suite-api/api`, rejects user-info/query/fragment and API paths beyond `/suite-api/api`, and supports public or private KFH hybrid endpoints. Localhost, loopback, link-local, multicast, and metadata targets remain blocked.
+  - SCOM WinRM validation accepts a management server FQDN/IP or `http(s)://host:port/wsman`, rejects credentials/query/fragment and paths beyond `/wsman`, supports public or private KFH hybrid management servers, and blocks localhost, loopback, link-local, multicast, and metadata targets.
+  - EMCO SQL Server validation accepts a SQL Server host/IP and optional `host:port`, rejects JDBC/HTTP URLs, user-info, paths, query strings, fragments, localhost, loopback, link-local, multicast, and metadata targets, bounds SQL login/query timeouts, and allows only safe database-name characters before constructing JDBC URLs server-side.
 - PUT `/api/v1/connectors/{id}`
+  - BMC, AppDynamics, vROps, SCOM, and EMCO updates may change non-secret configuration values before or after a successful connection test. A `PASS` result records runtime validation only; it does not lock connector endpoint, schedule, ownership, or credential rotation updates.
+  - Secrets are write-only and never returned. To keep existing encrypted credentials, omit `secretsPlain`/leave credential fields blank; to rotate BMC credentials, submit non-blank `secretsPlain.accessKey` and/or `secretsPlain.accessSecretKey`; to rotate AppDynamics Basic Auth, submit non-blank `secretsPlain.username` and/or `secretsPlain.password`; to rotate vROps or SCOM credentials, submit both `secretsPlain.username` and `secretsPlain.password` together; to rotate EMCO credentials, submit KFH username/password together and/or CCTV username/password together. Submitted secrets are validated, encrypted server-side, and stripped from the response.
+  - Submitted secret rotation preserves any existing encrypted secret keys that were not resubmitted without decrypting those old entries. This allows operators to recover after a platform master-key change by re-entering affected connector credentials instead of being blocked by old encrypted payloads.
 - DELETE `/api/v1/connectors/{id}`
 - PATCH `/api/v1/connectors/{id}/toggle` with `{ "enabled": true|false }`
 - POST `/api/v1/connectors/{id}/test`
+  - Performs a live BMC Helix readiness test for BMC connectors using the saved connector configuration and encrypted server-side credentials: HTTPS base URL validation, access-key login at `loginEndpoint`, `json_web_token` extraction, and an events `msearch` readiness probe at `eventsEndpoint`.
+  - Performs a live AppDynamics readiness test for AppDynamics connectors using the saved controller URL and encrypted Basic Auth credentials: HTTPS controller URL validation and `GET /rest/applications?output=JSON` application discovery.
+  - Performs a live vROps readiness test for VMware vROps / Aria Operations connectors using the saved host/base URL and encrypted username/password credentials: HTTPS suite API validation, `POST /suite-api/api/auth/token/acquire` token acquisition using `authSource`, and `GET /suite-api/api/alerts?page=0&pageSize=1&_no_links=true` API probe with `Authorization: vRealizeOpsToken <token>`.
+  - Performs a live SCOM readiness test for Microsoft SCOM connectors using the saved WinRM endpoint and encrypted username/password credentials: local `powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass`, secret values passed only through child-process environment variables, `Invoke-Command` to the SCOM management server, `Import-Module OperationsManager`, `New-SCOMManagementGroupConnection`, and a bounded `Get-SCOMAlert | Select-Object -First 1` probe that validates the required SCOM field shape without returning raw alert payloads.
+  - Performs a live EMCO readiness test for EMCO connectors using saved SQL Server host/port, KFH and CCTV database names, and encrypted KFH/CCTV SQL credentials: JDBC URL construction with `encrypt`, `trustServerCertificate`, and `loginTimeout`, bounded `PreparedStatement#setQueryTimeout`, a KFH `db_owner.tb_host_events`/`db_owner.tb_hosts` probe, and a CCTV `dbo.tb_host_events`/`dbo.tb_hosts` probe. Probe results report only pass/fail and whether recent matching rows exist; raw EMCO rows are not returned.
+  - Returns a secret-safe result containing `pass`, `readyToCollect`, `status`, `latencyMs`, `message`, `checkedEndpoint`, `verifySsl` or connector-specific transport flags, `testedAt`, `correlationId`, and step details. Failed live tests include the sanitized Java/HTTP/PowerShell/JDBC failure reason when available; AppDynamics HTTP error bodies are compacted and redacted before being included. PKIX/certificate-chain failures add truststore guidance. Plain access keys, access secret keys, usernames, passwords, Basic Auth values, bearer tokens, vROps tokens, authorization headers, SQL credential data, PowerShell credential data, and raw response bodies are never returned.
+  - If saved connector credentials cannot be decrypted because the current `KFH_AIOPS_SECRET_KEY` / deployment secret file does not match the key used when the credentials were saved, the test records `pass=false`, `status=FAIL`, `errorCode=SECRET_DECRYPTION_FAILED`, and a recovery message instructing operators to restore the original key or re-enter all credential fields for that connector. The live source-system tester is not called with empty credentials.
+  - Persists a secret-safe health snapshot: `PASS` maps enabled connectors to `health=HEALTHY`; `FAIL` maps enabled connectors to `health=DOWN` so the connector inventory immediately shows warning/down state instead of only the enabled collection flag.
+- POST `/api/v1/connectors/heartbeat`
+  - Requires `CONNECTOR_TEST`.
+  - Runs the same live readiness test for every enabled connector visible in the current tenant/country/environment scope.
+  - Returns `checkedAt`, `correlationId`, `totalEnabled`, `healthy`, `down`, and per-connector secret-safe test results.
+  - Disabled connectors are skipped. Failed heartbeat results persist `lastTestStatus=FAIL` and `health=DOWN`; successful results persist `lastTestStatus=PASS` and `health=HEALTHY`.
 - GET `/api/v1/connectors/{id}/logs`
 - Secret rule: `secretsPlain` is stripped and never returned; responses expose `secretsMask` only.
 
@@ -319,14 +413,57 @@ Implemented frontend-aligned connector endpoints in this scaffold:
 ### Admin: Settings
 - Implemented path prefix: `/api/v1/settings`
 - GET `/api/v1/settings`
+  - Requires tenant/user/country/environment headers. The backend loads permanent metadata from `config.integration_settings` for `(tenant_id, ALL, ALL)`, `(tenant_id, ALL, environment)`, `(tenant_id, countryCode, ALL)`, and `(tenant_id, countryCode, environment)` in fallback-to-specific order.
+  - Country-scoped list rows are filtered again at response time using the active request country. `azureOpenAI.integrations[]`, `databases.connections[]`, `sharepoint.connections[]`, and `infrastructure.connections[]` return only rows whose `countryCodes`/`countryCode` contain the active physical country or `ALL`, so switching the sidebar country shows only the providers/connectors allowed for that country while all-country rows remain visible everywhere.
+  - When multiple scope layers exist for the same section key, list-backed payloads are reloaded with deterministic replacement semantics instead of additive merge semantics. This prevents stale AI provider rows from surviving an overwrite and ensures the latest saved provider list is what the UI receives after Tomcat restart.
+  - The SPA now fails closed when browser session storage does not contain valid UUID `tenantId` and `userId` values: it does not intentionally send malformed Settings requests and instead prompts the operator to sign in again.
+  - The backend load query selects only `WHERE tenant_id = ?` and performs scope filtering and least-specific-first ordering in Java (2026-06-29). The earlier prepared statement bound 5 arguments against 7 `?` placeholders, which caused PgJDBC to throw and `SettingsService.loadMetadataSettings` to silently return an empty map (`settings metadata load unavailable … errorType=DataIntegrityViolationException`), so the UI rendered blank even when `config.integration_settings` already contained the saved rows. If that WARN ever returns, treat it as a regression of this fix rather than a configuration issue.
 - PUT `/api/v1/settings`
+  - Requires `SETTINGS_WRITE` and writes a secret-safe audit entry.
+  - Metadata-owned sections are permanently upserted into `config.integration_settings` using `(tenant_id, country_code, environment, key)`. Use country `ALL` for group-wide Settings and physical country codes such as `KW`, `BH`, or `EG` for country-specific Settings.
+  - AI provider metadata is stored under `azureOpenAI.integrations[]` with `countryCodes`/`countryCode` scope and masked API key responses only.
+  - Database, SharePoint, and infrastructure metadata rows also support `countryCodes`/`countryCode`; examples include Kafka for Kuwait only (`countryCodes:["KW"]`) or all countries (`countryCodes:["ALL"]`). Submitted row `secret` values are encrypted server-side into `secretSecret`, masked as `••••••••••••` in responses, and reused for masked Test Connection requests.
+  - Persistence scope follows the row payload, not only the current browser country header: when `azureOpenAI.integrations[]`, `databases.connections[]`, `sharepoint.connections[]`, or `infrastructure.connections[]` declare `countryCodes:["ALL"]`, the backend stores that section under `ALL` scope so it still reloads after a web-server restart for any matching country session. When rows declare physical countries such as `KW` or `BH`, the backend stores the section under those physical scopes so the same provider remains visible after restart only for those countries.
+  - Saving a scoped list-backed section replaces the previously persisted list for that same scope/key combination. Operators can edit or replace AI provider rows without leaving orphaned rows that disappear or conflict after restart.
+  - When persistence fails, the backend returns a problem response such as `SETTINGS_PERSISTENCE_UNAVAILABLE` or `SETTINGS_PERSISTENCE_FAILED`; the Settings UI now surfaces that backend message directly in the popup/toast instead of replacing it with a generic save error.
+  - `SETTINGS_PERSISTENCE_UNAVAILABLE` must not occur in a normally provisioned deployment: the `JdbcSettingsMetadataStore` `@Repository` is always wired when the primary PostgreSQL datasource is configured. The earlier `@ConditionalOnBean(JdbcTemplate.class)` guard was removed (2026-06-29) because it was evaluated during component scan, before Spring Boot's `JdbcTemplate` auto-configuration, and silently disabled Settings persistence even with PostgreSQL fully configured. If this code ever returns again, verify the primary datasource and Flyway migrations (including `V12__country_environment_scoped_integration_settings.sql`) before any other action.
+  - If the browser session is missing valid UUID tenant/user context, the SPA blocks the write locally and shows a re-authentication message instead of repeatedly issuing malformed `PUT /api/v1/settings` calls.
 - POST `/api/v1/settings/{section}/test`
+  - Requires `SETTINGS_WRITE` and writes a secret-safe audit entry.
+  - For `section` beginning with `azureOpenAI`, the backend validates Azure endpoint allowlists/SSRF controls and returns a sanitized test result with `correlationId`.
+  - For `section=neo4j` or `databases.connections.{index}` with `type=NEO4J`, the backend runs a bounded Neo4j Java Driver readiness probe and never returns the submitted password.
+  - The `neo4j` payload now also carries `countryCode` and `countryCodes` (one of `ALL`, `KW`, `BH`, `EG`). `PUT /api/v1/settings` persists the Neo4j row under that scope in `config.integration_settings` using the same `(tenant_id, country_code, environment, key)` unique row as `azureOpenAI.integrations[]` and `databases.connections[]`. A row saved with `countryCodes:["ALL"]` is reloaded for any country session for the same tenant/environment; `countryCodes:["KW"]` is reloaded only for Kuwait sessions (Bahrain / Egypt fall back to startup defaults unless an `ALL` row is also present).
+  - The Settings → Databases popups (Add/Edit Database, Add/Edit SharePoint, Add/Edit Server, and Edit Neo4j Topology Graph) now expose a `Cancel | Test Only | Test & Save` (or `Test & Update` when editing) button row instead of a separate save button. `Test & Save`/`Test & Update` invokes the matching `POST /api/v1/settings/{section}/test` call and only commits the row into the section list (followed by the normal debounced `PUT /api/v1/settings` autosave) when the test returns `Pass`. A `Fail` keeps the popup open with the secret-safe failure message rendered in the inline test status banner.
+  - For `section=infrastructure.connections.{index}` or draft preview payloads with `type=REDIS`, `KAFKA`, or `INDEX_STORAGE`, the backend returns a secret-safe result containing `section`, `status`, `pass`, `latencyMs`, `message`, `checkedEndpoint`, `type`, `testedAt`, and `correlationId`.
+    - `REDIS`: requires host/IP plus optional port/ACL fields; blocks URL syntax, loopback, link-local, multicast, and metadata targets before running bounded RESP `AUTH`/`PING`.
+    - `KAFKA`: requires comma-separated `host:port` bootstrap entries; blocks URL syntax, loopback, link-local, multicast, and metadata targets before running a bounded Kafka AdminClient metadata probe. If the client sends the masked secret placeholder for a saved infrastructure row, the backend decrypts the stored `secretSecret` only for the test call and never returns it.
+    - `INDEX_STORAGE`: for `LOCAL`/`NFS`, requires an absolute non-traversal path and checks directory readability/writability by the application process; for `S3`/`AZURE_BLOB`, validates allowed pointer schemes only in this phase and guards HTTPS metadata/loopback/link-local targets without performing a cloud object-storage call.
+  - The Settings UI exposes only operational GPT 5.4 integration fields: provider/model labels, country scope, endpoint URL, deployment/model name, API key, token controls, timeout, and enabled state. `purpose=GPT`, `authMode=API_KEY`, and `apiStyle=RESPONSES` are fixed internally and are not selectable controls in the popup.
+  - Azure OpenAI GPT 5.4 ready connector fields:
+    ```json
+    {
+      "provider": "AZURE_OPENAI",
+      "purpose": "GPT",
+      "modelName": "gpt-5.4",
+      "deployment": "gpt-5.4",
+      "endpoint": "https://<resource>.services.ai.azure.com/openai/v1",
+      "authMode": "API_KEY",
+      "apiStyle": "RESPONSES",
+      "apiKey": "not-returned-or-logged",
+      "countryCodes": ["ALL"],
+      "maxOutputTokens": 4096,
+      "monthlyTokenLimit": 1000000,
+      "timeoutSeconds": 5
+    }
+    ```
+  - Submitted API keys are encrypted server-side, masked in responses, omitted from audit/test details, and used only for the bounded Azure OpenAI Responses API readiness test. For GPT 5.4 / Azure AI Foundry `apiStyle=RESPONSES` tests, the endpoint may be the Azure portal resource root (`https://<resource>.cognitiveservices.azure.com/`) or the OpenAI v1 base (`https://<resource>.services.ai.azure.com/openai/v1`); root endpoints are normalized server-side to `/openai/v1/responses` and existing `/openai/v1` endpoints append `/responses` exactly once. The backend first sends the Azure `api-key` header and, if Azure returns `401 Unauthorized`, retries once with OpenAI v1-compatible `Authorization: Bearer <api-key>` authentication. Token limit fields are metadata for governed usage controls and are bounded by the frontend before save.
 
 ### Audit
 - Implemented path prefix: `/api/v1/audit`
 - GET `/api/v1/audit?page=&size=`
-- Returns tenant-scoped, country-aware application activity rows from PostgreSQL `identity.audit_log` first, with the Phase 1 in-memory read model used only as a degraded fallback if the persisted audit store is temporarily unavailable. Rows survive browser refresh and webserver restart when datasource-backed mode is running. `X-Country-Code: ALL` requires `COUNTRY_GLOBAL_VIEW` or `*`; physical country scopes return only matching country/environment activity.
-- Activity rows include successful/failed sign-ins (`LOGIN_SUCCEEDED`, `LOGIN_FAILED`), settings changes/tests, identity/user actions, connector/schedule/application/inventory/report/incident/alert writes, and bootstrap admin provisioning when it changes state. Passwords, tokens, API keys, connector secrets, and raw request bodies must not be returned.
+- Returns tenant-scoped, country-aware application activity rows from PostgreSQL `identity.audit_log` first, with the Phase 1 in-memory read model used only as a degraded fallback if the persisted audit store is temporarily unavailable. Rows survive browser refresh and webserver restart when datasource-backed mode is running. `COUNTRY_ADMIN` with `AUDIT_READ` can read only matching country/environment activity and the UI keeps their country scope locked; `X-Country-Code: ALL` requires `COUNTRY_GLOBAL_VIEW` or `*` and returns all countries for the tenant/environment. Connector lifecycle activity includes install/create, configure/update, enable/disable, uninstall, test requested, test succeeded/failed, heartbeat requested, and per-connector heartbeat succeeded/failed rows with secret-safe connector metadata only. `actor_user_id` is stored as an immutable audit reference and display fields resolve to the matching user when available or `System` when the actor row is unavailable, so audit persistence is not blocked by identity cleanup or synthetic/system actors.
+- Activity rows include successful/failed sign-ins (`LOGIN_SUCCEEDED`, `LOGIN_FAILED`), settings changes/tests, identity/user actions, connector/schedule/application/inventory/report/incident/alert writes, and bootstrap admin provisioning when it changes state. Rows may include secret-safe display fields such as `actorName`, `actorUsername`, `targetName`, `targetType`, `targetId`, `message`, `result`, and `severity` so the UI can render meaningful activity instead of UUID-only storage identifiers; login rows use `targetId=AUTHENTICATION` for display while retaining tenant/country/environment/correlation scope. Passwords, tokens, API keys, connector secrets, and raw request bodies must not be returned.
 - GET `/api/v1/audit/{id}`
 - Detail reads are scoped by tenant, country, and environment; unauthorized or out-of-scope IDs return not found.
 - GET `/api/v1/audit/export`
+- Export uses the same `AUDIT_READ` plus all-country guard as list/detail reads; `X-Country-Code: ALL` without `COUNTRY_GLOBAL_VIEW` or `*` is rejected.

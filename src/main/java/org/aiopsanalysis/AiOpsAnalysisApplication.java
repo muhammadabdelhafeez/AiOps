@@ -1,14 +1,9 @@
 package org.aiopsanalysis;
 
-import org.kfh.aiops.AiOpsApplication;
-import org.springframework.boot.SpringApplication;
-
 /**
- * Backward-compatible launcher for existing IDE run configurations.
+ * Legacy IntelliJ launcher shim retained for old run configurations.
  *
- * <p>The canonical Spring Boot entry point is {@link AiOpsApplication}. This
- * class intentionally has no Spring annotations and no component scanning so
- * backend implementation remains under {@code org.kfh.aiops}.</p>
+ * <p>New run configurations should use {@code org.kfh.aiops.AiOpsApplication} directly.</p>
  */
 public final class AiOpsAnalysisApplication {
 
@@ -16,6 +11,7 @@ public final class AiOpsAnalysisApplication {
     }
 
     public static void main(String[] args) {
-        SpringApplication.run(AiOpsApplication.class, args);
+        org.kfh.aiops.AiOpsApplication.main(args);
     }
 }
+

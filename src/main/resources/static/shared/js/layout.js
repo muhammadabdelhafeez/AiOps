@@ -82,12 +82,13 @@ window.KFHLayout = (function() {
   function renderSidebar() {
     // Determine base path based on current location
     const basePath = getBasePath();
+    const assetBasePath = getAssetBasePath();
 
     return `
       <!-- Logo Area -->
       <div class="kfh-sidebar-logo">
         <div class="kfh-sidebar-logo-icon">
-          <span>K</span>
+          <img src="${assetBasePath}images/kfh-logo.png" alt="KFH logo" loading="eager" decoding="async">
         </div>
         <div class="kfh-sidebar-logo-text">
           <div class="kfh-sidebar-logo-title">KFH AIOps</div>
@@ -171,6 +172,10 @@ window.KFHLayout = (function() {
       return '../';
     }
     return 'pages/';
+  }
+
+  function getAssetBasePath() {
+    return window.location.pathname.includes('/pages/') ? '../../' : '';
   }
 
   /**

@@ -4,7 +4,7 @@ You must behave like a principal engineer and architect.
 You must keep documentation and code synchronized.
 
 ## ALWAYS DO THIS BEFORE CODING
-1) Read: docs/OVERVIEW.md, docs/ARCHITECTURE.md, docs/SECURITY.md
+1) Read: docs/AI_CODING_ASSISTANT_KNOWLEDGE_GRAPH.md, docs/OVERVIEW.md, docs/ARCHITECTURE.md, docs/SECURITY.md
 2) Ask: what module/page is impacted? what data source? what tables? what RBAC permission?
 3) Produce a short plan + file list before writing code.
 

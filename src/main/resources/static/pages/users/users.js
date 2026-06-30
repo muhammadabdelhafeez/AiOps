@@ -34,14 +34,21 @@ var Users = (function() {
     };
   }
   function availableCountries() {
-    return (window.KFHConfig && Array.isArray(KFHConfig.COUNTRIES))
-      ? KFHConfig.COUNTRIES
-      : [{ code: scope().countryCode, name: scope().countryName }];
+    if (canViewAllCountries()) {
+      return (window.KFHConfig && Array.isArray(KFHConfig.COUNTRIES))
+        ? KFHConfig.COUNTRIES
+        : [currentCountryOption()];
+    }
+    return [currentCountryOption()];
   }
   function canViewAllCountries() {
     const session = window.KFHConfig && typeof KFHConfig.getSession === 'function' ? KFHConfig.getSession() : {};
+    if (window.KFHConfig && typeof KFHConfig.canUseGlobalCountryScope === 'function') {
+      return KFHConfig.canUseGlobalCountryScope(session);
+    }
     const permissions = Array.isArray(session.permissions) ? session.permissions : [];
-    return permissions.includes('*') || permissions.includes('COUNTRY_GLOBAL_VIEW');
+    const homeCountryCode = String(session.homeCountryCode || session.assignedCountryCode || session.countryCode || '').toUpperCase();
+    return homeCountryCode === ALL_COUNTRIES && (permissions.includes('*') || permissions.includes('COUNTRY_GLOBAL_VIEW'));
   }
   function countryOptions(includeAll) {
     const countries = availableCountries();
@@ -49,7 +56,13 @@ var Users = (function() {
   }
   function countryByCode(countryCode) {
     const code = String(countryCode || '').toUpperCase();
-    return countryOptions(true).find(country => country.code === code) || availableCountries()[0] || { code: scope().countryCode, name: scope().countryName };
+    return countryOptions(true).find(country => country.code === code) || currentCountryOption();
+  }
+  function currentCountryOption() {
+    const current = scope();
+    const scopes = window.KFHConfig && Array.isArray(KFHConfig.COUNTRY_SCOPES) ? KFHConfig.COUNTRY_SCOPES : [];
+    return scopes.find(country => country.code === String(current.countryCode || '').toUpperCase())
+      || { code: current.countryCode, name: current.countryName, groupName: 'KFH Group' };
   }
   function roleCode(value) {
     const match = roles.find(role => role.id === value || role.name === value);
@@ -183,9 +196,7 @@ var Users = (function() {
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
               <input id="user-search" value="${esc(searchQuery)}" placeholder="Search users by name, username, or email..." aria-label="Search users by name, username, or email">
             </div>
-            <select id="country-filter" class="users-filter-select" aria-label="Filter users by country">
-              ${countryOptions(true).map(country => `<option value="${esc(country.code)}" ${countryFilter === country.code ? 'selected' : ''}>${esc(country.name || country.code)}</option>`).join('')}
-            </select>
+            ${renderCountryFilterControl()}
             <select id="role-filter" class="users-filter-select" aria-label="Filter users by role">
               <option value="">All roles</option>
               ${ROLE_CHOICES.map(role => `<option value="${esc(role.id)}" ${roleFilter === role.id ? 'selected' : ''}>${esc(role.name)}</option>`).join('')}
@@ -203,6 +214,22 @@ var Users = (function() {
   function renderUsersRegion() {
     const region = document.getElementById('users-table-region');
     if (region) region.innerHTML = renderUsersTable();
+  }
+  function renderCountryFilterControl() {
+    if (canViewAllCountries()) {
+      return `<select id="country-filter" class="users-filter-select" aria-label="Filter users by country">
+        ${countryOptions(true).map(country => `<option value="${esc(country.code)}" ${countryFilter === country.code ? 'selected' : ''}>${esc(country.name || country.code)}</option>`).join('')}
+      </select>`;
+    }
+    const country = currentCountryOption();
+    return `<div class="users-filter-select" role="status" aria-label="Assigned country scope">Platform: ${esc(country.groupName || 'KFH Group')} • ${esc(country.name || country.code)}</div>`;
+  }
+  function renderCountryFormControl(name, selectedCode) {
+    if (canViewAllCountries()) {
+      return `<label>Country<select name="${esc(name)}" required>${countryOptions(true).map(country => `<option value="${esc(country.code)}" ${selectedCode === country.code ? 'selected' : ''}>${esc(country.name || country.code)}</option>`).join('')}</select></label>`;
+    }
+    const country = currentCountryOption();
+    return `<label>Country<input type="hidden" name="${esc(name)}" value="${esc(country.code)}"><span class="users-scope-locked">Platform: ${esc(country.groupName || 'KFH Group')} • ${esc(country.name || country.code)}</span></label>`;
   }
   function renderUsersTable() {
     const filtered = getFilteredUsers();
@@ -303,7 +330,7 @@ var Users = (function() {
             <label>Confirm Password<input name="confirmPassword" required type="password" minlength="12" maxlength="128" autocomplete="new-password" placeholder="Re-enter password"></label>
             <label>Status<select name="status"><option value="Active">Active</option><option value="Disabled">Disabled</option></select></label>
             <label>Role<select name="roleId" required>${ROLE_CHOICES.map(role => `<option value="${esc(role.id)}" ${selectedRoleChoice === role.id ? 'selected' : ''}>${esc(role.name)}</option>`).join('')}</select></label>
-            <label>Country<select name="countryCode" required>${countryOptions(true).map(country => `<option value="${esc(country.code)}" ${createCountryCode === country.code ? 'selected' : ''}>${esc(country.name || country.code)}</option>`).join('')}</select></label>
+            ${renderCountryFormControl('countryCode', createCountryCode)}
           </div>
           <div class="user-create-scope"><span>Environment: <strong>${esc(current.environment)}</strong></span></div>
           <div class="user-create-actions"><button type="button" onclick="Users.closeCreateUserModal()" class="users-secondary-action">Cancel</button><button type="submit" class="users-primary-action" ${isSavingUser ? 'disabled' : ''}>${isSavingUser ? 'Creating...' : 'Create User'}</button></div>
@@ -328,7 +355,7 @@ var Users = (function() {
             <label>Email<input name="email" required type="email" maxlength="160" value="${esc(user.email)}"></label>
             <label>Status<select name="status"><option value="Active" ${user.status === 'Active' ? 'selected' : ''}>Active</option><option value="Disabled" ${user.status !== 'Active' ? 'selected' : ''}>Disabled</option></select></label>
             <label>Role<select name="roleId" required>${ROLE_CHOICES.map(role => `<option value="${esc(role.id)}" ${selectedRoleChoice === role.id ? 'selected' : ''}>${esc(role.name)}</option>`).join('')}</select></label>
-            <label>Country<select name="countryCode" required>${countryOptions(true).map(country => `<option value="${esc(country.code)}" ${selectedCountryCode === country.code ? 'selected' : ''}>${esc(country.name || country.code)}</option>`).join('')}</select></label>
+            ${renderCountryFormControl('countryCode', selectedCountryCode)}
           </div>
           <div class="user-create-scope"><span>Password changes are handled by the separate <strong>Reset Password</strong> action.</span><span>Environment: <strong>${esc(user.environment || current.environment)}</strong></span></div>
           <div class="user-create-actions"><button type="button" onclick="Users.closeEditUserModal()" class="users-secondary-action">Cancel</button><button type="submit" class="users-primary-action" ${isUpdatingUser ? 'disabled' : ''}>${isUpdatingUser ? 'Saving...' : 'Save Changes'}</button></div>
@@ -355,7 +382,10 @@ var Users = (function() {
     `;
   }
   function bindEvents() {
-    document.getElementById('user-search')?.addEventListener('input', event => { searchQuery = event.target.value; renderUsersRegion(); });
+    KFHUtils.bindLiveSearch('user-search', function(value) {
+      searchQuery = value;
+      renderUsersRegion();
+    });
     document.getElementById('country-filter')?.addEventListener('change', event => setCountryFilter(event.target.value));
     document.getElementById('role-filter')?.addEventListener('change', event => { roleFilter = event.target.value; renderUsersRegion(); });
     document.querySelector('#create-user-form select[name="countryCode"]')?.addEventListener('change', event => {
@@ -369,6 +399,14 @@ var Users = (function() {
     document.getElementById('reset-password-form')?.addEventListener('submit', handleResetPasswordSubmit);
   }
   async function setCountryFilter(countryCode) {
+    if (!canViewAllCountries()) {
+      countryFilter = scope().countryCode;
+      searchQuery = '';
+      roleFilter = '';
+      await loadData();
+      render();
+      return;
+    }
     const requested = String(countryCode || scope().countryCode).toUpperCase();
     if (requested === ALL_COUNTRIES && canViewAllCountries()) {
       countryFilter = ALL_COUNTRIES;
@@ -561,7 +599,7 @@ var Users = (function() {
     isApiBacked = false;
     try {
       const current = scope();
-      countryFilter = countryFilter || current.countryCode;
+      countryFilter = canViewAllCountries() ? (countryFilter || current.countryCode) : current.countryCode;
       const rolesResponse = await APIClient.users.getRoles();
       const countryCodes = countryFilter === ALL_COUNTRIES && canViewAllCountries() ? [ALL_COUNTRIES, ...availableCountries().map(country => country.code)] : [countryFilter];
       const userResponses = [];

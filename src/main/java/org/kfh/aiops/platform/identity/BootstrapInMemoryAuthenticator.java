@@ -23,7 +23,7 @@ public class BootstrapInMemoryAuthenticator {
     private static final Map<String, RoleProfile> ROLE_PROFILES = Map.of(
             "GLOBAL_ADMIN", new RoleProfile("KFH Global Admin", List.of("*")),
             "COUNTRY_ADMIN", new RoleProfile("Country Admin",
-                    List.of("DASHBOARD_READ", "INCIDENT_READ", "ALERT_READ", "IDENTITY_READ", "IDENTITY_WRITE")),
+                    List.of("DASHBOARD_READ", "INCIDENT_READ", "ALERT_READ", "IDENTITY_READ", "IDENTITY_WRITE", "AUDIT_READ")),
             "NOC_OPERATOR", new RoleProfile("NOC Operator",
                     List.of("DASHBOARD_READ", "INCIDENT_READ", "ALERT_READ", "IDENTITY_READ")),
             "VIEWER", new RoleProfile("Viewer",
@@ -96,7 +96,7 @@ public class BootstrapInMemoryAuthenticator {
 
     private String resolveResponseCountryCode(String requestedCountry) {
         if (isWildcard(properties.getCountryCode())) {
-            return normalize(requestedCountry);
+            return "ALL";
         }
         return normalize(properties.getCountryCode());
     }

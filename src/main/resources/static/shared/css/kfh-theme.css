@@ -491,44 +491,149 @@ body {
   overflow: hidden;
 }
 
-/* ========== TOAST STYLES ========== */
+/* ========== TOAST STYLES (modern, bottom-right) ========== */
 .toast-container {
   position: fixed;
-  top: 1rem;
-  right: 1rem;
-  z-index: 200;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  top: auto;
+  left: auto;
+  z-index: 1100;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.625rem;
+  pointer-events: none;
+  max-width: min(420px, calc(100vw - 3rem));
 }
 
 .kfh-toast {
+  position: relative;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  border-radius: var(--radius-btn);
-  border: 1px solid;
-  box-shadow: var(--shadow-card);
-  animation: slideIn 0.3s ease-out;
+  min-width: 280px;
+  padding: 0.875rem 2.25rem 0.875rem 1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: saturate(180%) blur(10px);
+  -webkit-backdrop-filter: saturate(180%) blur(10px);
+  box-shadow: 0 12px 32px -8px rgba(15, 23, 42, 0.22), 0 4px 10px -4px rgba(15, 23, 42, 0.12);
+  color: #0F172A;
+  font-size: 0.875rem;
+  line-height: 1.35;
+  font-weight: 500;
+  pointer-events: auto;
+  overflow: hidden;
+  animation: kfhToastIn 0.32s cubic-bezier(0.21, 1.02, 0.36, 1) both;
+}
+
+.kfh-toast.is-leaving {
+  animation: kfhToastOut 0.24s ease-in forwards;
+}
+
+/* Left accent bar */
+.kfh-toast::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  border-radius: 14px 0 0 14px;
+  background: var(--kfh-toast-accent, #0E7C66);
+}
+
+/* Type-specific icon (rendered via ::after on the toast) */
+.kfh-toast::after {
+  content: '';
+  position: absolute;
+  top: 0.875rem;
+  left: 0.875rem;
+  width: 1.125rem;
+  height: 1.125rem;
+  border-radius: 999px;
+  background: var(--kfh-toast-accent, #0E7C66);
+  mask: var(--kfh-toast-icon) center / 0.75rem 0.75rem no-repeat;
+  -webkit-mask: var(--kfh-toast-icon) center / 0.75rem 0.75rem no-repeat;
+  flex-shrink: 0;
+}
+
+/* Reserve room for the icon */
+.kfh-toast > .kfh-toast-message,
+.kfh-toast {
+  padding-left: 2.75rem;
+}
+
+.kfh-toast-close {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: none;
+  background: transparent;
+  color: rgba(15, 23, 42, 0.45);
+  font-size: 1rem;
+  line-height: 1;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+.kfh-toast-close:hover {
+  background: rgba(15, 23, 42, 0.06);
+  color: #0F172A;
 }
 
 .kfh-toast-success {
-  background-color: var(--color-success-bg);
-  border-color: var(--color-success);
-  color: var(--color-success);
+  --kfh-toast-accent: #16A34A;
+  --kfh-toast-icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'><path d='M9.55 17.55 4 12l1.41-1.41 4.14 4.13 9.04-9.04L20 7.09l-10.45 10.46Z'/></svg>");
 }
 
 .kfh-toast-error {
-  background-color: var(--color-danger-bg);
-  border-color: var(--color-danger);
-  color: var(--color-danger);
+  --kfh-toast-accent: #DC2626;
+  --kfh-toast-icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'><path d='M11 7h2v7h-2zm0 8h2v2h-2zM12 2 1 21h22L12 2Z'/></svg>");
 }
 
 .kfh-toast-info {
-  background-color: var(--color-info-bg);
-  border-color: var(--color-info);
-  color: var(--color-info);
+  --kfh-toast-accent: #0EA5E9;
+  --kfh-toast-icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'><path d='M11 9h2V7h-2v2zm1 13C6.48 22 2 17.52 2 12S6.48 2 12 2s10 4.48 10 10-4.48 10-10 10zm-1-15h2v8h-2V7Z'/></svg>");
+}
+
+.kfh-toast-warning {
+  --kfh-toast-accent: #F59E0B;
+  --kfh-toast-icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'><path d='M1 21h22L12 2 1 21Zm12-3h-2v-2h2v2Zm0-4h-2v-4h2v4Z'/></svg>");
+}
+
+@media (prefers-color-scheme: dark) {
+  .kfh-toast {
+    background: rgba(17, 24, 39, 0.94);
+    color: #F8FAFC;
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+  .kfh-toast-close { color: rgba(248, 250, 252, 0.55); }
+  .kfh-toast-close:hover { background: rgba(255, 255, 255, 0.08); color: #F8FAFC; }
+}
+
+@media (max-width: 640px) {
+  .toast-container {
+    left: 1rem;
+    right: 1rem;
+    bottom: 1rem;
+    max-width: none;
+  }
+  .kfh-toast { min-width: 0; width: 100%; }
+}
+
+@keyframes kfhToastIn {
+  from { opacity: 0; transform: translateY(16px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+@keyframes kfhToastOut {
+  from { opacity: 1; transform: translateY(0)    scale(1); }
+  to   { opacity: 0; transform: translateY(8px)  scale(0.98); }
 }
 
 /* ========== ANIMATIONS ========== */

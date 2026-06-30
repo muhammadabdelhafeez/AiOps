@@ -167,6 +167,7 @@ window.KFHAuth = (function() {
           tenantId: session.tenantId,
           userId: session.userId,
           countryCode: session.countryCode,
+          homeCountryCode: session.countryCode,
           countryName: session.countryName || selectedCountry.name,
           countryGroupName: session.countryGroupName || selectedCountry.groupName,
           environment: session.environment || 'PROD',
@@ -189,6 +190,7 @@ window.KFHAuth = (function() {
         tenantId: selectedCountry.tenantId,
         userId: selectedCountry.defaultUserId,
         countryCode: selectedCountry.code,
+        homeCountryCode: selectedCountry.code,
         countryName: selectedCountry.name,
         environment: 'PROD',
         roleId: selectedRole.id,
@@ -230,6 +232,10 @@ window.KFHAuth = (function() {
 
     button.addEventListener('click', function(event) {
       event.stopPropagation();
+      if (!canSwitchCountryScope()) {
+        closeCountrySwitcher();
+        return;
+      }
       const isOpen = !menu.hidden;
       menu.hidden = isOpen;
       button.setAttribute('aria-expanded', String(!isOpen));
@@ -265,20 +271,60 @@ window.KFHAuth = (function() {
 
   function renderCountryMenu(menu) {
     const session = KFHConfig.getSession();
-    const canSwitch = Array.isArray(session.permissions)
-      && (session.permissions.includes('*') || session.permissions.includes('COUNTRY_GLOBAL_VIEW'));
-    const scopes = canSwitch ? (KFHConfig.COUNTRY_SCOPES || KFHConfig.COUNTRIES) : KFHConfig.COUNTRIES;
-    menu.innerHTML = scopes.map(country => {
-      const selected = country.code === session.countryCode;
-      const disabled = !selected && !canSwitch;
+    const canSwitch = canSwitchCountryScope(session);
+    if (!canSwitch) {
+      menu.innerHTML = '';
+      menu.hidden = true;
+      return;
+    }
+    const scopes = KFHConfig.COUNTRY_SCOPES || KFHConfig.COUNTRIES;
+    menu.classList.add('kfh-scope-menu--modern');
+    menu.innerHTML = `
+      <div class="kfh-scope-menu-header">
+        <span class="kfh-scope-menu-eyebrow">Country Scope</span>
+        <span class="kfh-scope-menu-subtitle">Switch the tenant scope used across the platform</span>
+      </div>
+      <div class="kfh-scope-menu-list" role="presentation">
+        ${scopes.map(country => {
+          const selected = country.code === session.countryCode;
+          return `
+            <button type="button"
+                    class="kfh-scope-option kfh-scope-option--modern ${selected ? 'is-active' : ''}"
+                    data-country-scope="${country.code}"
+                    role="option"
+                    aria-selected="${selected ? 'true' : 'false'}">
+              <span class="kfh-scope-monogram" data-country="${country.code}">${countryMonogram(country)}</span>
+              <span class="kfh-scope-option-text">
+                <strong>${country.name}</strong>
+                <small>${country.allCountries ? 'Enterprise all-country scope' : `${country.groupName} tenant scope`}</small>
+              </span>
+              <span class="kfh-scope-check" aria-hidden="${selected ? 'false' : 'true'}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M5 12l5 5L20 7"/>
+                </svg>
+              </span>
+            </button>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+
+  // Returns a small SVG monogram for the country badge inside the dropdown.
+  // Each country gets its own accent color so the menu is visually scannable
+  // without depending on emoji rendering (which varies across OS/fonts).
+  function countryMonogram(country) {
+    if (country.allCountries) {
       return `
-        <button type="button" class="kfh-scope-option ${selected ? 'active' : ''}" data-country-scope="${country.code}" ${disabled ? 'disabled' : ''}>
-          <span class="kfh-country-flag">${country.flag}</span>
-          <span><strong>${country.name}</strong><small>${country.allCountries ? 'Enterprise all-country scope' : `${country.groupName} tenant scope`}</small></span>
-          ${selected ? '<span class="kfh-scope-selected">Active</span>' : ''}
-        </button>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="9"/>
+          <path d="M3 12h18"/>
+          <path d="M12 3a14 14 0 0 1 0 18"/>
+          <path d="M12 3a14 14 0 0 0 0 18"/>
+        </svg>
       `;
-    }).join('');
+    }
+    return `<span class="kfh-scope-monogram-text">${(country.code || '').slice(0, 2)}</span>`;
   }
 
   function closeCountrySwitcher() {
@@ -298,13 +344,29 @@ window.KFHAuth = (function() {
   function updateShellSession() {
     const session = KFHConfig.getSession();
     const country = KFHConfig.getCountry(session.countryCode);
+    const canSwitch = canSwitchCountryScope(session);
     setText('sidebar-user-initials', session.userInitials);
     setText('sidebar-user-name', session.userName);
     setText('sidebar-user-role', `${session.countryCode || 'KW'} • ${session.userRole}`);
     setText('session-country-badge', `${country.flag} ${session.countryCode || 'KW'} / ${session.environment || 'PROD'}`);
     setText('session-country-name', session.countryName || country.name);
+    const button = document.getElementById('country-scope-button');
+    if (button) {
+      button.disabled = !canSwitch;
+      button.setAttribute('aria-disabled', String(!canSwitch));
+      button.setAttribute('aria-label', canSwitch ? 'Switch country group' : 'Country scope locked to assigned country');
+      button.title = canSwitch ? 'Switch country group' : 'Country scope is limited to your assigned country';
+      const icon = button.querySelector('svg');
+      if (icon) icon.hidden = !canSwitch;
+    }
     const menu = document.getElementById('country-scope-menu');
     if (menu) renderCountryMenu(menu);
+  }
+
+  function canSwitchCountryScope(session) {
+    return window.KFHConfig && typeof KFHConfig.canUseGlobalCountryScope === 'function'
+      ? KFHConfig.canUseGlobalCountryScope(session)
+      : false;
   }
 
   function reloadCurrentPage() {
@@ -323,9 +385,30 @@ window.KFHAuth = (function() {
     const container = document.getElementById('toast-container') || document.body;
     const node = document.createElement('div');
     node.className = `kfh-toast kfh-toast-${type || 'info'}`;
-    node.textContent = message;
+    node.setAttribute('role', type === 'error' ? 'alert' : 'status');
+    node.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
+
+    const text = document.createElement('span');
+    text.className = 'kfh-toast-message';
+    text.textContent = message;
+    node.appendChild(text);
+
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'kfh-toast-close';
+    close.setAttribute('aria-label', 'Dismiss notification');
+    close.innerHTML = '&times;';
+    node.appendChild(close);
+
+    const dismiss = () => {
+      if (node.classList.contains('is-leaving')) return;
+      node.classList.add('is-leaving');
+      setTimeout(() => node.remove(), 240);
+    };
+    close.addEventListener('click', dismiss);
+
     container.appendChild(node);
-    setTimeout(() => node.remove(), 3000);
+    setTimeout(dismiss, 3500);
   }
 
   function setText(id, value) {

@@ -11,6 +11,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.kfh.aiops.commandcenter.support.CommandCenterReadModel;
+import org.kfh.aiops.platform.exception.ForbiddenAccessException;
 import org.kfh.aiops.platform.exception.NotFoundException;
 import org.kfh.aiops.platform.tenant.TenantContext;
 import org.springframework.dao.DataAccessResourceFailureException;
@@ -116,19 +117,48 @@ class AuditQueryServiceTest {
     }
 
     @Test
+    void shouldReturnOnlyCountryAuditActivityForCountryAdminAuditRead() {
+        var readModel = new CommandCenterReadModel();
+        readModel.appendAudit(context(TENANT_ID, "KW"), "KW_INCIDENT_UPDATED", "Incident", "incident-kw");
+        readModel.appendAudit(context(TENANT_ID, "BH"), "BH_SCHEDULE_RUN_REQUESTED", "Schedule", "schedule-bh");
+        var service = new AuditQueryService(readModel);
+
+        var page = service.list(context(TENANT_ID, "KW"), 0, 100);
+
+        assertThat(page.content()).hasSize(1);
+        assertThat(page.content().getFirst())
+                .containsEntry("countryCode", "KW")
+                .containsEntry("action", "KW_INCIDENT_UPDATED");
+    }
+
+    @Test
+    void shouldRejectAllCountryAuditActivityWithoutGlobalCountryView() {
+        var service = new AuditQueryService(new CommandCenterReadModel());
+
+        assertThatThrownBy(() -> service.list(context(TENANT_ID, "ALL"), 0, 100))
+                .isInstanceOf(ForbiddenAccessException.class)
+                .hasMessageContaining("COUNTRY_GLOBAL_VIEW");
+    }
+
+    @Test
     void shouldReturnAllCountryAuditActivityForAllCountryScope() {
         var readModel = new CommandCenterReadModel();
         readModel.appendAudit(context(TENANT_ID, "KW"), "INCIDENT_UPDATED", "Incident", "incident-1");
         readModel.appendAudit(context(TENANT_ID, "BH"), "SCHEDULE_RUN_REQUESTED", "Schedule", "schedule-1");
         var service = new AuditQueryService(readModel);
 
-        var page = service.list(context(TENANT_ID, "ALL"), 0, 100);
+        var page = service.list(globalContext(), 0, 100);
 
         assertThat(page.content()).extracting(row -> row.get("countryCode")).containsExactlyInAnyOrder("KW", "BH");
     }
 
     private static TenantContext context(UUID tenantId, String countryCode) {
         return new TenantContext(tenantId, USER_ID, countryCode, "PROD", "audit-test-correlation",
+                Set.of("AUDIT_READ"));
+    }
+
+    private static TenantContext globalContext() {
+        return new TenantContext(TENANT_ID, USER_ID, "ALL", "PROD", "audit-test-correlation",
                 Set.of("AUDIT_READ", "COUNTRY_GLOBAL_VIEW"));
     }
 }
