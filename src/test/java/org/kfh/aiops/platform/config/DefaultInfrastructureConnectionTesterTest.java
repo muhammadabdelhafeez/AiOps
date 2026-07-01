@@ -95,6 +95,22 @@ class DefaultInfrastructureConnectionTesterTest {
     }
 
     @Test
+    void shouldValidateFilesystemFamilyProvidersAsRealDirectory() {
+        var writableDir = System.getProperty("java.io.tmpdir"); // exists + readable + writable
+        for (var provider : java.util.List.of("NFS", "SMB", "PVC")) {
+            var result = tester.test(context(), "infrastructure.connections.preview", Map.of(
+                    "type", "INDEX_STORAGE",
+                    "provider", provider,
+                    "endpoint", writableDir));
+
+            assertThat(result).as("provider %s", provider)
+                    .containsEntry("status", "Pass")
+                    .containsEntry("pass", true);
+            assertThat(result.get("message").toString()).contains("readable and writable");
+        }
+    }
+
+    @Test
     void shouldRetryRedisAuthWithoutUsernameWhenDefaultAclUserFails() {
         assertThat(DefaultInfrastructureConnectionTester.shouldRetryRedisAuthWithoutUsername(
                 "default", "-ERR wrong number of arguments for 'auth' command"))

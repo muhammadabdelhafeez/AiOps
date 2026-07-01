@@ -52,7 +52,9 @@ class IndexSearchServiceTest {
         props.setSearchParallelism(4);
         when(settingsService.resolveIndexStorage(any())).thenReturn(Optional.empty());
         when(countryRegistry.isEnabled(any())).thenReturn(true);
-        var resolver = new IndexStorageResolver(settingsService, props);
+        var resolver = new IndexStorageResolver(settingsService, props,
+                new IndexStorageProviderRegistry(java.util.List.of(
+                        new FilesystemIndexStorageProvider(), new S3IndexStorageProvider(), new AzureBlobIndexStorageProvider())));
         var writer = new IndexWriterService(store, props, resolver);
         search = new IndexSearchService(new ShardIndexCache(store), props, resolver,
                 new CountryAccessGuard(countryRegistry));

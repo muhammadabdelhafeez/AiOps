@@ -1275,35 +1275,50 @@ var Settings = (function() {
   }
 
   function renderIndexStorageFields(draft, secretKey) {
+    const provider = draft.provider || 'LOCAL';
+    const isObject = provider === 'S3' || provider === 'AZURE_BLOB';
+    const isAzure = provider === 'AZURE_BLOB';
+    const pathLabel = isObject ? 'Object Storage URI' : (provider === 'SMB' ? 'UNC Path' : 'Index Storage Path');
+    const pathPlaceholder = provider === 'S3' ? 's3://bucket/prefix'
+      : isAzure ? 'https://<account>.blob.core.windows.net/<container>'
+      : provider === 'SMB' ? '\\\\172.17.133.47\\aiops-index'
+      : provider === 'PVC' ? '/var/aiops-index (PVC mount path)'
+      : '/data/aiops-index';
+    const providerHelp = isObject
+      ? 'Object storage is not wired for live writes yet — Test validates the URI/metadata only, and the engine falls back to the filesystem default until the SDK is added.'
+      : 'LOCAL = app-server disk · NFS = mount · SMB = Windows/UNC share · PVC = OpenShift volume. Test checks the path exists and is readable/writable by the app process.';
+    const objectFields = !isObject ? '' : `
+      <div class="settings-form-group">
+        <label class="settings-label">${isAzure ? 'Container' : 'Bucket'}</label>
+        <input type="text" class="settings-input" value="${esc(draft.bucket || '')}" oninput="Settings.updateConnectorDraft('bucket', this.value)" placeholder="${isAzure ? 'Container name' : 'Bucket name'}">
+      </div>
+      <div class="settings-form-group">
+        <label class="settings-label">${isAzure ? 'Storage Account' : 'Region'}</label>
+        <input type="text" class="settings-input" value="${esc(draft.region || '')}" oninput="Settings.updateConnectorDraft('region', this.value)" placeholder="${isAzure ? 'Storage account name' : 'Cloud region (e.g. me-central-1)'}">
+      </div>
+      <div class="settings-form-group">
+        <label class="settings-label">${isAzure ? 'SAS / Client ID' : 'Access Key ID'}</label>
+        <input type="text" class="settings-input" value="${esc(draft.username || '')}" oninput="Settings.updateConnectorDraft('username', this.value)" placeholder="${isAzure ? 'SAS token or client ID' : 'Access key ID'}">
+      </div>
+      <div class="settings-form-group">
+        <label class="settings-label">${isAzure ? 'Account Key / Secret' : 'Secret Access Key'}</label>
+        ${secretInput('secret', draft.secret || '', secretKey)}
+      </div>`;
     return `
       <div class="settings-infra-modal-section azure-modal-wide-field">Custom index storage details</div>
       <div class="settings-form-group">
         <label class="settings-label">Storage Provider</label>
         <select class="settings-input" onchange="Settings.updateConnectorDraft('provider', this.value)">
-          ${optionList(['LOCAL', 'S3', 'AZURE_BLOB', 'NFS'], draft.provider || 'LOCAL')}
+          ${optionList(['LOCAL', 'NFS', 'SMB', 'PVC', 'S3', 'AZURE_BLOB'], provider)}
         </select>
+        <small class="azure-modal-help">${providerHelp}</small>
       </div>
       <div class="settings-form-group azure-modal-wide-field">
-        <label class="settings-label">Index Storage Path / URI</label>
-        <input type="text" class="settings-input" value="${esc(draft.endpoint || '')}" oninput="Settings.updateConnectorDraft('endpoint', this.value)" placeholder="/data/aiops-index or s3://bucket/prefix">
-        <small class="azure-modal-help">Stores custom index shards/segments only. Do not point this to PostgreSQL, Neo4j, Redis, or raw telemetry tables.</small>
+        <label class="settings-label">${pathLabel}</label>
+        <input type="text" class="settings-input" value="${esc(draft.endpoint || '')}" oninput="Settings.updateConnectorDraft('endpoint', this.value)" placeholder="${pathPlaceholder}">
+        <small class="azure-modal-help">As seen by the app process. Stores custom index shards only — never point at PostgreSQL, Neo4j, Redis, or raw telemetry.</small>
       </div>
-      <div class="settings-form-group">
-        <label class="settings-label">Bucket / Share</label>
-        <input type="text" class="settings-input" value="${esc(draft.bucket || '')}" oninput="Settings.updateConnectorDraft('bucket', this.value)" placeholder="Optional bucket or NFS share">
-      </div>
-      <div class="settings-form-group">
-        <label class="settings-label">Region</label>
-        <input type="text" class="settings-input" value="${esc(draft.region || '')}" oninput="Settings.updateConnectorDraft('region', this.value)" placeholder="Optional cloud region">
-      </div>
-      <div class="settings-form-group">
-        <label class="settings-label">Access Key / Client ID</label>
-        <input type="text" class="settings-input" value="${esc(draft.username || '')}" oninput="Settings.updateConnectorDraft('username', this.value)" placeholder="Optional for object storage">
-      </div>
-      <div class="settings-form-group">
-        <label class="settings-label">Secret Key / Client Secret</label>
-        ${secretInput('secret', draft.secret || '', secretKey)}
-      </div>
+      ${objectFields}
     `;
   }
 
@@ -1559,7 +1574,7 @@ var Settings = (function() {
     state.connectorDraft = field === 'type'
       ? { ...current, ...connectorTypeDefaults(kind, value), type: value }
       : { ...current, [field]: value };
-    if (field === 'enabled' || field === 'type') render();
+    if (field === 'enabled' || field === 'type' || field === 'provider') render();
   }
 
   function updateConnectorCountries(values) {

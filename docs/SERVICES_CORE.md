@@ -74,7 +74,8 @@ When you add or change a core class/endpoint:
 | `IndexProperties` | `kfh.index.*` tunables (shards-per-day, batch, parallelism, retention). | 🟢 Implemented |
 | `ShardIndex` / `ShardIndexCache` | Cached parsed docs + inverted postings per shard (segment-size invalidated); posting-list intersection for exact filters. | 🟢 Implemented (Phase 2 inc. 2) |
 | `IndexRetentionService` | Purge expired shard date-dirs per-kind retention (`@Scheduled`). | 🟢 Implemented (inc. 2) |
-| `IndexStorageResolver` | Resolve index root from Settings INDEX_STORAGE connector, else `kfh.index.storage.path`. | 🟢 Implemented (inc. 2) |
+| `IndexStorageResolver` | Resolve index root from the Settings INDEX_STORAGE connector via the provider SPI, else `kfh.index.storage.path`. | 🟢 Implemented (inc. 2) |
+| `IndexStorageType` / `IndexStorageProvider` / `IndexStorageProviderRegistry` | Pluggable storage backends selected by type. `FilesystemIndexStorageProvider` covers **LOCAL/NFS/SMB/PVC** (Linux disk, Windows UNC, OpenShift volume) → `java.nio.Path`. `S3IndexStorageProvider` / `AzureBlobIndexStorageProvider` are registered stubs (need SDK; resolver falls back to filesystem until wired). | 🟢 Implemented (SPI) |
 | `ArchiveStore` / `FilesystemArchiveStore` | Gzip cold shards to a filesystem/NFS archive tier; retention archives before delete. | 🟢 Implemented (inc. 3) |
 | Cloud archive (S3 / Azure Blob) | Drop-in `ArchiveStore` implementations behind the interface. | ⚪ Pending (needs SDK deps) |
 

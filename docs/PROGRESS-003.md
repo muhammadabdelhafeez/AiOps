@@ -70,6 +70,23 @@ Legend: 🟢 Done  🟡 In progress  🔴 Blocked  ⚪ Not started
 
 > Newest entries on top. Append your entry above the previous one.
 
+### 2026-07-01 — Index storage provider SPI (LOCAL/NFS/SMB/PVC/S3/Azure) for OS/OpenShift portability
+- **Phase:** 2
+- **Module(s):** index (`org.kfh.aiops.index`), platform.config (SettingsService), frontend/settings
+- **Type:** feature
+- **Country/Tenant scope:** ALL
+- **Summary:** Made index storage **pluggable by type** so the app works unchanged across Linux, Windows, and OpenShift. New `IndexStorageType` (LOCAL/NFS/SMB/PVC/S3/AZURE_BLOB, `isFilesystem()`), `IndexStorageProvider` SPI + `IndexStorageProviderRegistry`. `FilesystemIndexStorageProvider` covers LOCAL (Linux/Windows disk), NFS, SMB (Windows/UNC), and PVC (OpenShift) — all resolve to a `java.nio.Path`, so the engine is OS-agnostic. `S3IndexStorageProvider`/`AzureBlobIndexStorageProvider` are registered stubs (throw until the object-storage SDK is added). `SettingsService.resolveIndexStorage` now returns `{provider, endpoint, bucket, region}`; `IndexStorageResolver` selects the provider by type and falls back to `kfh.index.storage.path` for not-yet-wired object storage. UI: Index Storage **Provider** dropdown offers LOCAL/NFS/SMB/PVC/S3/AZURE_BLOB with **provider-aware form fields** (filesystem → single Path field; S3/Azure → URI + bucket/region/keys) that re-render on provider change. Connector tester (`DefaultInfrastructureConnectionTester.testIndexStorage`) now validates **LOCAL/NFS/SMB/PVC as real filesystem directories** (absolute + exists + readable/writable — Test/Test&Save do real checks); S3/Azure remain URI/metadata validation only until the object-storage SDK is added.
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/index/` (IndexStorageType, IndexStorageProvider, FilesystemIndexStorageProvider, S3IndexStorageProvider, AzureBlobIndexStorageProvider, IndexStorageProviderRegistry — new; IndexStorageResolver rewired)
+  - `src/main/java/org/kfh/aiops/platform/config/SettingsService.java` (`resolveIndexStorage` → provider+endpoint)
+  - `src/main/resources/static/pages/settings/settings.js` (provider options + help)
+- **DB migrations / API changes:** N/A
+- **Tests added/updated:** `IndexStorageTypeTest`, `IndexStorageProviderRegistryTest`, `FilesystemIndexStorageProviderTest`, `S3IndexStorageProviderTest` (new) + `IndexStorageResolverTest`/writer/search (updated) — 40 index tests green; `mvn test` clean
+- **Docs updated:** docs/SERVICES_CORE.md, docs/PROGRESS-003.md
+- **Follow-ups / TODO:** implement S3/Azure providers (add SDK deps + object-storage segment model, since object stores have no append); the `endpoint` path must be reachable by the app process (Windows Tomcat → local disk or UNC share; OpenShift → PVC mount).
+- **Author:** claude-code
+- **Correlation:** Phase 2 storage SPI
+
 ### 2026-07-01 — Log Explorer (Kibana-Discover) UI over /logs/search
 - **Phase:** 2 (frontend)
 - **Module(s):** frontend (new `pages/explorer`, shared api-client/router/config)
