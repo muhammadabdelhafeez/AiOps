@@ -149,6 +149,24 @@
 #sidebar-container .kfh-sidebar-logo-icon { border-radius: 10px; box-shadow: none; }
 #sidebar-container .kfh-sidebar::before { display: none; }
 
+/* ===== Narrower rail + full-width, denser content (Dynatrace proportions, KFH colors) ===== */
+:root { --kfh-sidebar-width: 216px !important; }
+#sidebar-container.kfh-sidebar, .kfh-sidebar { width: 216px !important; min-width: 216px !important; flex: 0 0 216px !important; }
+#sidebar-container .kfh-sidebar-logo { min-height: 58px; padding: 10px 12px; gap: 10px; }
+#sidebar-container .kfh-sidebar-logo-icon { width: 36px; height: 36px; }
+#sidebar-container .kfh-sidebar-logo-title { font-size: 0.98rem; }
+#sidebar-container .kfh-sidebar-logo-subtitle { font-size: 0.5rem; letter-spacing: 0.18em; }
+#sidebar-container .kfh-sidebar-nav { padding: 8px 6px; }
+#sidebar-container .kfh-sidebar-nav-item { padding: 7px 10px; margin: 0 6px 2px; }
+#sidebar-container .kfh-sidebar-group { margin-bottom: 8px; }
+#sidebar-container .kfh-sidebar-group-title { padding: 0 12px; margin-bottom: 3px; }
+#sidebar-container .kfh-sidebar-scope { padding: 0 10px; }
+
+/* Full-width content — remove the big centered side margins + double padding. */
+.kfh-content-area { padding: 0 !important; }
+.kfhx-page, .inc-wrap, .alx-wrap, .lx2-wrap, .sm-page { max-width: none !important; }
+.kfhx-globalbar { padding-left: 20px; padding-right: 20px; }
+
 /* Timeline (event / lifecycle) */
 .kfhx-timeline { position: relative; padding-left: 18px; }
 .kfhx-timeline::before { content: ''; position: absolute; left: 5px; top: 4px; bottom: 4px; width: 2px; background: var(--surface-border, #e2e8f0); }
