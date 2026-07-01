@@ -143,6 +143,11 @@
 #sidebar-container .kfh-sidebar-nav-item.active .kfh-sidebar-nav-icon svg { color: var(--kfh-gold, #C8A84E) !important; }
 #sidebar-container .kfh-sidebar-group-title { font-size: 0.6rem; letter-spacing: 0.14em; color: rgba(255, 255, 255, 0.45); }
 #sidebar-container .kfh-sidebar-group { margin-bottom: 12px; }
+/* Leaner rail: slightly smaller label + icon, flat logo tile. */
+#sidebar-container .kfh-sidebar-nav-item { font-size: 0.82rem; }
+#sidebar-container .kfh-sidebar-nav-icon svg { width: 18px; height: 18px; }
+#sidebar-container .kfh-sidebar-logo-icon { border-radius: 10px; box-shadow: none; }
+#sidebar-container .kfh-sidebar::before { display: none; }
 
 /* Timeline (event / lifecycle) */
 .kfhx-timeline { position: relative; padding-left: 18px; }
