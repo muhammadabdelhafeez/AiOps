@@ -930,4 +930,38 @@ Then open **Log Explorer**, filter `sourceSystem = BMC`, and confirm the events 
 | `indexed=0` but `received>0` | all duplicates, or index storage unwritable | check `duplicatesDropped`; verify `kfh.index.storage.path` is writable |
 | Scheduled poll silent | `kfh.ingestion.bmc.enabled` not `true` | set `BMC_INGESTION_ENABLED=true`, restart |
 
+---
+
+## SCOM Ingestion (Phase 4 — Stage 0 collection, Windows-only)
+
+Pulls SCOM alerts via local `powershell.exe` → WinRM `Get-SCOMAlert` → same pipeline. Reference: `docs/SCOM_Collectors.md`. **Runs only on the Windows Tomcat host** (needs `powershell.exe`, PS remoting to the SCOM MS, and the service account in the SCOM Operators role).
+
+### Configure (secrets via environment only)
+```powershell
+[Environment]::SetEnvironmentVariable('SCOM_MANAGEMENT_SERVER','scom-mgmt.corp.kfh.local','User')
+[Environment]::SetEnvironmentVariable('SCOM_DOMAIN','KFH','User')
+[Environment]::SetEnvironmentVariable('BMC_ANALYSIS_SCOM_USERNAME','svc_scom','User')
+[Environment]::SetEnvironmentVariable('BMC_ANALYSIS_SCOM_PASSWORD','<password>','User')
+# Optional: enable the scheduled poll
+[Environment]::SetEnvironmentVariable('SCOM_INGESTION_ENABLED','true','User')
+```
+Defaults: `winrm-port=5986` + `use-https=true` + `auth-method=Kerberos`; for HTTP/Negotiate set `SCOM_WINRM_PORT=5985`, `SCOM_USE_HTTPS=false`, `SCOM_AUTH_METHOD=Negotiate`. `server-local-offset-hours=3` (Kuwait) drives the PowerShell over-fetch; Java still filters precisely to `hours-back` in UTC.
+
+### First live test
+```bash
+curl -sk -X POST https://<app-host>:8443/api/v1/ingestion/scom/collect-now \
+  -H "Authorization: Bearer <session-jwt>" -H "X-Country-Code: KW"
+# → {"received":37,"normalized":37,"duplicatesDropped":4,"indexed":33,"failed":0}
+```
+Then open **Log Explorer**, filter `sourceSystem = SCOM`. Now BMC + SCOM land in the same index — the two-source correlation input the RCA stage needs.
+
+### Troubleshooting
+| Symptom | Likely cause | Action |
+|---|---|---|
+| `500 … SCOM ingestion is not configured` | missing server/user/password | set the four env vars, restart |
+| `500 … SCOM PowerShell failed (exit …)` | WinRM/Kerberos/module error on MS | run the same `Invoke-Command` by hand on the app host; check SPN/port/module |
+| `500 … timed out after 60s` | slow MS or large window | raise `SCOM_CONNECTION_TIMEOUT_SECONDS`, lower `SCOM_HOURS_BACK` |
+| Alerts missing near window edge | server-vs-UTC offset wrong | confirm `SCOM_SERVER_LOCAL_OFFSET_HOURS` matches the SCOM server's real offset |
+| Runs on Linux → fails | `powershell.exe` not present | SCOM collection is Windows-only by design; run it from the Windows Tomcat host |
+
 

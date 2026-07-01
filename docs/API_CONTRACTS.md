@@ -330,6 +330,13 @@ If missing: 400/401 (implementation choice) with standard error response.
   - Errors: `500` with a secret-safe message when BMC is unreachable or credentials are missing (`BMC ingestion is not configured …`). Redis being down does NOT fail the call (dedup fails open; events still index).
   - A parallel opt-in scheduled poll (`kfh.ingestion.bmc.enabled=true`) runs the same `collect()` on `poll-interval-ms` (default 20 min) under a configured system scope; failures are logged and retried next tick.
   - Config (env-only secrets, never committed): `kfh.ingestion.bmc.base-url`, `access-key` (`BMC_ANALYSIS_BMC_ACCESS_KEY`), `access-secret-key` (`BMC_ANALYSIS_BMC_ACCESS_SECRET_KEY`), `login-endpoint`, `events-endpoint`, `minutes-back`, `max-events`, `tenant-id`, `country-code`, `environment`.
+- POST `/api/v1/ingestion/scom/collect-now` — Manual SCOM collection trigger (**Windows-only**)
+  - Permission: `ALERT_INGEST` (checked before any WinRM/PowerShell session is spawned).
+  - No body. Spawns local `powershell.exe` → `Invoke-Command` to the SCOM management server (WinRM 5986/HTTPS + Kerberos by default) → `Get-SCOMAlert` → compressed JSON → `ScomWinRmClient` (WCF `/Date(ms)/` → epoch, precise UTC window filter, dedup-by-Id) → `ScomNormalizer` → `FingerprintDedupService` → `IndexWriterService`.
+  - Returns the same `IngestionResult` shape as BMC.
+  - Errors: `500` (secret-safe) when SCOM is unconfigured/unreachable or PowerShell fails/times out. PowerShell-injection-hardened: interpolated server/user/password single-quote-escaped, auth-method whitelisted, port range-checked.
+  - Opt-in scheduled poll: `kfh.ingestion.scom.enabled=true` (`poll-interval-ms`, default 20 min).
+  - Config (env-only secrets): `kfh.ingestion.scom.management-server`, `username` (`BMC_ANALYSIS_SCOM_USERNAME`), `password` (`BMC_ANALYSIS_SCOM_PASSWORD`), `domain`, `hours-back`, `winrm-port`, `use-https`, `auth-method` (Kerberos/Negotiate/CredSSP/Default), `server-local-offset-hours` (Kuwait=3), `tenant-id`, `country-code`, `environment`.
 
 Implemented frontend-aligned connector endpoints in this scaffold:
 - GET `/api/v1/connectors?page=&size=`

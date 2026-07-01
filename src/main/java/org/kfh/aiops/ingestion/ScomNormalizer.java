@@ -31,7 +31,8 @@ public class ScomNormalizer implements TelemetryNormalizer {
         var timestamp = RawFields.instant(raw, Instant.now(),
                 "TimeRaised", "LastModified", "TimeAdded", "timestamp");
         var resourceId = RawFields.strOr(raw, "UNKNOWN",
-                "MonitoringObjectDisplayName", "MonitoringObjectPath", "NetbiosComputerName", "PrincipalName");
+                "MonitoringObjectName", "MonitoringObjectDisplayName", "NetbiosComputerName",
+                "MonitoringObjectPath", "PrincipalName");
         var resourceType = RawFields.str(raw, "MonitoringObjectFullName", "ClassName", "MonitoringClassId");
         var severity = mapSeverity(RawFields.str(raw, "Severity"), RawFields.str(raw, "Priority"));
         var message = RawFields.str(raw, "Description", "Name");
@@ -42,6 +43,8 @@ public class ScomNormalizer implements TelemetryNormalizer {
         putIfPresent(attributes, "category", RawFields.str(raw, "Category"));
         putIfPresent(attributes, "priority", RawFields.str(raw, "Priority"));
         putIfPresent(attributes, "resolutionState", RawFields.str(raw, "ResolutionState"));
+        putIfPresent(attributes, "host", RawFields.str(raw, "NetbiosComputerName"));
+        putIfPresent(attributes, "path", RawFields.str(raw, "MonitoringObjectPath"));
         putIfPresent(attributes, "managementGroup", RawFields.str(raw, "ManagementGroup"));
 
         return new TelemetryDocument(id, timestamp, ctx.tenantId(), ctx.countryCode(), ctx.environment(),
