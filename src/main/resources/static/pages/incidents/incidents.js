@@ -67,7 +67,7 @@
     }
   ];
 
-  var state = { view: 'list', selected: null, filters: { status: '', severity: '', category: '', source: '' }, tab: 'overview' };
+  var state = { view: 'list', selected: null, filters: { status: '', severity: '', category: '', source: '' }, tab: 'overview', impactTab: 'journeys', eventEntity: null };
 
   function injectStyles() {
     if (document.getElementById('inc-styles')) return;
@@ -95,7 +95,13 @@
       '.inc-tab{padding:8px 14px;font-size:.85rem;font-weight:600;color:var(--text-secondary);cursor:pointer;border-bottom:2px solid transparent;}',
       '.inc-tab.on{color:var(--kfh-primary);border-bottom-color:var(--kfh-primary);}',
       '.inc-ev{display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--surface-border-subtle);}',
-      '.inc-ev:last-child{border-bottom:none;}'
+      '.inc-ev:last-child{border-bottom:none;}',
+      '.inc-subtabs{display:flex;gap:6px;flex-wrap:wrap;}',
+      '.inc-subtab{padding:5px 10px;border-radius:999px;border:1px solid var(--surface-border);font-size:.76rem;font-weight:600;color:var(--text-secondary);cursor:pointer;}',
+      '.inc-subtab.on{background:var(--kfh-primary);color:#fff;border-color:var(--kfh-primary);}',
+      '.inc-subn{font-weight:800;opacity:.85;}',
+      '.inc-impact-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--surface-border-subtle);}',
+      '.inc-erow{cursor:pointer;}.inc-erow.on td{background:var(--kfh-primary-light);}'
     ].join('');
     document.head.appendChild(s);
   }
@@ -211,13 +217,89 @@
     }).join('<span class="inc-arrow">→</span>');
   }
 
-  function renderDetail(x) {
-    var journeys = x.journeysDetail.map(function (j) {
-      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--surface-border-subtle);">' +
-        '<span style="font-weight:600;color:var(--text-primary);font-size:.85rem;">' + esc(j.name) + '</span>' +
-        '<span style="font-size:.82rem;"><span style="color:var(--text-muted);">' + j.before + '%</span> <span class="inc-arrow">→</span> <span style="color:var(--color-critical);font-weight:700;">' + j.after + '%</span></span></div>';
-    }).join('') || '<div style="color:var(--text-muted);font-size:.82rem;padding:8px 0;">No customer-facing journey impact.</div>';
+  function affectedEntities(x) {
+    var ents = x.path.map(function (n) {
+      return { name: n.name, type: n.stage, health: n.health, root: n.name === x.rootCause.id,
+        events: n.name === x.rootCause.id ? x.rootCause.evidence.length : 1 };
+    });
+    x.journeysDetail.forEach(function (j) { ents.push({ name: j.name, type: 'Journey', health: 'crit', events: 1 }); });
+    return ents;
+  }
 
+  // Error-rate chart with a red problem-window band over the incident interval.
+  function problemChart() {
+    var pts = [8, 6, 7, 5, 40, 55, 48, 62, 51, 70, 58, 66, 60, 44, 20, 8];
+    var w = 320, h = 130, n = pts.length, max = 90, step = (w - 20) / (n - 1);
+    var bandX = 10 + 4 * step, bandW = 9 * step;
+    var line = pts.map(function (v, i) { return (i ? 'L' : 'M') + Math.round(10 + i * step) + ',' + Math.round(h - 14 - v / max * (h - 28)); }).join(' ');
+    return '<svg viewBox="0 0 ' + w + ' ' + h + '" style="width:100%;height:130px;">' +
+      '<rect x="' + bandX + '" y="6" width="' + bandW + '" height="' + (h - 12) + '" fill="#ef4444" opacity="0.07"/>' +
+      '<rect x="' + bandX + '" y="4" width="' + bandW + '" height="4" rx="2" fill="#ef4444" opacity="0.85"/>' +
+      '<path d="' + line + '" fill="none" stroke="#2563eb" stroke-width="2"/>' +
+      '</svg>';
+  }
+
+  function impactPanel(x) {
+    var subs = [['journeys', 'Journeys', x.journeysDetail.length], ['applications', 'Applications', x.apps.length], ['services', 'Services', x.services], ['assets', 'Assets', x.assets]];
+    var tabsHtml = subs.map(function (s) {
+      return '<div class="inc-subtab ' + (state.impactTab === s[0] ? 'on' : '') + '" data-subtab="' + s[0] + '">' + esc(s[1]) + ' <span class="inc-subn">' + s[2] + '</span></div>';
+    }).join('');
+    var body;
+    if (state.impactTab === 'applications') {
+      body = x.apps.map(function (a) { return '<div class="inc-impact-row"><span style="font-weight:600;font-size:.85rem;color:var(--text-primary);">' + esc(a) + '</span><span class="kfhx-badge crit">impacted</span></div>'; }).join('');
+    } else if (state.impactTab === 'services') {
+      body = x.path.filter(function (n) { return n.stage === 'Service' || n.stage === 'Gateway'; }).map(function (n) {
+        return '<div class="inc-impact-row"><span class="mono" style="font-size:.82rem;">' + esc(n.name) + '</span><span class="kfhx-dot ' + (n.health === 'crit' ? 'crit' : n.health === 'warn' ? 'warn' : '') + '"></span></div>';
+      }).join('') || '<div style="color:var(--text-muted);font-size:.82rem;padding:8px 0;">No impacted services.</div>';
+    } else if (state.impactTab === 'assets') {
+      body = x.path.map(function (n) { return '<div class="inc-impact-row"><span class="mono" style="font-size:.82rem;">' + esc(n.name) + '</span><span style="font-size:.72rem;color:var(--text-muted);display:inline-flex;align-items:center;gap:6px;">' + esc(n.stage) + ' <span class="kfhx-dot ' + (n.health === 'crit' ? 'crit' : n.health === 'warn' ? 'warn' : '') + '"></span></span></div>'; }).join('');
+    } else {
+      body = x.journeysDetail.map(function (j) {
+        return '<div class="inc-impact-row"><span style="font-weight:600;color:var(--text-primary);font-size:.85rem;">' + esc(j.name) + '</span>' +
+          '<span style="font-size:.82rem;"><span style="color:var(--text-muted);">' + j.before + '%</span> <span class="inc-arrow">→</span> <span style="color:var(--color-critical);font-weight:700;">' + j.after + '%</span></span></div>';
+      }).join('') || '<div style="color:var(--text-muted);font-size:.82rem;padding:8px 0;">No customer-facing journey impact.</div>';
+    }
+    return '<div class="kfhx-panel"><div class="kfhx-section-title" style="margin-bottom:10px;">Impact</div>' +
+      '<div class="inc-subtabs">' + tabsHtml + '</div><div style="margin-top:10px;">' + body + '</div></div>';
+  }
+
+  function eventsTab(x) {
+    var ents = affectedEntities(x);
+    var sel = state.eventEntity ? (ents.filter(function (e) { return e.name === state.eventEntity; })[0] || ents[0]) : ents[0];
+    var rows = ents.map(function (e) {
+      return '<tr class="inc-erow ' + (sel && sel.name === e.name ? 'on' : '') + '" data-ent="' + esc(e.name) + '">' +
+        '<td>' + esc(e.name) + (e.root ? ' <span class="kfhx-badge crit">Root cause</span>' : '') + '</td>' +
+        '<td style="color:var(--text-muted);">' + esc(e.type) + '</td>' +
+        '<td style="text-align:right;font-weight:700;">' + e.events + '</td></tr>';
+    }).join('');
+    var evHtml = sel && sel.root ? x.rootCause.evidence.map(evidenceRow).join('')
+      : '<div class="inc-ev"><span class="kfhx-dot warn" style="margin-top:5px;"></span><div style="flex:1;"><div style="font-size:.82rem;font-weight:600;color:var(--text-primary);">Symptom on ' + esc(sel ? sel.name : '') + '</div><div style="font-size:.72rem;color:var(--text-muted);">Correlated to the incident window (downstream of the root cause).</div></div></div>';
+    var detail = sel ? '<div class="kfhx-panel">' +
+      '<div style="display:flex;align-items:center;gap:8px;"><span class="kfhx-entity-title">' + esc(sel.name) + '</span>' + (sel.root ? '<span class="kfhx-badge crit">Root cause</span>' : '') + '</div>' +
+      '<div class="kfhx-section-sub">' + esc(sel.type) + ' · ' + sel.events + ' event' + (sel.events === 1 ? '' : 's') + '</div>' +
+      '<div style="margin:12px 0 4px;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);">Failure rate increase</div>' +
+      problemChart() + '<div style="margin-top:10px;">' + evHtml + '</div></div>' : '';
+    return '<div class="kfhx-split" style="grid-template-columns:1fr 380px;">' +
+      '<div class="kfhx-panel" style="padding:0;overflow:hidden;"><div style="padding:12px 14px;font-weight:700;font-size:.9rem;">Affected entities</div>' +
+      '<table class="kfhx-table"><thead><tr><th>Name</th><th>Type</th><th style="text-align:right;">Events</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      detail + '</div>';
+  }
+
+  function changesTab(x) {
+    var svc = x.path.filter(function (n) { return n.stage === 'Service'; }).map(function (n) { return n.name; })[0] || 'Service';
+    var cards = [
+      { t: 'Config change', name: x.rootCause.id, time: 'shortly before onset', desc: 'Infrastructure change on ' + x.rootCause.id + ' immediately before the incident window — a likely trigger; verify against the change record.' },
+      { t: 'Deployment', name: svc, time: 'in window', desc: 'No application deployment recorded for ' + svc + ' during the window; change correlation points infrastructure-side.' }
+    ];
+    return cards.map(function (c) {
+      return '<div class="kfhx-panel" style="margin-bottom:10px;"><div style="display:flex;justify-content:space-between;align-items:center;">' +
+        '<div><span class="kfhx-badge info">' + esc(c.t) + '</span> <span class="mono" style="font-weight:700;">' + esc(c.name) + '</span></div>' +
+        '<span style="font-size:.72rem;color:var(--text-muted);">' + esc(c.time) + '</span></div>' +
+        '<div style="font-size:.82rem;color:var(--text-secondary);margin-top:6px;">' + esc(c.desc) + '</div></div>';
+    }).join('') + '<div style="font-size:.72rem;color:var(--text-muted);padding:4px;">Live deployment/config change correlation arrives with CHANGES ingestion (Phase 7).</div>';
+  }
+
+  function renderDetail(x) {
     mount.innerHTML =
       '<div class="kfhx-page">' +
         '<a id="inc-back" href="#incidents" data-page="incidents" style="font-size:.82rem;color:var(--kfh-primary);font-weight:700;text-decoration:none;">← All incidents</a>' +
@@ -247,16 +329,9 @@
           }).join('') +
         '</div>' +
 
-        (state.tab !== 'overview'
-          ? '<div class="kfhx-panel">' + emptyTab(x, state.tab) + '</div>'
-          : '<div class="kfhx-split">' +
-              '<div class="kfhx-panel">' +
-                '<div class="kfhx-section-title" style="margin-bottom:10px;">Impact</div>' +
-                '<div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:6px;">Impacted journeys</div>' +
-                journeys +
-                '<div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin:14px 0 6px;">Impacted applications</div>' +
-                x.apps.map(function (a) { return '<span class="inc-pill" style="height:24px;">' + esc(a) + '</span>'; }).join('') +
-              '</div>' +
+        (state.tab === 'overview'
+          ? '<div class="kfhx-split">' +
+              impactPanel(x) +
               '<div class="kfhx-panel">' +
                 '<div class="kfhx-section-title" style="margin-bottom:10px;">Root cause</div>' +
                 '<div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;"><span class="kfhx-entity-title">◈ ' + esc(x.rootCause.id) + '</span><span class="kfhx-badge crit">Root cause</span></div>' +
@@ -274,11 +349,20 @@
               '<a href="#servicemap" data-page="servicemap" class="kfhx-section-sub" style="color:var(--kfh-primary);font-weight:700;text-decoration:none;">Open topology →</a></div>' +
               '<div class="inc-path">' + pathHtml(x.path) + '</div>' +
               '<div style="font-size:.72rem;color:var(--text-muted);margin-top:10px;">Most-upstream failing node that went bad first and whose downstream covers all symptoms.</div>' +
-            '</div>') +
+            '</div>'
+          : state.tab === 'events' ? eventsTab(x)
+          : state.tab === 'changes' ? changesTab(x)
+          : '<div class="kfhx-panel">' + emptyTab(x, state.tab) + '</div>') +
       '</div>';
 
     mount.querySelectorAll('.inc-tab').forEach(function (t) {
       t.addEventListener('click', function () { state.tab = t.getAttribute('data-tab'); render(); });
+    });
+    mount.querySelectorAll('[data-subtab]').forEach(function (s) {
+      s.addEventListener('click', function () { state.impactTab = s.getAttribute('data-subtab'); render(); });
+    });
+    mount.querySelectorAll('[data-ent]').forEach(function (r) {
+      r.addEventListener('click', function () { state.eventEntity = r.getAttribute('data-ent'); render(); });
     });
   }
 
