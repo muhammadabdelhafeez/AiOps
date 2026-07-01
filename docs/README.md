@@ -12,6 +12,7 @@ This folder is the source of truth for project documentation.
 - [Runbooks](./RUNBOOKS.md)
 - [Redis Setup on RHEL](./REDIS_SETUP_RHEL.md) — step-by-step Redis install/config for the dev/prod server
 - [Kafka Setup on RHEL](./KAFKA_SETUP_RHEL.md) — KRaft single-node broker install/config + UI integration (Phase 7 prep)
+- [Neo4j Setup on RHEL](./NEO4J_SETUP_RHEL.md) — Neo4j 5.x topology graph install/config + vector index + UI integration (Phase 3 prep)
 - [UI Pages](./UI_PAGES.md)
 
 ## System flows & diagrams
