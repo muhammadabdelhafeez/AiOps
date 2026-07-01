@@ -120,21 +120,31 @@ public class DefaultInfrastructureConnectionTester implements InfrastructureConn
     private static String testKafka(InfrastructureTestConfig config) {
         config.requireEndpoint("Kafka bootstrap servers are required.");
         validateKafkaBootstrapServers(config.endpoint());
+        // KRaft metadata + SASL negotiation routinely takes several seconds, so give Kafka a higher
+        // floor than the generic 5 s test timeout (the broker authenticates fine but fetchMetadata is
+        // slow). Also disable client metrics push (KIP-714): its telemetry handshake can keep a node
+        // from becoming "ready" against newer brokers and manifests as a fetchMetadata timeout.
+        var timeoutMs = Math.max(config.timeoutMs(), 15_000);
         var props = new Properties();
         props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, config.endpoint());
         props.put(AdminClientConfig.CLIENT_ID_CONFIG, firstNonBlank(config.clientId(), "kfh-aiops-settings-test"));
-        props.put(AdminClientConfig.REQUEST_TIMEOUT_MS_CONFIG, String.valueOf(config.timeoutMs()));
-        props.put(AdminClientConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, String.valueOf(config.timeoutMs()));
+        props.put(AdminClientConfig.REQUEST_TIMEOUT_MS_CONFIG, String.valueOf(timeoutMs));
+        props.put(AdminClientConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, String.valueOf(timeoutMs));
+        props.put("enable.metrics.push", "false");
         props.put("security.protocol", firstNonBlank(config.protocol(), "PLAINTEXT"));
         addKafkaSecurity(props, config);
         try (var admin = AdminClient.create(props)) {
-            admin.describeCluster().nodes().get(config.timeoutMs(), TimeUnit.MILLISECONDS);
+            admin.describeCluster().nodes().get(timeoutMs, TimeUnit.MILLISECONDS);
             return "Kafka broker metadata probe passed.";
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("Kafka test interrupted.", ex);
+        } catch (java.util.concurrent.TimeoutException ex) {
+            throw new IllegalStateException("Kafka broker authenticated but did not return cluster metadata within "
+                    + timeoutMs + " ms. Verify the broker's advertised.listeners is the reachable host/IP and that the "
+                    + "app host can sustain a connection to it (not just the initial handshake).", ex);
         } catch (Exception ex) {
-            throw new IllegalStateException(ex.getMessage(), ex);
+            throw new IllegalStateException(firstNonBlank(ex.getMessage(), ex.getClass().getSimpleName()), ex);
         }
     }
 

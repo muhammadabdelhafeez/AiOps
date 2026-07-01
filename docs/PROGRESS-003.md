@@ -70,6 +70,21 @@ Legend: 🟢 Done  🟡 In progress  🔴 Blocked  ⚪ Not started
 
 > Newest entries on top. Append your entry above the previous one.
 
+### 2026-07-01 — Fix flaky Kafka Test Connection (5s timeout too tight; disable metrics push)
+- **Phase:** 1 (Settings infrastructure testers)
+- **Module(s):** platform.config (DefaultInfrastructureConnectionTester)
+- **Type:** fix
+- **Country/Tenant scope:** ALL
+- **Summary:** The Settings Kafka Test authenticated fine (`Successfully logged in`) but `AdminClient.describeCluster()` (fetchMetadata) took ~3–5 s while the test timeout was the generic 5 s — so it passed once at 3248 ms then failed at 5109 ms with a bare `IllegalStateException`. Raised the Kafka test timeout floor to 15 s, set `enable.metrics.push=false` (KIP-714 telemetry handshake can keep a node from becoming "ready" against newer brokers → fetchMetadata timeout), and added a clear operator message on metadata timeout (and a non-null fallback for other errors). Root aggravator: app ships kafka-clients 3.9.2 vs the 4.3.1 broker; aligning the broker to 3.9.x remains the alternative.
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/platform/config/DefaultInfrastructureConnectionTester.java` (testKafka)
+- **DB migrations:** N/A
+- **API changes:** N/A
+- **Tests added/updated:** `DefaultInfrastructureConnectionTesterTest` (14) still green; `mvn compile` clean. Live Kafka verification needed on the running app.
+- **Docs updated:** docs/PROGRESS-003.md
+- **Follow-ups / TODO:** Optionally expose a timeout field on the Kafka connector form; teach the tester SCRAM (ScramLoginModule) so the UI's SCRAM options work; rebuild/redeploy the running app (E:\NetBeansProjects\AiOpsAnalysis checkout) to pick this up.
+- **Author:** claude-code
+
 ### 2026-06-30 — Settings: Test/Edit/Remove actions side-by-side for Redis/Kafka/SharePoint/Teams
 - **Phase:** 1
 - **Module(s):** frontend/settings (static SPA)
