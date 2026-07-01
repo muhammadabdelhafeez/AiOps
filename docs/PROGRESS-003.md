@@ -70,6 +70,24 @@ Legend: 🟢 Done  🟡 In progress  🔴 Blocked  ⚪ Not started
 
 > Newest entries on top. Append your entry above the previous one.
 
+### 2026-07-01 — Log Explorer (Kibana-Discover) UI over /logs/search
+- **Phase:** 2 (frontend)
+- **Module(s):** frontend (new `pages/explorer`, shared api-client/router/config)
+- **Type:** feature
+- **Country/Tenant scope:** ALL (server-side country-scoped + guarded)
+- **Summary:** New **Log Explorer** page — a Kibana-Discover-style telemetry search over the Custom Index Engine. Self-mounting vanilla page (no React/Babel) rendering into `#page-root`: filter bar (free-text, time range, kind, severity, source, service, trace id), results table (time/severity/source/service/resource/message), result count + `tookMs`, and prev/next pagination. All server data HTML-escaped. Wired via `APIClient.logs.search(query)` → `POST /api/v1/logs/search`; added a `PAGES.explorer` router entry and an Operations nav item.
+- **Files touched:**
+  - `src/main/resources/static/pages/explorer/explorer.js` + `explorer.css` (new)
+  - `src/main/resources/static/shared/js/api-client.js` (`logs.search`)
+  - `src/main/resources/static/shared/js/router.js` (`explorer` page config)
+  - `src/main/resources/static/shared/js/config.js` (nav item)
+- **DB migrations / API changes:** N/A (consumes existing `/logs/search`)
+- **Tests added/updated:** N/A (static SPA — requires browser smoke test; not verifiable in the JDK/Node-less build env)
+- **Docs updated:** docs/FRONTEND_MODULES.md, docs/PROGRESS-003.md, .github/PROGRESS.md
+- **Follow-ups / TODO:** UI increment 2 = **time histogram + facet rail** (need a bucketed aggregation endpoint on the index), row-expand to full document (`rawRef`), saved searches; the existing React Alert Explorer (fingerprint grouping) stays as a complementary view.
+- **Author:** claude-code
+- **Correlation:** Phase 2 UI
+
 ### 2026-07-01 — Phase 2: Custom Index Engine — cold-shard archive + country-isolation guard (increment 3)
 - **Phase:** 2
 - **Module(s):** index (`org.kfh.aiops.index`)

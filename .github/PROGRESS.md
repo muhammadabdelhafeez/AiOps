@@ -30,6 +30,10 @@ This file is a concise, agent-facing progress snapshot for GitHub Copilot/AI ass
 
 ## Recent Completed Work
 
+### 2026-07-01 — Log Explorer (Kibana-Discover) UI over /logs/search
+- **Summary:** New `pages/explorer` page — a self-mounting vanilla Kibana-Discover UI (filter bar, results table, pagination, result count + tookMs) over the Custom Index Engine via `APIClient.logs.search` → `POST /api/v1/logs/search`. Country-scoped/guarded server-side; all server data escaped. Wired into router `PAGES` + Operations nav. Frontend needs a browser smoke-test (no Node/browser in the build env). UI increment 2 = time histogram + facets (needs an aggregation endpoint).
+- **Important files:** `pages/explorer/explorer.js`+`.css`, `shared/js/{api-client,router,config}.js`.
+
 ### 2026-07-01 — Phase 2: Custom Index Engine searchable core (increment 1)
 - **Summary:** Built the Elasticsearch-replacement core (`org.kfh.aiops.index`): typed model, sharded append-only `SegmentStore` (`{country}/{env}/{kind}/{date}/shard-NN`), `IndexWriterService` (batched, hash-routed), and `IndexSearchService` (time-partition prune → country/env → parallel filtered scan, newest-first, paginated). New `POST /api/v1/logs/search` (RBAC `ALERT_READ`). 14 unit tests pass; `mvn test` green. Increment 2 = inverted index, retention/archive, Settings-driven storage path.
 - **Important files:** `org.kfh.aiops.index.*`, `IndexSearchController`, `IndexProperties`, application.properties `kfh.index.*`.

@@ -32,6 +32,12 @@ window.Router = (function() {
       title: 'Alert Explorer',
       usesReactModule: false
     },
+    'explorer': {
+      js: 'pages/explorer/explorer.js',
+      css: 'pages/explorer/explorer.css',
+      title: 'Log Explorer',
+      usesReactModule: false
+    },
     'inventory': {
       js: 'pages/inventory/inventory.js',
       css: 'pages/inventory/inventory.css',

@@ -48,6 +48,7 @@ window.KFHConfig = (function() {
         { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', path: '/dashboard' },
         { id: 'incidents', label: 'Incidents', icon: 'incident', path: '/incidents', badge: null },
         { id: 'alerts', label: 'Alert Explorer', icon: 'alert', path: '/alerts' },
+        { id: 'explorer', label: 'Log Explorer', icon: 'report', path: '/explorer' },
         { id: 'inventory', label: 'Inventory', icon: 'inventory', path: '/inventory' }
       ]
     },
