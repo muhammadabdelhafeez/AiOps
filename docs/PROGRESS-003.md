@@ -70,6 +70,86 @@ Legend: 🟢 Done  🟡 In progress  🔴 Blocked  ⚪ Not started
 
 > Newest entries on top. Append your entry above the previous one.
 
+### 2026-07-01 — Log Explorer (Kibana-Discover) UI over /logs/search
+- **Phase:** 2 (frontend)
+- **Module(s):** frontend (new `pages/explorer`, shared api-client/router/config)
+- **Type:** feature
+- **Country/Tenant scope:** ALL (server-side country-scoped + guarded)
+- **Summary:** New **Log Explorer** page — a Kibana-Discover-style telemetry search over the Custom Index Engine. Self-mounting vanilla page (no React/Babel) rendering into `#page-root`: filter bar (free-text, time range, kind, severity, source, service, trace id), results table (time/severity/source/service/resource/message), result count + `tookMs`, and prev/next pagination. All server data HTML-escaped. Wired via `APIClient.logs.search(query)` → `POST /api/v1/logs/search`; added a `PAGES.explorer` router entry and an Operations nav item.
+- **Files touched:**
+  - `src/main/resources/static/pages/explorer/explorer.js` + `explorer.css` (new)
+  - `src/main/resources/static/shared/js/api-client.js` (`logs.search`)
+  - `src/main/resources/static/shared/js/router.js` (`explorer` page config)
+  - `src/main/resources/static/shared/js/config.js` (nav item)
+- **DB migrations / API changes:** N/A (consumes existing `/logs/search`)
+- **Tests added/updated:** N/A (static SPA — requires browser smoke test; not verifiable in the JDK/Node-less build env)
+- **Docs updated:** docs/FRONTEND_MODULES.md, docs/PROGRESS-003.md, .github/PROGRESS.md
+- **Follow-ups / TODO:** UI increment 2 = **time histogram + facet rail** (need a bucketed aggregation endpoint on the index), row-expand to full document (`rawRef`), saved searches; the existing React Alert Explorer (fingerprint grouping) stays as a complementary view.
+- **Author:** claude-code
+- **Correlation:** Phase 2 UI
+
+### 2026-07-01 — Phase 2: Custom Index Engine — cold-shard archive + country-isolation guard (increment 3)
+- **Phase:** 2
+- **Module(s):** index (`org.kfh.aiops.index`)
+- **Type:** feature + security
+- **Country/Tenant scope:** ALL
+- **Summary:** (Archive) `ArchiveStore` interface + `FilesystemArchiveStore` (gzip a cold shard's segment to `{archive.path}/{country}/{env}/{kind}/{date}/shard-NN/segment.jsonl.gz`); `IndexRetentionService` now **archives before delete** when `kfh.index.archive.enabled=true`. Cloud (S3/Azure Blob) archive is a drop-in `ArchiveStore` impl once SDK deps are added. (Security) Closed a country-isolation gap: `IndexSearchService` now calls `CountryAccessGuard.requireAccess(ctx, country)` before opening any shard, so a caller can only search their scoped country (cross/all-country needs `COUNTRY_GLOBAL_VIEW`) — complementing the top-level physical country partition.
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/index/` (ArchiveStore, FilesystemArchiveStore — new; SegmentStore `SEGMENT_FILE` public; IndexProperties `Archive`; IndexRetentionService archive-before-delete; IndexSearchService `CountryAccessGuard`)
+  - `src/main/resources/application.properties` (`kfh.index.archive.*`)
+- **DB migrations:** N/A
+- **API changes:** N/A (behavioral: `/logs/search` now enforces country access)
+- **Tests added/updated:** `FilesystemArchiveStoreTest` (new), `IndexRetentionServiceTest` (+archive-before-delete), `IndexSearchServiceTest` (+cross-country denial) — 28 index tests green; `mvn test` clean
+- **Docs updated:** docs/SERVICES_CORE.md, docs/CAUSAL_PIPELINE.md §9, docs/SECURITY.md, docs/PROGRESS-003.md, .github/PROGRESS.md
+- **Security / OWASP checklist:**
+  - [x] A01 Broken Access Control — country isolation enforced at service layer before any shard read
+  - [x] Tenant + country + environment scoping (structural partition + guard)
+  - [x] Index holds `rawRef` only; archive is gzip of the same (no new secrets)
+- **Follow-ups / TODO:** S3/Azure `ArchiveStore` impls (SDK deps); `@EnableScheduling` to activate retention cron; fold `/logs/search` into docs/API_CONTRACTS.md; Alert Explorer Kibana-Discover UI on the search API.
+- **Author:** claude-code
+- **Correlation:** Phase 2 increment 3
+
+### 2026-07-01 — Phase 2: Custom Index Engine — inverted index + retention + Settings-driven path (increment 2)
+- **Phase:** 2
+- **Module(s):** index (`org.kfh.aiops.index`), platform.config (SettingsService)
+- **Type:** feature
+- **Country/Tenant scope:** ALL
+- **Summary:** Increment 2 of the Custom Index Engine. (A) In-shard inverted index: `ShardIndex` (parsed docs + field→value→doc-index postings) + `ShardIndexCache` (per-shard, invalidated by segment byte-size) so repeat searches skip JSON re-parsing and resolve exact-match filters by posting-list intersection; `IndexSearchService` now scans via the cache. (B) `IndexRetentionService` purges expired shard date-dirs per-kind retention (`@Scheduled`; core method unit-tested). (C) `IndexStorageResolver` resolves the index root from the Settings INDEX_STORAGE connector (`SettingsService.resolveIndexStorage`, Part-D pattern) with `kfh.index.storage.path` fallback; `IndexWriterService.index` now takes `TenantContext` and both writer + searcher use the resolved root.
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/index/` (ShardIndex, ShardIndexCache, IndexRetentionService, IndexStorageResolver — new; SegmentStore `segmentSize`, IndexWriterService `+ctx`, IndexSearchService cache-backed)
+  - `src/main/java/org/kfh/aiops/platform/config/SettingsService.java` (`resolveIndexStorage`)
+- **DB migrations:** N/A
+- **API changes:** N/A (search endpoint unchanged; writer signature added `ctx` — no external callers yet)
+- **Tests added/updated:** `ShardIndexTest`, `ShardIndexCacheTest`, `IndexRetentionServiceTest`, `IndexStorageResolverTest` (new) + `IndexWriterServiceTest`/`IndexSearchServiceTest` (updated) — 24 index tests green; `mvn test` clean
+- **Docs updated:** docs/SERVICES_CORE.md, docs/CAUSAL_PIPELINE.md §9, docs/PROGRESS-003.md, .github/PROGRESS.md
+- **Security / OWASP checklist:**
+  - [x] Tenant + country + environment scoping (postings search filters by ctx.tenantId; shard paths by country/env)
+  - [x] No secrets logged; index holds `rawRef` only, not raw payloads
+- **Follow-ups / TODO:** increment 3 = cold-shard archive to object storage (needs the object-storage client); enable `@EnableScheduling` to activate the retention cron; fold `/logs/search` into docs/API_CONTRACTS.md; then the Alert Explorer Kibana-Discover UI on this API.
+- **Author:** claude-code
+- **Correlation:** Phase 2 increment 2
+
+### 2026-07-01 — Phase 2: Custom Index Engine — searchable core (increment 1)
+- **Phase:** 2
+- **Module(s):** index (new: `org.kfh.aiops.index`, `index.model`, `index.api`)
+- **Type:** feature
+- **Country/Tenant scope:** ALL (documents + queries scoped by country/environment/tenant)
+- **Summary:** First increment of the Custom Log Index Engine (the Elasticsearch replacement, §10 / funnel Stage 3). Typed model (`TelemetryDocument`/`TelemetryKind`/`IndexQuery`/`IndexSearchResult`), sharded append-only `SegmentStore` (JSONL per `{country}/{env}/{kind}/{date}/shard-NN`), `IndexWriterService` (batched, hash-routed writes), and `IndexSearchService` (time-partition prune → country/env filter → parallel filtered scan, newest-first, paginated). Exposed `POST /api/v1/logs/search` (RBAC `ALERT_READ`, tenant/country scoped). `IndexProperties` binds `kfh.index.*` (shards-per-day, write-batch-size, search-parallelism, retention-days per kind).
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/index/**` (model, ShardKey, IndexProperties, SegmentStore, IndexWriterService, IndexSearchService, api/IndexSearchController, package-info)
+  - `src/main/resources/application.properties` (`kfh.index.shards-per-day`, `write-batch-size`, `search-parallelism`, `retention-days.*`)
+- **DB migrations:** N/A
+- **API changes:** `POST /api/v1/logs/search` (new)
+- **Tests added/updated:** `ShardKeyTest`, `SegmentStoreTest`, `IndexWriterServiceTest`, `IndexSearchServiceTest` (14 cases; temp-dir, no external deps) — `mvn test` green
+- **Docs updated:** docs/SERVICES_CORE.md, docs/CAUSAL_PIPELINE.md §9, docs/PROGRESS-003.md, .github/PROGRESS.md
+- **Security / OWASP checklist:**
+  - [x] Tenant + country + environment scoping (search filters by ctx; shard paths by country/env)
+  - [x] RBAC at service layer (`ctx.requirePermission("ALERT_READ")`)
+  - [x] No raw telemetry in Postgres/Neo4j; index holds `rawRef` pointer only
+- **Follow-ups / TODO:** increment 2 = in-shard inverted index/postings, retention + archive to object storage, and Settings-driven storage path (wire from the INDEX_STORAGE connector like Part D's Redis resolver); fold `POST /api/v1/logs/search` into docs/API_CONTRACTS.md; then upgrade Alert Explorer into the Kibana-Discover UI (query bar, time histogram, facets) on this API.
+- **Author:** claude-code
+- **Correlation:** Phase 2 increment 1
+
 ### 2026-07-01 — Fix flaky Kafka Test Connection (5s timeout too tight; disable metrics push)
 - **Phase:** 1 (Settings infrastructure testers)
 - **Module(s):** platform.config (DefaultInfrastructureConnectionTester)

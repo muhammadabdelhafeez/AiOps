@@ -85,6 +85,9 @@
 - Settings custom index-storage tests require absolute non-traversal local/NFS paths before checking directory readability/writability. Cloud object-storage entries validate allowed pointer schemes only in this phase; HTTPS endpoints are checked against metadata/loopback/link-local targets and no SDK-backed cloud listing/read/write is performed yet.
 - Settings metadata is persisted by tenant, country scope, environment, and key in `config.integration_settings`. Settings-managed provider secrets for AI, Neo4j, database/sharepoint/infrastructure rows are encrypted server-side and stripped from API responses; masked Test Connection requests decrypt saved secrets only inside the bounded server-side tester path.
 
+## Implemented hardening controls (2026-07-01)
+- Custom index search (`POST /api/v1/logs/search`) enforces **country isolation** at the service layer: `IndexSearchService` calls `CountryAccessGuard.requireAccess` before any shard directory is opened, so a caller can only search their scoped country; cross-country / all-country requires `COUNTRY_GLOBAL_VIEW`. Country is also the top-level physical shard partition (`{country}/{env}/{kind}/{date}/shard-NN`), so isolation is structural, not only a filter. Index documents carry a `rawRef` pointer only — never raw payloads — and never leave the tenant/country scope.
+
 ## Residual architectural requirement
 - Permission-based RBAC annotations exist on connector services. Production deployments must provide authenticated principals/authorities from the enterprise identity layer or trusted gateway before enabling protected endpoints. Header-only tenant/user context is not a substitute for authentication.
 

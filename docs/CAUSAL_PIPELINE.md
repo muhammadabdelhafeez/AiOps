@@ -241,7 +241,7 @@ Validation:
 | 0 Connectors (collect → queue) | `org.kfh.aiops.plugin` | 🟡 connectivity testers only |
 | 1 Normalization + enrichment | `org.kfh.aiops.normalization` | ❌ to build |
 | 2 Fingerprint + dedup | `org.kfh.aiops.normalization.fingerprint` | 🟡 dedup service built (`FingerprintDedupService`: Redis `SET NX EX`, country/env keys, fail-open degraded mode) + runtime Redis client (`platform.redis`); ingestion wiring pending |
-| 3 Custom Index Engine | `org.kfh.aiops.index` | ❌ to build (properties only) |
+| 3 Custom Index Engine | `org.kfh.aiops.index` | 🟢 store + writer + postings-cache searcher (country-guarded) + retention-with-archive (filesystem/NFS gzip) + Settings-driven path + `POST /api/v1/logs/search`; cloud archive (S3/Azure) is a drop-in `ArchiveStore` follow-up |
 | 4 Topology + blast radius | `org.kfh.aiops.topology` | ❌ to build (driver tester only) |
 | 5 Business impact filter | `org.kfh.aiops.rca.service` | ❌ to build |
 | 6 Causal scoring | `org.kfh.aiops.rca.causal` | ❌ to build |

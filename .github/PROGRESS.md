@@ -19,7 +19,7 @@ This file is a concise, agent-facing progress snapshot for GitHub Copilot/AI ass
 | Identity / User Management | 🟡 In progress | DB-backed users, simplified Admin/Operator/Viewer UI roles, ALL-country admin mapping, BCrypt password reset/update |
 | Audit Activity | 🟡 In progress | Live API-backed activity page now shows scoped real actions including login success/failure and settings actions; persistence is still Phase 1 in-memory read model |
 | Settings | 🟡 In progress | Settings update/test actions emit visible audit rows with secret-safe key metadata only |
-| Phase 2 — Custom Log Index Engine | ⚪ Not started | Required for raw telemetry search; do not use PostgreSQL/Neo4j for raw logs |
+| Phase 2 — Custom Log Index Engine | 🟢 Core complete | Store + writer + postings-cache searcher (country-guarded) + retention-with-archive (filesystem/NFS gzip) + Settings-driven path + `POST /api/v1/logs/search`. Cloud archive (S3/Azure) = drop-in `ArchiveStore` follow-up; then Alert Explorer UI |
 | Phase 3 — Neo4j banking flow graph | ⚪ Not started | Relationship/topology traversal pending |
 | Phase 4 — RCA evidence builder + causal scoring | ⚪ Not started | Evidence-first causal scoring pending |
 | Phase 5 — AI Router | ⚪ Not started | DeepSeek/Azure routing pending |
@@ -29,6 +29,14 @@ This file is a concise, agent-facing progress snapshot for GitHub Copilot/AI ass
 ---
 
 ## Recent Completed Work
+
+### 2026-07-01 — Log Explorer (Kibana-Discover) UI over /logs/search
+- **Summary:** New `pages/explorer` page — a self-mounting vanilla Kibana-Discover UI (filter bar, results table, pagination, result count + tookMs) over the Custom Index Engine via `APIClient.logs.search` → `POST /api/v1/logs/search`. Country-scoped/guarded server-side; all server data escaped. Wired into router `PAGES` + Operations nav. Frontend needs a browser smoke-test (no Node/browser in the build env). UI increment 2 = time histogram + facets (needs an aggregation endpoint).
+- **Important files:** `pages/explorer/explorer.js`+`.css`, `shared/js/{api-client,router,config}.js`.
+
+### 2026-07-01 — Phase 2: Custom Index Engine searchable core (increment 1)
+- **Summary:** Built the Elasticsearch-replacement core (`org.kfh.aiops.index`): typed model, sharded append-only `SegmentStore` (`{country}/{env}/{kind}/{date}/shard-NN`), `IndexWriterService` (batched, hash-routed), and `IndexSearchService` (time-partition prune → country/env → parallel filtered scan, newest-first, paginated). New `POST /api/v1/logs/search` (RBAC `ALERT_READ`). 14 unit tests pass; `mvn test` green. Increment 2 = inverted index, retention/archive, Settings-driven storage path.
+- **Important files:** `org.kfh.aiops.index.*`, `IndexSearchController`, `IndexProperties`, application.properties `kfh.index.*`.
 
 ### 2026-06-30 — Part D: runtime Redis client + fingerprint dedup (Phase 6 start)
 - **Summary:** Added `org.kfh.aiops.platform.redis` (RedisSettingsResolver + RedisConnectionProvider [Lettuce, DB 0, TLS/AUTH], RedisKeys, RedisHealthProbe, RedisErrors) consuming the Settings-stored encrypted Redis row per (tenant, country, env), and `normalization.fingerprint.FingerprintDedupService` (causal funnel Stage 2 `SET NX EX`, fail-open degraded mode). 15 new unit tests pass; `mvn compile` green. No new endpoints/migrations. Connection details come from Settings, not `spring.data.redis.*`.

@@ -165,6 +165,11 @@ window.APIClient = (function() {
     getActivity: (params) => get('/alerts/activity', params)
   };
 
+  // Custom Index Engine — telemetry search (Log Explorer / Kibana-Discover)
+  const logs = {
+    search: (query) => post('/logs/search', query)
+  };
+
   // Applications
   const applications = {
     list: (params) => get('/applications', params),
@@ -291,6 +296,7 @@ window.APIClient = (function() {
     // Resource endpoints
     incidents,
     alerts,
+    logs,
     applications,
     inventory,
     connectors,

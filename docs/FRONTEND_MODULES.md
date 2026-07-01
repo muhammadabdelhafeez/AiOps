@@ -13,6 +13,7 @@ This project serves a static SPA from `src/main/resources/static/`.
 ## Page responsibilities
 - Dashboard: KPIs, trends, new vs recurring
 - Alerts: filter + cluster + link to incidents/apps
+- Log Explorer (`pages/explorer`): Kibana-Discover telemetry search over the Custom Index Engine (`POST /api/v1/logs/search`) — filter bar (time range, kind, severity, source, service, trace, free-text), results table, pagination; country-scoped server-side
 - Incidents: list + drilldown + evidence + AI narrative
 - Applications: portfolio + topology + incidents
 - Inventory: resources + dependencies

@@ -66,14 +66,21 @@ When you add or change a core class/endpoint:
 
 | Class | Responsibility | Status |
 |-------|----------------|--------|
-| `IndexWriter` | Writes canonical events to time-sharded indexes. | ⚪ Not implemented |
-| `IndexReader` | Query inverted index with filters/text. | ⚪ Not implemented |
-| `ShardManager` | Manages shard lifecycle + rebalancing. | ⚪ Not implemented |
-| `Analyzer`, `Tokenizer` | Text analysis pipeline. | ⚪ Not implemented |
-| `RetentionService` | Apply per-country/env retention. | ⚪ Not implemented |
-| `ArchiveService` | Move cold data to object storage. | ⚪ Not implemented |
+| `TelemetryDocument` / `TelemetryKind` / `IndexQuery` / `IndexSearchResult` | Typed document/query/result model (`index.model`). | 🟢 Implemented (Phase 2 inc. 1) |
+| `ShardKey` | Shard path `{country}/{env}/{kind}/{date}/shard-NN` + hash routing. | 🟢 Implemented |
+| `SegmentStore` | Append-only JSONL segment I/O per shard. | 🟢 Implemented |
+| `IndexWriterService` | Batched, shard-routed writes (funnel Stage 3). | 🟢 Implemented |
+| `IndexSearchService` | Time-partition prune → country/env → parallel filtered scan. | 🟢 Implemented |
+| `IndexProperties` | `kfh.index.*` tunables (shards-per-day, batch, parallelism, retention). | 🟢 Implemented |
+| `ShardIndex` / `ShardIndexCache` | Cached parsed docs + inverted postings per shard (segment-size invalidated); posting-list intersection for exact filters. | 🟢 Implemented (Phase 2 inc. 2) |
+| `IndexRetentionService` | Purge expired shard date-dirs per-kind retention (`@Scheduled`). | 🟢 Implemented (inc. 2) |
+| `IndexStorageResolver` | Resolve index root from Settings INDEX_STORAGE connector, else `kfh.index.storage.path`. | 🟢 Implemented (inc. 2) |
+| `ArchiveStore` / `FilesystemArchiveStore` | Gzip cold shards to a filesystem/NFS archive tier; retention archives before delete. | 🟢 Implemented (inc. 3) |
+| Cloud archive (S3 / Azure Blob) | Drop-in `ArchiveStore` implementations behind the interface. | ⚪ Pending (needs SDK deps) |
 
-**Endpoints:** `POST /api/v1/logs/search` (planned).
+**Endpoints:** `POST /api/v1/logs/search` — **implemented** (tenant/country scoped, RBAC `ALERT_READ`).
+
+> **Country isolation:** `IndexSearchService` calls `CountryAccessGuard.requireAccess` before opening any shard — a caller may only search their scoped country (cross/all-country needs `COUNTRY_GLOBAL_VIEW`). Country is also the top-level physical shard partition, so isolation is structural, not just a filter.
 
 ### 5. topology (`org.kfh.aiops.topology`)
 
