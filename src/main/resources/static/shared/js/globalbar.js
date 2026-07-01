@@ -30,10 +30,15 @@
     return ({ KW: '🇰🇼', BH: '🇧🇭', EG: '🇪🇬', ALL: '🌐' })[String(code || '').toUpperCase()] || '🏳️';
   }
 
+  function shortLabel(r) {
+    // Compact Dynatrace-style label (1h, 24h, 7d, 30d) regardless of the verbose config label.
+    return String(r.id || r.label || '').toUpperCase();
+  }
+
   function segment() {
     return RANGES.map(function (r) {
       var active = r.id === window.KFHGlobalFilter.rangeId ? ' active' : '';
-      return '<button type="button" data-range="' + esc(r.id) + '" class="' + active.trim() + '">' + esc(r.label) + '</button>';
+      return '<button type="button" data-range="' + esc(r.id) + '" class="' + active.trim() + '">' + esc(shortLabel(r)) + '</button>';
     }).join('');
   }
 
