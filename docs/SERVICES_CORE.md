@@ -66,14 +66,16 @@ When you add or change a core class/endpoint:
 
 | Class | Responsibility | Status |
 |-------|----------------|--------|
-| `IndexWriter` | Writes canonical events to time-sharded indexes. | ⚪ Not implemented |
-| `IndexReader` | Query inverted index with filters/text. | ⚪ Not implemented |
-| `ShardManager` | Manages shard lifecycle + rebalancing. | ⚪ Not implemented |
-| `Analyzer`, `Tokenizer` | Text analysis pipeline. | ⚪ Not implemented |
-| `RetentionService` | Apply per-country/env retention. | ⚪ Not implemented |
-| `ArchiveService` | Move cold data to object storage. | ⚪ Not implemented |
+| `TelemetryDocument` / `TelemetryKind` / `IndexQuery` / `IndexSearchResult` | Typed document/query/result model (`index.model`). | 🟢 Implemented (Phase 2 inc. 1) |
+| `ShardKey` | Shard path `{country}/{env}/{kind}/{date}/shard-NN` + hash routing. | 🟢 Implemented |
+| `SegmentStore` | Append-only JSONL segment I/O per shard. | 🟢 Implemented |
+| `IndexWriterService` | Batched, shard-routed writes (funnel Stage 3). | 🟢 Implemented |
+| `IndexSearchService` | Time-partition prune → country/env → parallel filtered scan. | 🟢 Implemented |
+| `IndexProperties` | `kfh.index.*` tunables (shards-per-day, batch, parallelism, retention). | 🟢 Implemented |
+| In-shard inverted index / postings | O(1) high-cardinality term lookup. | ⚪ Increment 2 |
+| `RetentionService` / `ArchiveService` | Per-country/env retention + cold archive to object storage. | ⚪ Increment 2 |
 
-**Endpoints:** `POST /api/v1/logs/search` (planned).
+**Endpoints:** `POST /api/v1/logs/search` — **implemented** (tenant/country scoped, RBAC `ALERT_READ`).
 
 ### 5. topology (`org.kfh.aiops.topology`)
 

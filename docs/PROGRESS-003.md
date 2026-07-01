@@ -70,6 +70,27 @@ Legend: 🟢 Done  🟡 In progress  🔴 Blocked  ⚪ Not started
 
 > Newest entries on top. Append your entry above the previous one.
 
+### 2026-07-01 — Phase 2: Custom Index Engine — searchable core (increment 1)
+- **Phase:** 2
+- **Module(s):** index (new: `org.kfh.aiops.index`, `index.model`, `index.api`)
+- **Type:** feature
+- **Country/Tenant scope:** ALL (documents + queries scoped by country/environment/tenant)
+- **Summary:** First increment of the Custom Log Index Engine (the Elasticsearch replacement, §10 / funnel Stage 3). Typed model (`TelemetryDocument`/`TelemetryKind`/`IndexQuery`/`IndexSearchResult`), sharded append-only `SegmentStore` (JSONL per `{country}/{env}/{kind}/{date}/shard-NN`), `IndexWriterService` (batched, hash-routed writes), and `IndexSearchService` (time-partition prune → country/env filter → parallel filtered scan, newest-first, paginated). Exposed `POST /api/v1/logs/search` (RBAC `ALERT_READ`, tenant/country scoped). `IndexProperties` binds `kfh.index.*` (shards-per-day, write-batch-size, search-parallelism, retention-days per kind).
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/index/**` (model, ShardKey, IndexProperties, SegmentStore, IndexWriterService, IndexSearchService, api/IndexSearchController, package-info)
+  - `src/main/resources/application.properties` (`kfh.index.shards-per-day`, `write-batch-size`, `search-parallelism`, `retention-days.*`)
+- **DB migrations:** N/A
+- **API changes:** `POST /api/v1/logs/search` (new)
+- **Tests added/updated:** `ShardKeyTest`, `SegmentStoreTest`, `IndexWriterServiceTest`, `IndexSearchServiceTest` (14 cases; temp-dir, no external deps) — `mvn test` green
+- **Docs updated:** docs/SERVICES_CORE.md, docs/CAUSAL_PIPELINE.md §9, docs/PROGRESS-003.md, .github/PROGRESS.md
+- **Security / OWASP checklist:**
+  - [x] Tenant + country + environment scoping (search filters by ctx; shard paths by country/env)
+  - [x] RBAC at service layer (`ctx.requirePermission("ALERT_READ")`)
+  - [x] No raw telemetry in Postgres/Neo4j; index holds `rawRef` pointer only
+- **Follow-ups / TODO:** increment 2 = in-shard inverted index/postings, retention + archive to object storage, and Settings-driven storage path (wire from the INDEX_STORAGE connector like Part D's Redis resolver); fold `POST /api/v1/logs/search` into docs/API_CONTRACTS.md; then upgrade Alert Explorer into the Kibana-Discover UI (query bar, time histogram, facets) on this API.
+- **Author:** claude-code
+- **Correlation:** Phase 2 increment 1
+
 ### 2026-07-01 — Fix flaky Kafka Test Connection (5s timeout too tight; disable metrics push)
 - **Phase:** 1 (Settings infrastructure testers)
 - **Module(s):** platform.config (DefaultInfrastructureConnectionTester)
