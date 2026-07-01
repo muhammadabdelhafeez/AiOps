@@ -3,6 +3,7 @@ package org.kfh.aiops.ingestion;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.Collection;
 import java.util.Map;
 
 /**
@@ -33,6 +34,36 @@ final class RawFields {
     static String strOr(Map<String, Object> raw, String fallback, String... keys) {
         var value = str(raw, keys);
         return value != null ? value : fallback;
+    }
+
+    /**
+     * First non-blank value among {@code keys}, joining {@link Collection} values with {@code ", "}.
+     * BMC Helix fields such as {@code _service_name} / {@code _impacted_service_name} arrive as either
+     * a scalar or an array, so callers must not assume a single type.
+     */
+    static String joined(Map<String, Object> raw, String... keys) {
+        for (var key : keys) {
+            var value = raw.get(key);
+            if (value == null) {
+                continue;
+            }
+            if (value instanceof Collection<?> collection) {
+                var text = collection.stream()
+                        .filter(java.util.Objects::nonNull)
+                        .map(item -> String.valueOf(item).trim())
+                        .filter(item -> !item.isEmpty())
+                        .collect(java.util.stream.Collectors.joining(", "));
+                if (!text.isEmpty()) {
+                    return text;
+                }
+                continue;
+            }
+            var text = String.valueOf(value).trim();
+            if (!text.isEmpty()) {
+                return text;
+            }
+        }
+        return null;
     }
 
     /**

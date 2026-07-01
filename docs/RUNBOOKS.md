@@ -891,4 +891,43 @@ history -c 2>/dev/null || true
 
 Then in the Settings → Servers & Index → Redis Server popup, edit the **matching country row** (`KW`, `BH`, or `EG`), paste the new password into **Redis Password**, click **Test & Update**. Disable `kfh_break_glass` again immediately after rotation (`ACL SETUSER kfh_break_glass off`).
 
+---
+
+## BMC Helix Ingestion (Phase 4 — Stage 0 collection)
+
+Pulls BMC Helix events into the causal funnel (normalize → dedup → index → Log Explorer). Reference API flow: `docs/BMC_Helix_response.md`.
+
+### Configure (secrets via environment only — never commit)
+```powershell
+# Windows Tomcat host (app), User scope persists across sessions
+[Environment]::SetEnvironmentVariable('BMC_BASE_URL', 'https://kfh-itom.onbmc.com', 'User')
+[Environment]::SetEnvironmentVariable('BMC_ANALYSIS_BMC_ACCESS_KEY', '<access-key>', 'User')
+[Environment]::SetEnvironmentVariable('BMC_ANALYSIS_BMC_ACCESS_SECRET_KEY', '<secret-key>', 'User')
+# Optional: enable the 20-min scheduled poll (leave unset for manual-only)
+[Environment]::SetEnvironmentVariable('BMC_INGESTION_ENABLED', 'true', 'User')
+```
+All tunables have safe defaults (`minutes-back=30`, `max-events=500`, `poll-interval-ms=1200000`, scope `KW`/`PROD`). With no credentials the feature is inert (`enabled=false`), so a fresh deploy never makes outbound BMC calls by accident.
+
+### First live test (manual trigger)
+Authenticate as an operator with `ALERT_INGEST` (GLOBAL_ADMIN has `*`), then:
+```bash
+curl -sk -X POST https://<app-host>:8443/api/v1/ingestion/bmc/collect-now \
+  -H "Authorization: Bearer <session-jwt>" -H "X-Country-Code: KW"
+# → {"received":142,"normalized":142,"duplicatesDropped":18,"indexed":124,"failed":0}
+```
+Then open **Log Explorer**, filter `sourceSystem = BMC`, and confirm the events landed. `duplicatesDropped>0` proves Redis dedup is live; if it stays `0` while re-running within the window, check Redis connectivity (dedup fails open → everything treated as new).
+
+### Interpreting `IngestionResult`
+- `received` = raw BMC events pulled; `normalized` = mapped OK; `failed` = unmappable (logged, never fatal); `duplicatesDropped` = suppressed by short-window fingerprint; `indexed` = written to the Custom Index.
+- `received = normalized + failed` and `normalized = indexed + duplicatesDropped` always hold — if they don't, a downstream write partially failed; check app logs for the `IngestionService` line.
+
+### Troubleshooting
+| Symptom | Likely cause | Action |
+|---|---|---|
+| `500 … BMC ingestion is not configured` | missing base-url/keys | set the three env vars, restart the app |
+| `500 … BMC authentication failed` | wrong access key/secret, or clock skew | re-check credentials in BMC admin console |
+| Sporadic `504`/`PrematureClose` on poll | BMC edge proxy drops idle TCP | already mitigated (keep-alive + eviction); if persistent, lower `poll-interval-ms` |
+| `indexed=0` but `received>0` | all duplicates, or index storage unwritable | check `duplicatesDropped`; verify `kfh.index.storage.path` is writable |
+| Scheduled poll silent | `kfh.ingestion.bmc.enabled` not `true` | set `BMC_INGESTION_ENABLED=true`, restart |
+
 

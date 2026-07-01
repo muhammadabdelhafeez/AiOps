@@ -322,6 +322,15 @@ If missing: 400/401 (implementation choice) with standard error response.
 - GET /api/v1/connectors/types — List available plugin types
   - Returns: List<PluginMetadata> with configSchema for UI forms
 
+### Ingestion (Phase 4 — BMC Helix → pipeline)
+- POST `/api/v1/ingestion/bmc/collect-now` — Manual BMC collection trigger
+  - Permission: `ALERT_INGEST` (checked before any outbound BMC call).
+  - No body. Pulls the current BMC event window (`kfh.ingestion.bmc.minutes-back`, `max-events`) under the caller's tenant/country/environment scope, then runs the shared ingestion pipeline: BMC Helix JWT login → Events `msearch` → `BmcNormalizer` (canonical `TelemetryDocument`) → `FingerprintDedupService` (Redis SETNX, fail-open) → `IndexWriterService` (Custom Index, searchable in Log Explorer).
+  - Returns `IngestionResult`: `{ received, normalized, duplicatesDropped, indexed, failed }` (invariant: `received = normalized + failed`, `normalized = indexed + duplicatesDropped`).
+  - Errors: `500` with a secret-safe message when BMC is unreachable or credentials are missing (`BMC ingestion is not configured …`). Redis being down does NOT fail the call (dedup fails open; events still index).
+  - A parallel opt-in scheduled poll (`kfh.ingestion.bmc.enabled=true`) runs the same `collect()` on `poll-interval-ms` (default 20 min) under a configured system scope; failures are logged and retried next tick.
+  - Config (env-only secrets, never committed): `kfh.ingestion.bmc.base-url`, `access-key` (`BMC_ANALYSIS_BMC_ACCESS_KEY`), `access-secret-key` (`BMC_ANALYSIS_BMC_ACCESS_SECRET_KEY`), `login-endpoint`, `events-endpoint`, `minutes-back`, `max-events`, `tenant-id`, `country-code`, `environment`.
+
 Implemented frontend-aligned connector endpoints in this scaffold:
 - GET `/api/v1/connectors?page=&size=`
   - With `X-Country-Code: ALL` and `COUNTRY_GLOBAL_VIEW` / `*`, returns all connectors for the current tenant/environment across physical country configs (`KW`, `BH`, `EG`). With a physical country header, returns only that country.
