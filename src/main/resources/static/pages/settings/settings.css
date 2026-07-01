@@ -1002,6 +1002,16 @@
   color: #4b6b5e;
 }
 
+/* ===== Dynatrace-density settings category list (KFH colors), CSS-only ===== */
+.settings-page-shell .settings-tabs { gap: 3px !important; padding: 5px !important; border-radius: 14px !important; }
+.settings-page-shell .settings-tab { min-height: 40px !important; padding: 6px 10px !important; grid-template-columns: 28px minmax(0, 1fr) !important; gap: 9px !important; border-radius: 10px !important; }
+.settings-page-shell .settings-tab:hover { transform: none !important; }
+.settings-page-shell .settings-tab-icon { width: 28px !important; height: 28px !important; border-radius: 8px !important; }
+.settings-page-shell .settings-tab-label { font-size: 12.5px !important; font-weight: 800 !important; }
+.settings-page-shell .settings-tab-hint { font-size: 10.5px !important; font-weight: 600 !important; }
+.settings-page-shell .settings-local-sidebar { border-radius: 14px !important; padding: 6px !important; }
+.settings-page-shell .settings-content { grid-template-columns: 232px minmax(0, 1fr) !important; gap: 12px !important; }
+
 .settings-page-shell .unsaved-bar {
   background: rgba(255, 251, 235, 0.96) !important;
   border-color: rgba(245, 158, 11, 0.28) !important;

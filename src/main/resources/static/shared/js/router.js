@@ -63,12 +63,19 @@ window.Router = (function() {
       title: 'Reports',
       usesReactModule: false
     },
+    'connections': {
+      js: 'pages/connections/connections.js',
+      css: 'pages/connections/connections.css',
+      title: 'Connections',
+      usesReactModule: false,
+      sidebarPageId: 'settings'
+    },
     'connectors': {
       js: 'pages/connectors/connectors.js',
       css: 'pages/connectors/connectors.css',
-      title: 'Connections',
+      title: 'Connectors',
       usesReactModule: false,
-      sidebarPageId: 'settings' // Connectors now live under Settings; keep Settings highlighted
+      sidebarPageId: 'settings' // Connectors inventory (real management), reached from Connections
     },
     'schedules': {
       js: 'pages/schedules/schedules.js',
