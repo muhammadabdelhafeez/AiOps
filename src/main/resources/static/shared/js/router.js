@@ -45,6 +45,12 @@ window.Router = (function() {
       usesReactModule: false,
       usesJSX: true  // Requires Babel transformation
     },
+    'servicemap': {
+      js: 'pages/servicemap/servicemap.js',
+      css: 'pages/servicemap/servicemap.css',
+      title: 'Service Map — Application Topology',
+      usesReactModule: false
+    },
     'applications': {
       js: 'pages/applications/applications.js',
       css: 'pages/applications/applications.css',

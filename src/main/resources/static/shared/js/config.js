@@ -48,14 +48,15 @@ window.KFHConfig = (function() {
         { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', path: '/dashboard' },
         { id: 'incidents', label: 'Incidents', icon: 'incident', path: '/incidents', badge: null },
         { id: 'alerts', label: 'Alert Explorer', icon: 'alert', path: '/alerts' },
-        { id: 'explorer', label: 'Log Explorer', icon: 'report', path: '/explorer' },
-        { id: 'inventory', label: 'Inventory', icon: 'inventory', path: '/inventory' }
+        { id: 'explorer', label: 'Log Explorer', icon: 'report', path: '/explorer' }
       ]
     },
     {
-      group: 'Intelligence',
+      group: 'Analysis & Topology',
       items: [
+        { id: 'servicemap', label: 'Service Map', icon: 'app', path: '/servicemap' },
         { id: 'applications', label: 'Applications', icon: 'app', path: '/applications' },
+        { id: 'inventory', label: 'Inventory', icon: 'inventory', path: '/inventory' },
         { id: 'reports', label: 'Reports', icon: 'report', path: '/reports' }
       ]
     },
@@ -76,6 +77,8 @@ window.KFHConfig = (function() {
     'dashboard': 'Dashboard',
     'incidents': 'Incidents',
     'alerts': 'Alert Explorer',
+    'explorer': 'Log Explorer',
+    'servicemap': 'Service Map — Application Topology',
     'inventory': 'Inventory & Infrastructure',
     'applications': 'Applications',
     'reports': 'Reports',

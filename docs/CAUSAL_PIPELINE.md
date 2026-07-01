@@ -260,6 +260,22 @@ overlaps into separate incidents; **merges** flows with hidden shared dependenci
 temporally-close-but-not-causal alerts; reasons **novel** failures with no modeled path. AI must
 **cite evidence IDs** (grounded — no hallucinated root cause) and never returns confidence `1.0`.
 
+### Business-application topology (the model correlation walks)
+Each business application (Fund Transfer, KFHOnline, WAMD, …) is modelled as a **component flow bound
+to assets**, stored in Neo4j:
+`(:BusinessApplication)-[:HAS_COMPONENT]->(:Component)-[:DEPENDS_ON]->(:Component)` and
+`(:Component)-[:BOUND_TO]->(:Asset)`, where `Asset.ciKeys` match alert `resourceId`s.
+
+- **Alert → asset → application resolution:** an alert's CI (BMC `source_hostname`, SCOM
+  `NetbiosComputerName`/`MonitoringObjectName`) matches a bound `Asset`, which resolves the
+  application(s) it impacts — this is what *focuses* an issue onto an application. Unmatched CIs are
+  reported as "unmapped", never silently dropped.
+- **Multi-application impact is first-class:** a shared component (core Oracle, API gateway, SAN)
+  belongs to multiple flows, so one root-cause asset yields `impactedApplications[]` (a ranked list),
+  not N per-app incidents.
+- **Surface:** the **Service Map** page (Analysis & Topology menu group) renders each application's
+  component flow + bound assets + live health; it is the operator view of this graph.
+
 ### No cap; incident continuity
 - **No artificial limit** on incident count — as many *distinct real* `(root-cause × journey)`
   incidents as the data warrants (5, 30, 50…). The only gate is *quality* (impact-anchored + causally
