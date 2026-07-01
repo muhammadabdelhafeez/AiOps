@@ -23,7 +23,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class SegmentStore {
 
-    private static final String SEGMENT_FILE = "segment.jsonl";
+    public static final String SEGMENT_FILE = "segment.jsonl";
 
     private final ObjectMapper mapper;
     private final Map<Path, Object> locks = new ConcurrentHashMap<>();

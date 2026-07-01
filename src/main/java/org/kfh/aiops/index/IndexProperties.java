@@ -17,6 +17,7 @@ public class IndexProperties {
     private int writeBatchSize = 1000;
     private int searchParallelism = 8;
     private RetentionDays retentionDays = new RetentionDays();
+    private Archive archive = new Archive();
 
     public Storage getStorage() {
         return storage;
@@ -56,6 +57,14 @@ public class IndexProperties {
 
     public void setRetentionDays(RetentionDays retentionDays) {
         this.retentionDays = retentionDays;
+    }
+
+    public Archive getArchive() {
+        return archive;
+    }
+
+    public void setArchive(Archive archive) {
+        this.archive = archive;
     }
 
     /** Filesystem/object-storage location for index shards. */
@@ -135,6 +144,37 @@ public class IndexProperties {
 
         public void setChanges(int changes) {
             this.changes = changes;
+        }
+    }
+
+    /** Cold-shard archive target. When enabled, retention archives shards before deleting them. */
+    public static class Archive {
+        private boolean enabled = false;
+        private String provider = "FILESYSTEM";
+        private String path = "/data/aiops-index-archive";
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public String getProvider() {
+            return provider;
+        }
+
+        public void setProvider(String provider) {
+            this.provider = provider;
+        }
+
+        public String getPath() {
+            return path;
+        }
+
+        public void setPath(String path) {
+            this.path = path;
         }
     }
 }

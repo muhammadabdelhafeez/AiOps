@@ -16,6 +16,7 @@ import org.kfh.aiops.index.model.IndexQuery;
 import org.kfh.aiops.index.model.IndexSearchResult;
 import org.kfh.aiops.index.model.TelemetryDocument;
 import org.kfh.aiops.index.model.TelemetryKind;
+import org.kfh.aiops.platform.country.CountryAccessGuard;
 import org.kfh.aiops.platform.tenant.TenantContext;
 import org.springframework.stereotype.Service;
 
@@ -32,18 +33,23 @@ public class IndexSearchService {
     private final ShardIndexCache shardIndexCache;
     private final IndexProperties properties;
     private final IndexStorageResolver storageResolver;
+    private final CountryAccessGuard countryAccessGuard;
 
     public IndexSearchService(ShardIndexCache shardIndexCache, IndexProperties properties,
-            IndexStorageResolver storageResolver) {
+            IndexStorageResolver storageResolver, CountryAccessGuard countryAccessGuard) {
         this.shardIndexCache = shardIndexCache;
         this.properties = properties;
         this.storageResolver = storageResolver;
+        this.countryAccessGuard = countryAccessGuard;
     }
 
     public IndexSearchResult search(TenantContext ctx, IndexQuery query) {
         var started = System.nanoTime();
         var root = storageResolver.resolveRoot(ctx);
         var country = firstNonBlank(query.country(), ctx.countryCode());
+        // Country isolation: a caller may only search a country they are scoped to (or hold
+        // COUNTRY_GLOBAL_VIEW). Enforced before any shard directory is opened.
+        countryAccessGuard.requireAccess(ctx, country);
         var environment = firstNonBlank(query.environment(), ctx.environment());
         var from = query.from() == null ? Instant.EPOCH : query.from();
         var to = query.to() == null ? Instant.now() : query.to();

@@ -1,6 +1,7 @@
 package org.kfh.aiops.index;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
@@ -21,6 +22,9 @@ import org.kfh.aiops.index.model.IndexQuery;
 import org.kfh.aiops.index.model.TelemetryDocument;
 import org.kfh.aiops.index.model.TelemetryKind;
 import org.kfh.aiops.platform.config.SettingsService;
+import org.kfh.aiops.platform.country.CountryAccessGuard;
+import org.kfh.aiops.platform.country.CountryRegistry;
+import org.kfh.aiops.platform.exception.ForbiddenAccessException;
 import org.kfh.aiops.platform.tenant.TenantContext;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -35,6 +39,9 @@ class IndexSearchServiceTest {
     @Mock
     private SettingsService settingsService;
 
+    @Mock
+    private CountryRegistry countryRegistry;
+
     private IndexSearchService search;
 
     @BeforeEach
@@ -44,9 +51,11 @@ class IndexSearchServiceTest {
         props.setShardsPerDay(4);
         props.setSearchParallelism(4);
         when(settingsService.resolveIndexStorage(any())).thenReturn(Optional.empty());
+        when(countryRegistry.isEnabled(any())).thenReturn(true);
         var resolver = new IndexStorageResolver(settingsService, props);
         var writer = new IndexWriterService(store, props, resolver);
-        search = new IndexSearchService(new ShardIndexCache(store), props, resolver);
+        search = new IndexSearchService(new ShardIndexCache(store), props, resolver,
+                new CountryAccessGuard(countryRegistry));
         writer.index(ctx(), List.of(
                 doc("a", "2026-06-07T10:00:00Z", "CRITICAL", "TRANSFER", "T1", "SAN storage write latency 82ms"),
                 doc("b", "2026-06-07T10:14:00Z", "HIGH", "ORACLE", "T1", "buffer busy waits high"),
@@ -94,6 +103,14 @@ class IndexSearchServiceTest {
         assertThat(page0.total()).isEqualTo(4);
         assertThat(page0.hits()).extracting(TelemetryDocument::id).containsExactly("d", "c");
         assertThat(page1.hits()).extracting(TelemetryDocument::id).containsExactly("b", "a");
+    }
+
+    @Test
+    void deniesCrossCountrySearchWithoutGlobalView() {
+        var otherCountry = new IndexQuery(List.of(TelemetryKind.ALERTS), "BH", null, null, null, null,
+                null, null, null, null, null, null, null, null, null);
+        assertThatThrownBy(() -> search.search(ctx(), otherCountry))
+                .isInstanceOf(ForbiddenAccessException.class);
     }
 
     private static TenantContext ctx() {

@@ -75,9 +75,12 @@ When you add or change a core class/endpoint:
 | `ShardIndex` / `ShardIndexCache` | Cached parsed docs + inverted postings per shard (segment-size invalidated); posting-list intersection for exact filters. | 🟢 Implemented (Phase 2 inc. 2) |
 | `IndexRetentionService` | Purge expired shard date-dirs per-kind retention (`@Scheduled`). | 🟢 Implemented (inc. 2) |
 | `IndexStorageResolver` | Resolve index root from Settings INDEX_STORAGE connector, else `kfh.index.storage.path`. | 🟢 Implemented (inc. 2) |
-| Archive cold shards → object storage | Move aged shards to object storage + `rawRef`. | ⚪ Increment 3 (needs object-storage client) |
+| `ArchiveStore` / `FilesystemArchiveStore` | Gzip cold shards to a filesystem/NFS archive tier; retention archives before delete. | 🟢 Implemented (inc. 3) |
+| Cloud archive (S3 / Azure Blob) | Drop-in `ArchiveStore` implementations behind the interface. | ⚪ Pending (needs SDK deps) |
 
 **Endpoints:** `POST /api/v1/logs/search` — **implemented** (tenant/country scoped, RBAC `ALERT_READ`).
+
+> **Country isolation:** `IndexSearchService` calls `CountryAccessGuard.requireAccess` before opening any shard — a caller may only search their scoped country (cross/all-country needs `COUNTRY_GLOBAL_VIEW`). Country is also the top-level physical shard partition, so isolation is structural, not just a filter.
 
 ### 5. topology (`org.kfh.aiops.topology`)
 

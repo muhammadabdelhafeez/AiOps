@@ -70,6 +70,27 @@ Legend: 🟢 Done  🟡 In progress  🔴 Blocked  ⚪ Not started
 
 > Newest entries on top. Append your entry above the previous one.
 
+### 2026-07-01 — Phase 2: Custom Index Engine — cold-shard archive + country-isolation guard (increment 3)
+- **Phase:** 2
+- **Module(s):** index (`org.kfh.aiops.index`)
+- **Type:** feature + security
+- **Country/Tenant scope:** ALL
+- **Summary:** (Archive) `ArchiveStore` interface + `FilesystemArchiveStore` (gzip a cold shard's segment to `{archive.path}/{country}/{env}/{kind}/{date}/shard-NN/segment.jsonl.gz`); `IndexRetentionService` now **archives before delete** when `kfh.index.archive.enabled=true`. Cloud (S3/Azure Blob) archive is a drop-in `ArchiveStore` impl once SDK deps are added. (Security) Closed a country-isolation gap: `IndexSearchService` now calls `CountryAccessGuard.requireAccess(ctx, country)` before opening any shard, so a caller can only search their scoped country (cross/all-country needs `COUNTRY_GLOBAL_VIEW`) — complementing the top-level physical country partition.
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/index/` (ArchiveStore, FilesystemArchiveStore — new; SegmentStore `SEGMENT_FILE` public; IndexProperties `Archive`; IndexRetentionService archive-before-delete; IndexSearchService `CountryAccessGuard`)
+  - `src/main/resources/application.properties` (`kfh.index.archive.*`)
+- **DB migrations:** N/A
+- **API changes:** N/A (behavioral: `/logs/search` now enforces country access)
+- **Tests added/updated:** `FilesystemArchiveStoreTest` (new), `IndexRetentionServiceTest` (+archive-before-delete), `IndexSearchServiceTest` (+cross-country denial) — 28 index tests green; `mvn test` clean
+- **Docs updated:** docs/SERVICES_CORE.md, docs/CAUSAL_PIPELINE.md §9, docs/SECURITY.md, docs/PROGRESS-003.md, .github/PROGRESS.md
+- **Security / OWASP checklist:**
+  - [x] A01 Broken Access Control — country isolation enforced at service layer before any shard read
+  - [x] Tenant + country + environment scoping (structural partition + guard)
+  - [x] Index holds `rawRef` only; archive is gzip of the same (no new secrets)
+- **Follow-ups / TODO:** S3/Azure `ArchiveStore` impls (SDK deps); `@EnableScheduling` to activate retention cron; fold `/logs/search` into docs/API_CONTRACTS.md; Alert Explorer Kibana-Discover UI on the search API.
+- **Author:** claude-code
+- **Correlation:** Phase 2 increment 3
+
 ### 2026-07-01 — Phase 2: Custom Index Engine — inverted index + retention + Settings-driven path (increment 2)
 - **Phase:** 2
 - **Module(s):** index (`org.kfh.aiops.index`), platform.config (SettingsService)

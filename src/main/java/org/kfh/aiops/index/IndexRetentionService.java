@@ -25,9 +25,11 @@ public class IndexRetentionService {
     private static final Logger log = LoggerFactory.getLogger(IndexRetentionService.class);
 
     private final IndexProperties properties;
+    private final ArchiveStore archiveStore;
 
-    public IndexRetentionService(IndexProperties properties) {
+    public IndexRetentionService(IndexProperties properties, ArchiveStore archiveStore) {
         this.properties = properties;
+        this.archiveStore = archiveStore;
     }
 
     @Scheduled(cron = "${kfh.index.retention.cron:0 30 2 * * *}")
@@ -58,6 +60,11 @@ public class IndexRetentionService {
                     for (var dateDir : childDirs(kindDir)) {
                         var date = parseDate(dateDir.getFileName().toString());
                         if (date != null && date.isBefore(cutoff)) {
+                            if (properties.getArchive().isEnabled()) {
+                                for (var shardDir : childDirs(dateDir)) {
+                                    archiveStore.archiveShard(shardDir, root.relativize(shardDir));
+                                }
+                            }
                             deleteRecursively(dateDir);
                             deleted++;
                         }
