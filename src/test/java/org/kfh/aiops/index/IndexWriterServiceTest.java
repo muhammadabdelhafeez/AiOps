@@ -37,7 +37,7 @@ class IndexWriterServiceTest {
     void routesDocumentToCountryEnvKindDateShard(@TempDir Path root) {
         var props = props(root);
         when(settingsService.resolveIndexStorage(any())).thenReturn(Optional.empty());
-        var writer = new IndexWriterService(store, props, new IndexStorageResolver(settingsService, props));
+        var writer = new IndexWriterService(store, props, new IndexStorageResolver(settingsService, props, registry()));
 
         var written = writer.index(ctx(), List.of(doc("alert-1")));
 
@@ -52,7 +52,7 @@ class IndexWriterServiceTest {
     @Test
     void emptyBatchWritesNothing(@TempDir Path root) {
         var props = props(root);
-        var writer = new IndexWriterService(store, props, new IndexStorageResolver(settingsService, props));
+        var writer = new IndexWriterService(store, props, new IndexStorageResolver(settingsService, props, registry()));
         assertThat(writer.index(ctx(), List.of())).isZero();
     }
 
@@ -61,6 +61,11 @@ class IndexWriterServiceTest {
         props.getStorage().setPath(root.toString());
         props.setShardsPerDay(4);
         return props;
+    }
+
+    private static IndexStorageProviderRegistry registry() {
+        return new IndexStorageProviderRegistry(java.util.List.of(
+                new FilesystemIndexStorageProvider(), new S3IndexStorageProvider(), new AzureBlobIndexStorageProvider()));
     }
 
     private static TenantContext ctx() {

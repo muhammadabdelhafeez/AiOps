@@ -150,7 +150,9 @@ public class DefaultInfrastructureConnectionTester implements InfrastructureConn
 
     private static String testIndexStorage(InfrastructureTestConfig config) {
         var provider = firstNonBlank(config.provider(), "LOCAL").toUpperCase(Locale.ROOT);
-        if (provider.equals("LOCAL") || provider.equals("NFS")) {
+        // Filesystem-family providers (Linux/Windows disk, NFS mount, Windows UNC/SMB share,
+        // OpenShift PVC mount) are all java.nio paths — validate the directory for real.
+        if (provider.equals("LOCAL") || provider.equals("NFS") || provider.equals("SMB") || provider.equals("PVC")) {
             var path = localPath(config.endpoint());
             validateLocalIndexPath(path);
             if (!Files.isDirectory(path)) {

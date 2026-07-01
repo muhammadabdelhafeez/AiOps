@@ -889,7 +889,7 @@ public class SettingsService {
      * Returns the filesystem path; empty when none is configured (callers fall back to
      * {@code kfh.index.storage.path}).
      */
-    public Optional<String> resolveIndexStorage(TenantContext ctx) {
+    public Optional<Map<String, Object>> resolveIndexStorage(TenantContext ctx) {
         var section = asMap(privateSettings(ctx).get("infrastructure"));
         if (!(section.get("connections") instanceof Iterable<?> iterable)) {
             return Optional.empty();
@@ -899,11 +899,12 @@ public class SettingsService {
             if (!"INDEX_STORAGE".equalsIgnoreCase(safe(connector.get("type"))) || Boolean.FALSE.equals(connector.get("enabled"))) {
                 continue;
             }
-            var provider = safe(connector.get("provider"));
-            var endpoint = safe(connector.get("endpoint"));
-            if (!endpoint.isBlank() && (provider.isBlank() || "LOCAL".equalsIgnoreCase(provider) || "NFS".equalsIgnoreCase(provider))) {
-                return Optional.of(endpoint);
-            }
+            var resolved = new LinkedHashMap<String, Object>();
+            resolved.put("provider", safe(connector.get("provider")));
+            resolved.put("endpoint", safe(connector.get("endpoint")));
+            resolved.put("bucket", safe(connector.get("bucket")));
+            resolved.put("region", safe(connector.get("region")));
+            return Optional.of(resolved);
         }
         return Optional.empty();
     }
