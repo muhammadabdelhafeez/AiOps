@@ -46,3 +46,6 @@ build/
 
 ### Graphify (generated knowledge graph) ###
 graphify-out/
+
+### Runtime logs (never commit) ###
+*.log
