@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="shared/css/kfh-theme.css">
   <link rel="stylesheet" href="shared/css/login.css">
   <link id="kfh-aiops-parity-css" rel="stylesheet" href="shared/css/kfh-aiops-parity.css">
+  <link rel="stylesheet" href="shared/css/kfh-dynatrace-system.css">
 </head>
 <body class="h-full overflow-hidden" style="font-family: 'Outfit', sans-serif; background: var(--surface-bg);">
   <div id="auth-root" hidden></div>
@@ -83,22 +84,34 @@
               </span>
               <span class="kfh-sidebar-nav-label">Alerts</span>
             </a>
-            <a href="#inventory" class="kfh-sidebar-nav-item" data-page="inventory">
+            <a href="#explorer" class="kfh-sidebar-nav-item" data-page="explorer">
               <span class="kfh-sidebar-nav-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="2" y="3" width="20" height="14" rx="2"/>
-                  <path d="M8 21h8m-4-4v4"/>
+                  <path d="M3 5h18M3 10h12M3 15h7"/>
+                  <circle cx="17.5" cy="16.5" r="3"/>
+                  <path d="m22 21-2.1-2.1"/>
                 </svg>
               </span>
-              <span class="kfh-sidebar-nav-label">Inventory</span>
+              <span class="kfh-sidebar-nav-label">Log Explorer</span>
             </a>
           </div>
         </div>
 
-        <!-- Intelligence -->
+        <!-- Analysis & Topology -->
         <div class="kfh-sidebar-group">
-          <div class="kfh-sidebar-group-title">Intelligence</div>
+          <div class="kfh-sidebar-group-title">Analysis &amp; Topology</div>
           <div class="kfh-sidebar-group-items">
+            <a href="#servicemap" class="kfh-sidebar-nav-item" data-page="servicemap">
+              <span class="kfh-sidebar-nav-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="6" cy="6" r="2.5"/>
+                  <circle cx="6" cy="18" r="2.5"/>
+                  <circle cx="18" cy="12" r="2.5"/>
+                  <path d="M8.3 7.1 15.6 11M8.3 16.9 15.6 13"/>
+                </svg>
+              </span>
+              <span class="kfh-sidebar-nav-label">Service Map</span>
+            </a>
             <a href="#applications" class="kfh-sidebar-nav-item" data-page="applications">
               <span class="kfh-sidebar-nav-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -107,6 +120,15 @@
                 </svg>
               </span>
               <span class="kfh-sidebar-nav-label">Applications</span>
+            </a>
+            <a href="#inventory" class="kfh-sidebar-nav-item" data-page="inventory">
+              <span class="kfh-sidebar-nav-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="2" y="3" width="20" height="14" rx="2"/>
+                  <path d="M8 21h8m-4-4v4"/>
+                </svg>
+              </span>
+              <span class="kfh-sidebar-nav-label">Inventory</span>
             </a>
             <a href="#reports" class="kfh-sidebar-nav-item" data-page="reports">
               <span class="kfh-sidebar-nav-icon">
@@ -211,6 +233,8 @@
       <!-- Top Accent Gradient -->
       <div class="kfh-top-accent"></div>
 
+      <!-- Global Context Bar (scope · environment · time range · search) -->
+      <div id="global-bar"></div>
 
       <!-- Content Area - Dynamic Page Content Loads Here -->
       <div id="content-area" class="kfh-content-area">
@@ -250,6 +274,7 @@
   <script src="shared/js/auth.js"></script>
   <script src="shared/js/router.js"></script>
   <script src="shared/js/sidebar-collapse.js"></script>
+  <script src="shared/js/globalbar.js"></script>
 
   <!-- Initialize Application -->
   <script>
