@@ -530,7 +530,7 @@ var Settings = (function() {
       { id: 'sharepoint', icon: 'file', label: 'SharePoint', hint: 'Evidence artifact storage' },
       { id: 'teams', icon: 'chat', label: 'Microsoft Teams', hint: 'Notification webhooks' },
       { id: 'infrastructure', icon: 'bolt', label: 'Servers & Index', hint: 'Redis, Kafka, index storage' },
-      { id: 'connectors', icon: 'database', label: 'Connections', hint: 'Data source connectors & collectors', route: 'connectors' },
+      { id: 'connectors', icon: 'database', label: 'Connections', hint: 'Data source connectors & collectors', route: 'connections' },
       { id: 'system', icon: 'bolt', label: 'System Variables', hint: 'Runtime, SSL, AI mode' }
     ];
   }
