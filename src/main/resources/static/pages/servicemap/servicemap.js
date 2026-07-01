@@ -96,9 +96,70 @@
       '</section>';
   }
 
+  var VIEW = { mode: 'flow' };
+
+  // Smartscape-style blast-radius graph (illustrative until live Neo4j topology).
+  var GN = [
+    { id: 'SAN', tier: 0, label: 'SAN-STORAGE-02', sub: 'Storage', h: 'crit', root: true },
+    { id: 'ORA', tier: 1, label: 'ORACLE-CORE-01', sub: 'Database', h: 'warn' },
+    { id: 'TRF', tier: 2, label: 'Transfer Service', sub: 'Service', h: 'warn' },
+    { id: 'PAY', tier: 2, label: 'Payment Service', sub: 'Service', h: 'ok' },
+    { id: 'GW', tier: 3, label: 'API Gateway', sub: 'Gateway', h: 'ok' },
+    { id: 'FT', tier: 4, label: 'Fund Transfer', sub: 'Journey', h: 'crit' },
+    { id: 'WM', tier: 4, label: 'WAMD', sub: 'Journey', h: 'warn' },
+    { id: 'KO', tier: 4, label: 'KFHOnline', sub: 'Journey', h: 'ok' }
+  ];
+  var GE = [
+    { f: 'SAN', t: 'ORA', s: 'crit' }, { f: 'ORA', t: 'TRF', s: 'crit' }, { f: 'ORA', t: 'PAY', s: 'ok' },
+    { f: 'TRF', t: 'GW', s: 'crit' }, { f: 'PAY', t: 'GW', s: 'ok' },
+    { f: 'GW', t: 'FT', s: 'crit' }, { f: 'GW', t: 'WM', s: 'warn' }, { f: 'GW', t: 'KO', s: 'ok' }
+  ];
+
+  function graphView() {
+    var byTier = {};
+    GN.forEach(function (n) { (byTier[n.tier] = byTier[n.tier] || []).push(n); });
+    GN.forEach(function (n) {
+      var arr = byTier[n.tier];
+      n.x = 100 + n.tier * 200;
+      n.y = 230 + (arr.indexOf(n) - (arr.length - 1) / 2) * 112;
+    });
+    var byId = {}; GN.forEach(function (n) { byId[n.id] = n; });
+
+    var edges = GE.map(function (e) {
+      var a = byId[e.f], b = byId[e.t];
+      var col = e.s === 'crit' ? '#ef4444' : e.s === 'warn' ? '#f59e0b' : '#cbd5e1';
+      var mx = (a.x + b.x) / 2;
+      return '<path d="M' + (a.x + 26) + ',' + a.y + ' C' + mx + ',' + a.y + ' ' + mx + ',' + b.y + ' ' + (b.x - 26) + ',' + b.y +
+        '" fill="none" stroke="' + col + '" stroke-width="' + (e.s === 'crit' ? 2.5 : e.s === 'warn' ? 2 : 1.5) + '" opacity="' + (e.s === 'ok' ? 0.5 : 0.95) + '"/>';
+    }).join('');
+
+    var nodes = GN.map(function (n) {
+      var stroke = n.h === 'crit' ? '#ef4444' : n.h === 'warn' ? '#f59e0b' : '#cbd5e1';
+      var fill = n.h === 'crit' ? '#fef2f2' : n.h === 'warn' ? '#fffbeb' : '#ffffff';
+      var dot = n.h === 'crit' ? '#dc2626' : n.h === 'warn' ? '#d97706' : '#16a34a';
+      var ring = n.root ? '<circle cx="' + n.x + '" cy="' + n.y + '" r="31" fill="none" stroke="#ef4444" stroke-width="1.5" opacity="0.45"/>' : '';
+      return ring +
+        '<circle cx="' + n.x + '" cy="' + n.y + '" r="24" fill="' + fill + '" stroke="' + stroke + '" stroke-width="' + (n.root ? 3 : 1.5) + '"/>' +
+        '<circle cx="' + n.x + '" cy="' + (n.y - 1) + '" r="5" fill="' + dot + '"/>' +
+        '<text x="' + n.x + '" y="' + (n.y + 44) + '" text-anchor="middle" font-size="11" font-weight="700" fill="#1e293b">' + esc(n.label) + '</text>' +
+        '<text x="' + n.x + '" y="' + (n.y + 58) + '" text-anchor="middle" font-size="9" fill="' + (n.root ? '#dc2626' : '#94a3b8') + '" font-weight="' + (n.root ? '700' : '400') + '">' + esc(n.sub) + (n.root ? ' · ROOT CAUSE' : '') + '</text>';
+    }).join('');
+
+    return '<section class="sm-card">' +
+      '<div style="font-size:0.8rem;color:var(--text-muted,#64748b);margin-bottom:8px;">Blast radius — the failing path (red) from the root-cause asset up through the topology to the impacted journeys.</div>' +
+      '<div style="overflow-x:auto;"><svg viewBox="0 0 1000 480" style="width:100%;min-width:900px;height:auto;">' + edges + nodes + '</svg></div>' +
+      '</section>';
+  }
+
   function render() {
     var mount = root();
     if (!mount) { return; }
+    var toggle =
+      '<div class="kfhx-segment">' +
+        '<button data-view="flow" class="' + (VIEW.mode === 'flow' ? 'active' : '') + '">Flow</button>' +
+        '<button data-view="graph" class="' + (VIEW.mode === 'graph' ? 'active' : '') + '">Graph</button>' +
+      '</div>';
+    var body = VIEW.mode === 'graph' ? graphView() : APPLICATIONS.map(appCard).join('');
     mount.innerHTML = '' +
       '<div class="sm-page">' +
         '<div class="sm-banner">' +
@@ -107,14 +168,20 @@
           'shared components (marked <em>shared</em>) let one root cause impact multiple applications. ' +
           '<span class="sm-stage-tag">Live Neo4j topology + real-time health arrive in Stage 4.</span>' +
         '</div>' +
-        '<div class="sm-legend">' +
-          '<span class="sm-legend-item"><span class="sm-dot sm-ok"></span> Healthy</span>' +
-          '<span class="sm-legend-item"><span class="sm-dot sm-warn"></span> Degraded</span>' +
-          '<span class="sm-legend-item"><span class="sm-dot sm-crit"></span> Critical</span>' +
-          '<span class="sm-legend-item"><span class="sm-shared">shared</span> Shared component (multi-application)</span>' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;">' +
+          '<div class="sm-legend" style="margin:0;">' +
+            '<span class="sm-legend-item"><span class="sm-dot sm-ok"></span> Healthy</span>' +
+            '<span class="sm-legend-item"><span class="sm-dot sm-warn"></span> Degraded</span>' +
+            '<span class="sm-legend-item"><span class="sm-dot sm-crit"></span> Critical</span>' +
+            '<span class="sm-legend-item"><span class="sm-shared">shared</span> Shared (multi-application)</span>' +
+          '</div>' + toggle +
         '</div>' +
-        APPLICATIONS.map(appCard).join('') +
+        body +
       '</div>';
+
+    mount.querySelectorAll('[data-view]').forEach(function (b) {
+      b.addEventListener('click', function () { VIEW.mode = b.getAttribute('data-view'); render(); });
+    });
   }
 
   render();
