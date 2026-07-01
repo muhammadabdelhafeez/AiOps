@@ -2,10 +2,10 @@
  * KFH AIOps Command Center — Alert Explorer, reconstructed to Dynatrace's "Events" organization
  * in KFH "Beyond Horizons" colors. Self-mounting, vanilla, uses the shared kfhx-* design system.
  *
- * Faceted rail (Severity/Source/Kind) + count-labeled severity tabs + volume timeline + dense event
- * stream (rich NL message, dedup count, linked incident) + master-detail with a properties key-value
- * table. Modelled on the canonical TelemetryDocument (BMC + SCOM). Illustrative data until the page
- * binds live to the Custom Index (/logs/search, ALERTS kind).
+ * Faceted rail (Severity/Source/Kind) + count-labeled severity tabs + query pill bar + volume timeline
+ * + "Showing N of M" record header + column manager + dense event stream (rich NL message, dedup
+ * count, linked incident) + master-detail with a properties key-value table. Modelled on the canonical
+ * TelemetryDocument (BMC + SCOM). Illustrative data until bound live to the Custom Index.
  */
 (function () {
   'use strict';
@@ -19,7 +19,6 @@
     });
   }
 
-  // ---- Illustrative alerts (replaced by live index reads in later phases) ----
   var ALERTS = [
     { id: 'a1', time: 'Jul 1, 10:00:12', sev: 'Critical', source: 'SCOM', kind: 'ALERTS', entity: 'SAN-STORAGE-02', etype: 'Storage.SAN.Lun', cat: 'PerformanceHealth', msg: 'LUN-04 write latency rose from 2 ms to 82 ms (20×) on SAN-STORAGE-02.', count: 5, inc: 'INC-20260701-014', attrs: { errorCode: 'SAN.WriteLatency.High', host: 'san-ctrl-02', priority: 'High', resolutionState: 'New' } },
     { id: 'a2', time: 'Jul 1, 10:14:03', sev: 'High', source: 'SCOM', kind: 'ALERTS', entity: 'ORACLE-CORE-01', etype: 'OracleDatabase', cat: 'DatabaseHealth', msg: 'Oracle buffer-busy waits increased +480% on ORACLE-CORE-01.', count: 12, inc: 'INC-20260701-014', attrs: { errorCode: 'buffer_busy_waits', host: 'db-host-07', priority: 'High' } },
@@ -32,23 +31,50 @@
   ];
 
   var SEV_ORDER = ['Critical', 'High', 'Medium', 'Low'];
-  var state = { filters: { severity: '', source: '', kind: '' }, tab: 'All', selected: null };
+  var state = {
+    filters: { severity: '', source: '', kind: '' }, tab: 'All', selected: null, colsOpen: false,
+    cols: { time: true, sev: true, source: true, entity: true, category: true, message: true, count: true, incident: true }
+  };
+
+  function sevColor(sev) {
+    return { Critical: 'var(--color-critical)', High: 'var(--color-high)', Medium: 'var(--color-medium)', Low: 'var(--color-low)' }[sev] || 'var(--text-muted)';
+  }
+
+  // Column definitions drive both header + rows, so the column manager can hide any of them.
+  var COLS = [
+    { key: 'time', label: 'Time', cell: function (a) { return '<td style="white-space:nowrap;color:var(--text-muted);">' + esc(a.time) + '</td>'; } },
+    { key: 'sev', label: 'Severity', cell: function (a) { return '<td><span class="alx-sev" style="color:' + sevColor(a.sev) + ';"><span class="kfhx-dot" style="background:' + sevColor(a.sev) + ';"></span>' + esc(a.sev) + '</span></td>'; } },
+    { key: 'source', label: 'Source', cell: function (a) { return '<td><span class="kfhx-badge info">' + esc(a.source) + '</span></td>'; } },
+    { key: 'entity', label: 'Entity', cell: function (a) { return '<td class="mono">' + esc(a.entity) + '</td>'; } },
+    { key: 'category', label: 'Category', cell: function (a) { return '<td>' + esc(a.cat) + '</td>'; } },
+    { key: 'message', label: 'Message', cell: function (a) { return '<td style="color:var(--text-primary);">' + esc(a.msg) + '</td>'; } },
+    { key: 'count', label: 'Count', align: 'right', cell: function (a) { return '<td style="text-align:right;"><span class="alx-count" title="occurrences (dedup)">×' + a.count + '</span></td>'; } },
+    { key: 'incident', label: 'Incident', cell: function (a) { return '<td>' + (a.inc ? '<a href="#incidents" data-page="incidents" class="kfhx-badge info" style="text-decoration:none;">◈ ' + esc(a.inc.replace('INC-20260701-', 'INC-…')) + '</a>' : '<span style="color:var(--text-muted);font-size:.72rem;">—</span>') + '</td>'; } }
+  ];
 
   function injectStyles() {
     if (document.getElementById('alx-styles')) return;
     var s = document.createElement('style');
     s.id = 'alx-styles';
     s.textContent = [
-      '.alx-wrap{display:grid;grid-template-columns:200px 1fr;gap:16px;padding:18px;max-width:1560px;margin:0 auto;}',
+      '.alx-wrap{display:grid;grid-template-columns:200px 1fr;gap:16px;padding:18px;max-width:1600px;margin:0 auto;}',
       '.alx-rail{background:var(--surface-card);border:1px solid var(--surface-border);border-radius:12px;padding:14px;height:max-content;position:sticky;top:72px;}',
       '.alx-facet{margin-bottom:16px;}.alx-facet h4{font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin:0 0 8px;}',
       '.alx-facet button{display:flex;width:100%;justify-content:space-between;align-items:center;background:none;border:none;padding:5px 8px;border-radius:7px;font-size:.8rem;color:var(--text-secondary);cursor:pointer;text-align:left;}',
       '.alx-facet button:hover{background:var(--surface-off-white);}.alx-facet button.on{background:var(--kfh-primary-light);color:var(--kfh-primary-dark);font-weight:700;}',
       '.alx-tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;}',
       '.alx-tab{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;border:1px solid var(--surface-border);background:var(--surface-card);font-size:.78rem;font-weight:600;color:var(--text-secondary);cursor:pointer;}',
-      '.alx-tab.on{background:var(--kfh-primary);color:#fff;border-color:var(--kfh-primary);}',
-      '.alx-tab .n{font-weight:800;}',
+      '.alx-tab.on{background:var(--kfh-primary);color:#fff;border-color:var(--kfh-primary);}.alx-tab .n{font-weight:800;}',
+      '.alx-qbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--surface-card);border:1px solid var(--surface-border);border-radius:10px;padding:7px 10px;margin-bottom:12px;}',
+      '.alx-pill{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 8px;border-radius:7px;background:var(--kfh-primary-light);color:var(--kfh-primary-dark);font-size:.74rem;font-weight:600;}',
+      '.alx-pill .x{cursor:pointer;opacity:.7;font-weight:800;}.alx-pill .x:hover{opacity:1;}',
+      '.alx-qinput{flex:1;min-width:150px;height:30px;border:none;outline:none;background:transparent;font-size:.85rem;color:var(--text-primary);}',
       '.alx-timeline{display:flex;align-items:flex-end;gap:3px;height:60px;padding-top:8px;}.alx-timeline .b{flex:1;border-radius:2px 2px 0 0;}',
+      '.alx-reshead{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;position:relative;}',
+      '.alx-reshead .cnt{font-size:.8rem;color:var(--text-secondary);}.alx-reshead .cnt b{color:var(--text-primary);}',
+      '.alx-linkbtn{border:none;background:none;color:var(--kfh-primary);font-weight:700;font-size:.76rem;cursor:pointer;}',
+      '.alx-colmenu{position:absolute;right:0;top:26px;z-index:20;background:var(--surface-card);border:1px solid var(--surface-border);border-radius:10px;box-shadow:var(--shadow-card-hover);padding:8px;min-width:170px;}',
+      '.alx-colmenu label{display:flex;align-items:center;gap:8px;padding:4px 6px;font-size:.8rem;color:var(--text-secondary);cursor:pointer;border-radius:6px;}.alx-colmenu label:hover{background:var(--surface-off-white);}',
       '.alx-row{cursor:pointer;}.alx-row.on td{background:var(--kfh-primary-light);}',
       '.alx-sev{display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:.76rem;}',
       '.alx-count{display:inline-flex;align-items:center;height:18px;padding:0 7px;border-radius:999px;background:var(--surface-off-white);border:1px solid var(--surface-border);font-size:.68rem;font-weight:700;color:var(--text-secondary);}',
@@ -56,10 +82,6 @@
       '.alx-prop .k{color:var(--text-muted);}.alx-prop .v{color:var(--text-primary);font-family:var(--font-mono);font-size:.76rem;word-break:break-all;}'
     ].join('');
     document.head.appendChild(s);
-  }
-
-  function sevColor(sev) {
-    return { Critical: 'var(--color-critical)', High: 'var(--color-high)', Medium: 'var(--color-medium)', Low: 'var(--color-low)' }[sev] || 'var(--text-muted)';
   }
 
   function passes(a) {
@@ -99,28 +121,35 @@
     }).join('');
   }
 
+  function pillBar() {
+    var pills = '';
+    if (state.tab !== 'All') pills += '<span class="alx-pill">severity: <b>' + esc(state.tab) + '</b> <span class="x" data-clear="tab">×</span></span>';
+    if (state.filters.source) pills += '<span class="alx-pill">source: <b>' + esc(state.filters.source) + '</b> <span class="x" data-clear="source">×</span></span>';
+    if (state.filters.kind) pills += '<span class="alx-pill">kind: <b>' + esc(state.filters.kind) + '</b> <span class="x" data-clear="kind">×</span></span>';
+    return '<div class="alx-qbar">' + pills +
+      '<input id="alx-q" class="alx-qinput" type="text" placeholder="Type to filter events…">' +
+      (pills ? '<button id="alx-clearall" class="alx-linkbtn">Clear all</button>' : '') + '</div>';
+  }
+
+  function visibleCols() { return COLS.filter(function (c) { return state.cols[c.key]; }); }
+
+  function colMenu() {
+    var boxes = COLS.map(function (c) {
+      return '<label><input type="checkbox" data-col="' + c.key + '" ' + (state.cols[c.key] ? 'checked' : '') + '/> ' + esc(c.label) + '</label>';
+    }).join('');
+    return '<div class="alx-colmenu">' + boxes + '</div>';
+  }
+
   function tableRows(list) {
+    var vis = visibleCols();
     return list.map(function (a) {
-      var incCell = a.inc
-        ? '<a href="#incidents" data-page="incidents" class="kfhx-badge info" style="text-decoration:none;">◈ ' + esc(a.inc.replace('INC-20260701-', 'INC-…')) + '</a>'
-        : '<span style="color:var(--text-muted);font-size:.72rem;">—</span>';
-      return '<tr class="alx-row ' + (state.selected === a.id ? 'on' : '') + '" data-id="' + a.id + '">' +
-        '<td style="white-space:nowrap;color:var(--text-muted);">' + esc(a.time) + '</td>' +
-        '<td><span class="alx-sev" style="color:' + sevColor(a.sev) + ';"><span class="kfhx-dot" style="background:' + sevColor(a.sev) + ';"></span>' + esc(a.sev) + '</span></td>' +
-        '<td><span class="kfhx-badge info">' + esc(a.source) + '</span></td>' +
-        '<td class="mono">' + esc(a.entity) + '</td>' +
-        '<td>' + esc(a.cat) + '</td>' +
-        '<td style="color:var(--text-primary);">' + esc(a.msg) + '</td>' +
-        '<td style="text-align:right;"><span class="alx-count" title="occurrences (dedup)">×' + a.count + '</span></td>' +
-        '<td>' + incCell + '</td>' +
-        '</tr>';
+      var cells = vis.map(function (c) { return c.cell(a); }).join('');
+      return '<tr class="alx-row ' + (state.selected === a.id ? 'on' : '') + '" data-id="' + a.id + '">' + cells + '</tr>';
     }).join('');
   }
 
   function detailPanel(a) {
-    var props = Object.keys(a.attrs).map(function (k) {
-      return '<div class="k">' + esc(k) + '</div><div class="v">' + esc(a.attrs[k]) + '</div>';
-    }).join('');
+    var props = Object.keys(a.attrs).map(function (k) { return '<div class="k">' + esc(k) + '</div><div class="v">' + esc(a.attrs[k]) + '</div>'; }).join('');
     return '<div class="kfhx-panel">' +
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;">' +
         '<div><div class="kfhx-entity-title">' + esc(a.entity) + '</div><div class="kfhx-section-sub">' + esc(a.etype) + ' · ' + esc(a.source) + '</div></div>' +
@@ -141,45 +170,48 @@
     var list = ALERTS.filter(passes);
     var active = ALERTS.filter(function (a) { return a.sev === 'Critical' || a.sev === 'High'; }).length;
     var sel = state.selected ? ALERTS.filter(function (a) { return a.id === state.selected; })[0] : null;
+    var vis = visibleCols();
+    var hidden = COLS.length - vis.length;
 
+    var headCells = vis.map(function (c) { return '<th' + (c.align === 'right' ? ' style="text-align:right;"' : '') + '>' + esc(c.label) + '</th>'; }).join('');
     var tableHtml =
-      '<div class="kfhx-panel" style="padding:0;overflow:hidden;">' +
-        '<table class="kfhx-table"><thead><tr>' +
-          '<th>Time</th><th>Severity</th><th>Source</th><th>Entity</th><th>Category</th><th>Message</th><th style="text-align:right;">Count</th><th>Incident</th>' +
-        '</tr></thead><tbody>' + (tableRows(list) || '<tr><td colspan="8" style="padding:26px;text-align:center;color:var(--text-muted);">No alerts match the filter.</td></tr>') + '</tbody></table>' +
+      '<div class="kfhx-panel" style="padding:12px 14px;">' +
+        '<div class="alx-reshead">' +
+          '<div class="cnt">Showing <b>' + list.length + '</b> of <b>' + ALERTS.length + '</b> events</div>' +
+          '<div><button id="alx-cols" class="alx-linkbtn">Columns' + (hidden ? ' (' + hidden + ' hidden)' : '') + '</button>' + (state.colsOpen ? colMenu() : '') + '</div>' +
+        '</div>' +
+        '<div style="overflow-x:auto;"><table class="kfhx-table"><thead><tr>' + headCells + '</tr></thead>' +
+        '<tbody>' + (tableRows(list) || '<tr><td colspan="' + vis.length + '" style="padding:26px;text-align:center;color:var(--text-muted);">No alerts match the filter.</td></tr>') + '</tbody></table></div>' +
       '</div>';
 
     mount.innerHTML =
       '<div class="alx-wrap">' +
-        '<aside class="alx-rail">' +
-          facet('Severity', 'severity', SEV_ORDER) +
-          facet('Source', 'source', ['BMC', 'SCOM']) +
-          facet('Kind', 'kind', ['ALERTS', 'LOGS', 'METRICS']) +
-        '</aside>' +
+        '<aside class="alx-rail">' + facet('Severity', 'severity', SEV_ORDER) + facet('Source', 'source', ['BMC', 'SCOM']) + facet('Kind', 'kind', ['ALERTS', 'LOGS', 'METRICS']) + '</aside>' +
         '<section>' +
-          '<div class="kfhx-section-head">' +
-            '<div class="kfhx-section-title">Alert Explorer <span style="color:var(--color-critical);">' + active + ' actionable</span> <span style="color:var(--text-muted);font-weight:500;">/ ' + ALERTS.length + '</span></div>' +
-            '<span class="kfhx-badge info">Illustrative — live from the index next</span>' +
-          '</div>' +
+          '<div class="kfhx-section-head"><div class="kfhx-section-title">Alert Explorer <span style="color:var(--color-critical);">' + active + ' actionable</span> <span style="color:var(--text-muted);font-weight:500;">/ ' + ALERTS.length + '</span></div>' +
+            '<span class="kfhx-badge info">Illustrative — live from the index next</span></div>' +
           '<div class="alx-tabs">' + sevTabs() + '</div>' +
-          '<div class="kfhx-panel" style="padding:10px 16px;margin-bottom:14px;">' +
-            '<div style="font-size:.72rem;color:var(--text-muted);">Alert volume (last 2h)</div><div class="alx-timeline">' + timeline() + '</div>' +
-          '</div>' +
-          (sel
-            ? '<div class="kfhx-split" style="grid-template-columns:1fr 380px;">' + tableHtml + detailPanel(sel) + '</div>'
-            : tableHtml) +
+          pillBar() +
+          '<div class="kfhx-panel" style="padding:10px 16px;margin-bottom:14px;"><div style="font-size:.72rem;color:var(--text-muted);">Alert volume (last 2h)</div><div class="alx-timeline">' + timeline() + '</div></div>' +
+          (sel ? '<div class="kfhx-split" style="grid-template-columns:1fr 380px;">' + tableHtml + detailPanel(sel) + '</div>' : tableHtml) +
         '</section>' +
       '</div>';
 
-    mount.querySelectorAll('[data-facet]').forEach(function (b) {
-      b.addEventListener('click', function () { state.filters[b.getAttribute('data-facet')] = b.getAttribute('data-val'); render(); });
+    mount.querySelectorAll('[data-facet]').forEach(function (b) { b.addEventListener('click', function () { state.filters[b.getAttribute('data-facet')] = b.getAttribute('data-val'); render(); }); });
+    mount.querySelectorAll('[data-tab]').forEach(function (t) { t.addEventListener('click', function () { state.tab = t.getAttribute('data-tab'); render(); }); });
+    mount.querySelectorAll('[data-clear]').forEach(function (x) {
+      x.addEventListener('click', function () { var k = x.getAttribute('data-clear'); if (k === 'tab') state.tab = 'All'; else state.filters[k] = ''; render(); });
     });
-    mount.querySelectorAll('[data-tab]').forEach(function (t) {
-      t.addEventListener('click', function () { state.tab = t.getAttribute('data-tab'); render(); });
+    var clearAll = mount.querySelector('#alx-clearall');
+    if (clearAll) clearAll.addEventListener('click', function () { state.tab = 'All'; state.filters = { severity: '', source: '', kind: '' }; render(); });
+    var colsBtn = mount.querySelector('#alx-cols');
+    if (colsBtn) colsBtn.addEventListener('click', function (e) { e.stopPropagation(); state.colsOpen = !state.colsOpen; render(); });
+    mount.querySelectorAll('[data-col]').forEach(function (cb) {
+      cb.addEventListener('change', function () { state.cols[cb.getAttribute('data-col')] = cb.checked; render(); });
     });
     mount.querySelectorAll('.alx-row').forEach(function (r) {
       r.addEventListener('click', function (e) {
-        if (e.target.closest('a')) return; // let incident links navigate
+        if (e.target.closest('a')) return;
         state.selected = (state.selected === r.getAttribute('data-id')) ? null : r.getAttribute('data-id');
         render();
       });

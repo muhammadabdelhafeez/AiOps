@@ -2228,6 +2228,14 @@
   gap: 10px;
 }
 
+/* Dynatrace-catalog refinement (KFH colors): denser, flatter integration cards. */
+.marketplace-grid { gap: 12px; }
+.marketplace-tile { min-height: auto; padding: 16px 18px; gap: 10px; border-radius: 14px; box-shadow: 0 2px 6px rgba(15, 23, 42, .04); }
+.marketplace-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(15, 23, 42, .09); }
+.marketplace-tile-icon, .marketplace-detail-icon { width: 44px; height: 44px; border-radius: 12px; }
+.marketplace-tile-title { font-size: 15px; font-weight: 800; }
+.marketplace-tile-category { font-size: 11px; }
+
 .marketplace-detail-hero {
   display: grid;
   grid-template-columns: auto 1fr auto;
