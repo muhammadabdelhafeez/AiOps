@@ -9,8 +9,9 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Locale;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
+import java.util.stream.Collectors;
 import org.kfh.aiops.index.model.IndexQuery;
 import org.kfh.aiops.index.model.IndexSearchResult;
 import org.kfh.aiops.index.model.TelemetryDocument;
@@ -20,26 +21,28 @@ import org.springframework.stereotype.Service;
 
 /**
  * Searches the custom index (§10). Query flow: <b>time-partition prune → country/environment filter
- * → parallel filtered scan</b> across matching shards. Only shard directories whose date falls in
- * the requested window are opened, then their documents are filtered by the exact-match/text
- * predicates. Results are merged, sorted newest-first, and paginated.
- *
- * <p>Increment 2 replaces the in-shard scan with a postings-list lookup for high-cardinality fields.
+ * → parallel postings-backed scan</b> across matching shards. Only shard directories whose date
+ * falls in the requested window are opened; each shard's cached {@link ShardIndex} resolves
+ * exact-match filters via posting-list intersection, then applies time/tenant/text. Results merge,
+ * sort newest-first, and paginate.
  */
 @Service
 public class IndexSearchService {
 
-    private final SegmentStore segmentStore;
+    private final ShardIndexCache shardIndexCache;
     private final IndexProperties properties;
+    private final IndexStorageResolver storageResolver;
 
-    public IndexSearchService(SegmentStore segmentStore, IndexProperties properties) {
-        this.segmentStore = segmentStore;
+    public IndexSearchService(ShardIndexCache shardIndexCache, IndexProperties properties,
+            IndexStorageResolver storageResolver) {
+        this.shardIndexCache = shardIndexCache;
         this.properties = properties;
+        this.storageResolver = storageResolver;
     }
 
     public IndexSearchResult search(TenantContext ctx, IndexQuery query) {
         var started = System.nanoTime();
-        var root = Path.of(properties.getStorage().getPath());
+        var root = storageResolver.resolveRoot(ctx);
         var country = firstNonBlank(query.country(), ctx.countryCode());
         var environment = firstNonBlank(query.environment(), ctx.environment());
         var from = query.from() == null ? Instant.EPOCH : query.from();
@@ -52,9 +55,9 @@ public class IndexSearchService {
         var total = hits.size();
         var page = query.pageOrDefault();
         var size = query.sizeOrDefault();
-        var offset = Math.min((long) page * size, total);
+        var offset = (int) Math.min((long) page * size, total);
         var end = Math.min(offset + size, total);
-        var pageHits = new ArrayList<>(hits.subList((int) offset, (int) end));
+        var pageHits = new ArrayList<>(hits.subList(offset, end));
         return new IndexSearchResult(total, page, size, elapsedMs(started), pageHits);
     }
 
@@ -64,9 +67,10 @@ public class IndexSearchService {
         var dirs = new ArrayList<Path>();
         var firstDate = LocalDate.ofInstant(from, ZoneOffset.UTC);
         var lastDate = LocalDate.ofInstant(to, ZoneOffset.UTC);
+        var shards = Math.max(1, properties.getShardsPerDay());
         for (var kind : kinds) {
             for (var date = firstDate; !date.isAfter(lastDate); date = date.plusDays(1)) {
-                for (var shard = 0; shard < Math.max(1, properties.getShardsPerDay()); shard++) {
+                for (var shard = 0; shard < shards; shard++) {
                     var dir = root.resolve(new ShardKey(country, environment, kind, date, shard).relativePath());
                     if (Files.isDirectory(dir)) {
                         dirs.add(dir);
@@ -82,54 +86,21 @@ public class IndexSearchService {
         if (shardDirs.isEmpty()) {
             return new ArrayList<>();
         }
-        var parallelism = Math.max(1, properties.getSearchParallelism());
-        var pool = new ForkJoinPool(Math.min(parallelism, Math.max(1, shardDirs.size())));
+        var parallelism = Math.max(1, Math.min(properties.getSearchParallelism(), shardDirs.size()));
+        var pool = new ForkJoinPool(parallelism);
         try {
             return pool.submit(() -> shardDirs.parallelStream()
-                    .flatMap(dir -> segmentStore.readShard(dir).stream())
-                    .filter(doc -> matches(doc, query, ctx, from, to))
-                    .collect(java.util.stream.Collectors.toCollection(ArrayList::new))).get();
+                    .flatMap(dir -> shardIndexCache.get(dir).search(query, from, to, ctx.tenantId()).stream())
+                    .collect(Collectors.toCollection(ArrayList::new))).get();
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("Index search interrupted", ex);
-        } catch (java.util.concurrent.ExecutionException ex) {
+        } catch (ExecutionException ex) {
             throw new IllegalStateException("Index search failed: "
                     + (ex.getCause() == null ? ex.getMessage() : ex.getCause().getMessage()), ex);
         } finally {
             pool.shutdown();
         }
-    }
-
-    private boolean matches(TelemetryDocument doc, IndexQuery query, TenantContext ctx, Instant from, Instant to) {
-        if (doc.timestamp().isBefore(from) || doc.timestamp().isAfter(to)) {
-            return false;
-        }
-        if (ctx.tenantId() != null && doc.tenantId() != null && !ctx.tenantId().equals(doc.tenantId())) {
-            return false;
-        }
-        if (!eq(query.severity(), doc.severity())
-                || !eq(query.sourceSystem(), doc.sourceSystem())
-                || !eq(query.applicationId(), doc.applicationId())
-                || !eq(query.serviceId(), doc.serviceId())
-                || !eq(query.resourceId(), doc.resourceId())
-                || !eq(query.traceId(), doc.traceId())
-                || !eq(query.correlationId(), doc.correlationId())) {
-            return false;
-        }
-        var text = query.text();
-        if (text != null && !text.isBlank()) {
-            var message = doc.message() == null ? "" : doc.message();
-            return message.toLowerCase(Locale.ROOT).contains(text.toLowerCase(Locale.ROOT));
-        }
-        return true;
-    }
-
-    /** Exact-match keyword filter: blank filter passes; otherwise case-insensitive equality. */
-    private static boolean eq(String filter, String value) {
-        if (filter == null || filter.isBlank()) {
-            return true;
-        }
-        return value != null && filter.trim().equalsIgnoreCase(value.trim());
     }
 
     private static String firstNonBlank(String a, String b) {

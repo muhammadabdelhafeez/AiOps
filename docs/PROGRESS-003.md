@@ -70,6 +70,26 @@ Legend: 🟢 Done  🟡 In progress  🔴 Blocked  ⚪ Not started
 
 > Newest entries on top. Append your entry above the previous one.
 
+### 2026-07-01 — Phase 2: Custom Index Engine — inverted index + retention + Settings-driven path (increment 2)
+- **Phase:** 2
+- **Module(s):** index (`org.kfh.aiops.index`), platform.config (SettingsService)
+- **Type:** feature
+- **Country/Tenant scope:** ALL
+- **Summary:** Increment 2 of the Custom Index Engine. (A) In-shard inverted index: `ShardIndex` (parsed docs + field→value→doc-index postings) + `ShardIndexCache` (per-shard, invalidated by segment byte-size) so repeat searches skip JSON re-parsing and resolve exact-match filters by posting-list intersection; `IndexSearchService` now scans via the cache. (B) `IndexRetentionService` purges expired shard date-dirs per-kind retention (`@Scheduled`; core method unit-tested). (C) `IndexStorageResolver` resolves the index root from the Settings INDEX_STORAGE connector (`SettingsService.resolveIndexStorage`, Part-D pattern) with `kfh.index.storage.path` fallback; `IndexWriterService.index` now takes `TenantContext` and both writer + searcher use the resolved root.
+- **Files touched:**
+  - `src/main/java/org/kfh/aiops/index/` (ShardIndex, ShardIndexCache, IndexRetentionService, IndexStorageResolver — new; SegmentStore `segmentSize`, IndexWriterService `+ctx`, IndexSearchService cache-backed)
+  - `src/main/java/org/kfh/aiops/platform/config/SettingsService.java` (`resolveIndexStorage`)
+- **DB migrations:** N/A
+- **API changes:** N/A (search endpoint unchanged; writer signature added `ctx` — no external callers yet)
+- **Tests added/updated:** `ShardIndexTest`, `ShardIndexCacheTest`, `IndexRetentionServiceTest`, `IndexStorageResolverTest` (new) + `IndexWriterServiceTest`/`IndexSearchServiceTest` (updated) — 24 index tests green; `mvn test` clean
+- **Docs updated:** docs/SERVICES_CORE.md, docs/CAUSAL_PIPELINE.md §9, docs/PROGRESS-003.md, .github/PROGRESS.md
+- **Security / OWASP checklist:**
+  - [x] Tenant + country + environment scoping (postings search filters by ctx.tenantId; shard paths by country/env)
+  - [x] No secrets logged; index holds `rawRef` only, not raw payloads
+- **Follow-ups / TODO:** increment 3 = cold-shard archive to object storage (needs the object-storage client); enable `@EnableScheduling` to activate the retention cron; fold `/logs/search` into docs/API_CONTRACTS.md; then the Alert Explorer Kibana-Discover UI on this API.
+- **Author:** claude-code
+- **Correlation:** Phase 2 increment 2
+
 ### 2026-07-01 — Phase 2: Custom Index Engine — searchable core (increment 1)
 - **Phase:** 2
 - **Module(s):** index (new: `org.kfh.aiops.index`, `index.model`, `index.api`)

@@ -53,6 +53,16 @@ public class SegmentStore {
         }
     }
 
+    /** Byte size of the shard's segment (-1 if none) — used for index-cache invalidation. */
+    public long segmentSize(Path shardDir) {
+        var segment = shardDir.resolve(SEGMENT_FILE);
+        try {
+            return Files.isRegularFile(segment) ? Files.size(segment) : -1L;
+        } catch (IOException ex) {
+            return -1L;
+        }
+    }
+
     /** Read every document in a shard (empty if the shard has no segment yet). */
     public List<TelemetryDocument> readShard(Path shardDir) {
         var segment = shardDir.resolve(SEGMENT_FILE);

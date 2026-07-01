@@ -1,6 +1,8 @@
 package org.kfh.aiops.index;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -8,22 +10,31 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.kfh.aiops.index.model.IndexQuery;
 import org.kfh.aiops.index.model.TelemetryDocument;
 import org.kfh.aiops.index.model.TelemetryKind;
+import org.kfh.aiops.platform.config.SettingsService;
 import org.kfh.aiops.platform.tenant.TenantContext;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
+@ExtendWith(MockitoExtension.class)
 class IndexSearchServiceTest {
 
     private static final UUID TENANT = UUID.fromString("00000000-0000-4000-8000-000000000001");
 
     private final SegmentStore store = new SegmentStore(new ObjectMapper().registerModule(new JavaTimeModule()));
-    private IndexWriterService writer;
+
+    @Mock
+    private SettingsService settingsService;
+
     private IndexSearchService search;
 
     @BeforeEach
@@ -32,9 +43,11 @@ class IndexSearchServiceTest {
         props.getStorage().setPath(root.toString());
         props.setShardsPerDay(4);
         props.setSearchParallelism(4);
-        writer = new IndexWriterService(store, props);
-        search = new IndexSearchService(store, props);
-        writer.index(List.of(
+        when(settingsService.resolveIndexStorage(any())).thenReturn(Optional.empty());
+        var resolver = new IndexStorageResolver(settingsService, props);
+        var writer = new IndexWriterService(store, props, resolver);
+        search = new IndexSearchService(new ShardIndexCache(store), props, resolver);
+        writer.index(ctx(), List.of(
                 doc("a", "2026-06-07T10:00:00Z", "CRITICAL", "TRANSFER", "T1", "SAN storage write latency 82ms"),
                 doc("b", "2026-06-07T10:14:00Z", "HIGH", "ORACLE", "T1", "buffer busy waits high"),
                 doc("c", "2026-06-07T10:15:00Z", "MEDIUM", "TRANSFER", "T2", "db timeout error"),
@@ -96,7 +109,6 @@ class IndexSearchServiceTest {
         return new QueryBuilder();
     }
 
-    /** Small fluent builder so each test only sets the fields it cares about. */
     private static final class QueryBuilder {
         private String severity;
         private String service;

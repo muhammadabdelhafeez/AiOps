@@ -883,6 +883,31 @@ public class SettingsService {
         return Optional.empty();
     }
 
+    /**
+     * Resolves the configured custom-index storage path for this tenant/country/environment from
+     * {@code infrastructure.connections} (first enabled INDEX_STORAGE row with a LOCAL/NFS provider).
+     * Returns the filesystem path; empty when none is configured (callers fall back to
+     * {@code kfh.index.storage.path}).
+     */
+    public Optional<String> resolveIndexStorage(TenantContext ctx) {
+        var section = asMap(privateSettings(ctx).get("infrastructure"));
+        if (!(section.get("connections") instanceof Iterable<?> iterable)) {
+            return Optional.empty();
+        }
+        for (var item : iterable) {
+            var connector = asMap(item);
+            if (!"INDEX_STORAGE".equalsIgnoreCase(safe(connector.get("type"))) || Boolean.FALSE.equals(connector.get("enabled"))) {
+                continue;
+            }
+            var provider = safe(connector.get("provider"));
+            var endpoint = safe(connector.get("endpoint"));
+            if (!endpoint.isBlank() && (provider.isBlank() || "LOCAL".equalsIgnoreCase(provider) || "NFS".equalsIgnoreCase(provider))) {
+                return Optional.of(endpoint);
+            }
+        }
+        return Optional.empty();
+    }
+
     private static Map<String, Map<String, Object>> existingAzureIntegrations(Map<String, Object> existingAzure) {
         var indexed = new LinkedHashMap<String, Map<String, Object>>();
         var integrations = existingAzure.get("integrations");

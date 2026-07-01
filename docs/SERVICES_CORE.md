@@ -72,8 +72,10 @@ When you add or change a core class/endpoint:
 | `IndexWriterService` | Batched, shard-routed writes (funnel Stage 3). | 🟢 Implemented |
 | `IndexSearchService` | Time-partition prune → country/env → parallel filtered scan. | 🟢 Implemented |
 | `IndexProperties` | `kfh.index.*` tunables (shards-per-day, batch, parallelism, retention). | 🟢 Implemented |
-| In-shard inverted index / postings | O(1) high-cardinality term lookup. | ⚪ Increment 2 |
-| `RetentionService` / `ArchiveService` | Per-country/env retention + cold archive to object storage. | ⚪ Increment 2 |
+| `ShardIndex` / `ShardIndexCache` | Cached parsed docs + inverted postings per shard (segment-size invalidated); posting-list intersection for exact filters. | 🟢 Implemented (Phase 2 inc. 2) |
+| `IndexRetentionService` | Purge expired shard date-dirs per-kind retention (`@Scheduled`). | 🟢 Implemented (inc. 2) |
+| `IndexStorageResolver` | Resolve index root from Settings INDEX_STORAGE connector, else `kfh.index.storage.path`. | 🟢 Implemented (inc. 2) |
+| Archive cold shards → object storage | Move aged shards to object storage + `rawRef`. | ⚪ Increment 3 (needs object-storage client) |
 
 **Endpoints:** `POST /api/v1/logs/search` — **implemented** (tenant/country scoped, RBAC `ALERT_READ`).
 

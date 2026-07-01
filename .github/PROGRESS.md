@@ -19,7 +19,7 @@ This file is a concise, agent-facing progress snapshot for GitHub Copilot/AI ass
 | Identity / User Management | 🟡 In progress | DB-backed users, simplified Admin/Operator/Viewer UI roles, ALL-country admin mapping, BCrypt password reset/update |
 | Audit Activity | 🟡 In progress | Live API-backed activity page now shows scoped real actions including login success/failure and settings actions; persistence is still Phase 1 in-memory read model |
 | Settings | 🟡 In progress | Settings update/test actions emit visible audit rows with secret-safe key metadata only |
-| Phase 2 — Custom Log Index Engine | 🟡 In progress | Searchable core built (sharded append-only store + writer + time-prune/parallel searcher + `POST /api/v1/logs/search`); inverted index + retention/archive pending |
+| Phase 2 — Custom Log Index Engine | 🟡 In progress | Store + writer + postings-cache searcher + retention purge + Settings-driven storage path + `POST /api/v1/logs/search` built; cold-archive to object storage (inc. 3) pending |
 | Phase 3 — Neo4j banking flow graph | ⚪ Not started | Relationship/topology traversal pending |
 | Phase 4 — RCA evidence builder + causal scoring | ⚪ Not started | Evidence-first causal scoring pending |
 | Phase 5 — AI Router | ⚪ Not started | DeepSeek/Azure routing pending |
