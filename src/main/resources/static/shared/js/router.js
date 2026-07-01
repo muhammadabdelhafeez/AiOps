@@ -45,6 +45,12 @@ window.Router = (function() {
       usesReactModule: false,
       usesJSX: true  // Requires Babel transformation
     },
+    'servicemap': {
+      js: 'pages/servicemap/servicemap.js',
+      css: 'pages/servicemap/servicemap.css',
+      title: 'Service Map — Application Topology',
+      usesReactModule: false
+    },
     'applications': {
       js: 'pages/applications/applications.js',
       css: 'pages/applications/applications.css',
@@ -60,8 +66,9 @@ window.Router = (function() {
     'connectors': {
       js: 'pages/connectors/connectors.js',
       css: 'pages/connectors/connectors.css',
-      title: 'Connectors',
-      usesReactModule: false
+      title: 'Connections',
+      usesReactModule: false,
+      sidebarPageId: 'settings' // Connectors now live under Settings; keep Settings highlighted
     },
     'schedules': {
       js: 'pages/schedules/schedules.js',

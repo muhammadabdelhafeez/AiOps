@@ -8,9 +8,15 @@
 
 ## 0. One-line principle
 
-> **Code finds the root cause. AI explains it.**
+> **Code reduces the flood and gathers grounded evidence. AI reasons the root cause. Code owns the incident lifecycle.**
 
-Deterministic services (graph + index + causal scoring) identify the root cause from 100,000 alerts. AI (DeepSeek R1 local, then Azure OpenAI 5.5) only receives a compact `EvidencePack` and writes the narrative. AI never sees raw telemetry, never decides incident lifecycle, never invents evidence.
+Deterministic services (dedup + index + banking-flow topology + causal candidate ranking) reduce
+100,000 alerts to a handful of impact-anchored incidents, each with a compact (~3 KB) `EvidencePack`
+of the complete relevant evidence **plus** retrieved similar past incidents/runbooks. **AI (DeepSeek
+R1 local, then Azure OpenAI 5.5) then reasons the root cause** from that pack — and may override the
+deterministic candidate — writing the narrative + recommended action. AI never sees the raw firehose
+(only the pack), never invents evidence (must cite evidence IDs), and never decides the incident
+lifecycle (deterministic, for audit). See **§8A** for the correlation + AI-led RCA model.
 
 ---
 
@@ -186,7 +192,7 @@ The `EvidencePack` is the **only** payload the AI router accepts. It is built by
 1. No secrets, tokens, credentials, PII, or raw log lines.
 2. ≤ 3 KB serialized (`kfh.ai.evidence-pack.max-bytes`).
 3. Every evidence item has a stable `id` so the AI narrative can cite it.
-4. `proposedRootCause` is set by deterministic scoring, not AI.
+4. `proposedRootCause` is a deterministic **candidate/hint**; the AI confirms or overrides it (AI-led RCA, §8A).
 5. `excludedCauses` lists rejected candidates with reason — gives AI permission to disagree.
 
 ---
@@ -230,6 +236,65 @@ Validation:
 | 100k events at once | Funnel reduction to 1 pack | Context window blows up; truncation loses signal |
 
 **AI's actual superpower is language**: turning the deterministic evidence into a human-readable RCA, exec summary, recommended action, runbook update. That is exactly what Azure OpenAI 5.5 is paid for.
+
+---
+
+## 8A. Correlation & AI-led RCA — the banking-flow model
+
+> The differentiator vs BMC/Dynatrace. We do **not** correlate by text similarity or static severity
+> weights (the failure mode of normal AIOps). We correlate by the **banking transaction flow** and
+> let **AI reason the root cause** over the reduced evidence.
+
+### Correlation = causal path on the flow graph (not similarity)
+Grouping key = **shared causal path in the flow topology + causal time-order + business-journey
+impact** — never "these alerts look alike". Per 20-min cycle:
+1. **Anchor on impact.** Only journeys whose transaction success rate degraded become incidents (cuts 100k noise to the real few).
+2. **Walk the flow graph upstream** (Neo4j) from each degrading journey; collect alerting nodes on/under the path in the window.
+3. **Resolve cause vs effect** by topology direction + first-bad-timestamp + blast-radius containment — the most-upstream node that went bad first and whose downstream covers all symptoms.
+4. **Merge by root, not by look:** one failing node breaking N journeys = one incident spanning N journeys; different roots = different incidents.
+5. Build the `EvidencePack` (+ RAG: top-K similar past incidents + runbooks from the knowledge base).
+
+### AI does the judgment code can't
+Over the pack + knowledge base, AI: **confirms/overrides** the root cause; **splits** coincidental
+overlaps into separate incidents; **merges** flows with hidden shared dependencies; **rejects**
+temporally-close-but-not-causal alerts; reasons **novel** failures with no modeled path. AI must
+**cite evidence IDs** (grounded — no hallucinated root cause) and never returns confidence `1.0`.
+
+### Business-application topology (the model correlation walks)
+Each business application (Fund Transfer, KFHOnline, WAMD, …) is modelled as a **component flow bound
+to assets**, stored in Neo4j:
+`(:BusinessApplication)-[:HAS_COMPONENT]->(:Component)-[:DEPENDS_ON]->(:Component)` and
+`(:Component)-[:BOUND_TO]->(:Asset)`, where `Asset.ciKeys` match alert `resourceId`s.
+
+- **Alert → asset → application resolution:** an alert's CI (BMC `source_hostname`, SCOM
+  `NetbiosComputerName`/`MonitoringObjectName`) matches a bound `Asset`, which resolves the
+  application(s) it impacts — this is what *focuses* an issue onto an application. Unmatched CIs are
+  reported as "unmapped", never silently dropped.
+- **Multi-application impact is first-class:** a shared component (core Oracle, API gateway, SAN)
+  belongs to multiple flows, so one root-cause asset yields `impactedApplications[]` (a ranked list),
+  not N per-app incidents.
+- **Surface:** the **Service Map** page (Analysis & Topology menu group) renders each application's
+  component flow + bound assets + live health; it is the operator view of this graph.
+
+### No cap; incident continuity
+- **No artificial limit** on incident count — as many *distinct real* `(root-cause × journey)`
+  incidents as the data warrants (5, 30, 50…). The only gate is *quality* (impact-anchored + causally
+  grounded), never a fixed number.
+- **Continuity via `incident_key = f(root-cause node + impacted-journey set)`:** the same ongoing
+  fault yields the same key each cycle → **one incident that updates**, not a new one per cycle. New
+  incidents only for new root causes. (Redis dedup handles within-cycle repeats.)
+
+### Depth roadmap (match Dynatrace)
+The index already carries `LOGS/ALERTS/TRACES/METRICS/CHANGES`. Ingesting **distributed traces
+(OpenTelemetry / APM spans)** gives code/query-level RCA (Dynatrace-class depth) **plus** whole-estate
+breadth Dynatrace can't see (mainframe, storage, network, external, BMC/SCOM). Other RCA tools —
+including Dynatrace — can be **ingested as sources**.
+
+### Accuracy is measured, not claimed
+KPIs: **root-cause precision** (opened incidents with the correct cause vs post-mortems), **recall**
+(real outages caught + correctly RCA'd), **MTTR reduction**. An operator confirm/correct **feedback
+loop** feeds the knowledge base so accuracy climbs over time. No "100%" promises — the levers are
+topology-graph quality, source coverage, clock sync, and knowledge freshness.
 
 ---
 

@@ -1,0 +1,81 @@
+/* KFH AIOps — Service Map (Business Application Topology) */
+.sm-page { padding: 20px; max-width: 1400px; margin: 0 auto; }
+
+.sm-banner {
+  background: var(--surface-card, #fff);
+  border: 1px solid var(--surface-border, #e5e7eb);
+  border-left: 4px solid var(--kfh-primary, #006064);
+  border-radius: 10px;
+  padding: 14px 16px;
+  font-size: 13px;
+  color: var(--text-secondary, #475569);
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+.sm-banner strong { color: var(--text-primary, #0f172a); }
+.sm-stage-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--kfh-primary, #006064);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.sm-legend { display: flex; flex-wrap: wrap; gap: 18px; margin-bottom: 18px; font-size: 12px; color: var(--text-muted, #64748b); }
+.sm-legend-item { display: inline-flex; align-items: center; gap: 6px; }
+
+.sm-card {
+  background: var(--surface-card, #fff);
+  border: 1px solid var(--surface-border, #e5e7eb);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+.sm-card-head { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14px; }
+.sm-app-name { font-size: 16px; font-weight: 700; color: var(--text-primary, #0f172a); margin: 0; }
+.sm-app-meta { font-size: 12px; color: var(--text-muted, #64748b); margin-top: 2px; }
+
+.sm-crit-badge { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+.sm-crit-critical { background: #FFF1F2; color: #BE123C; border: 1px solid #FECDD3; }
+.sm-crit-high { background: #FEF3C7; color: #B45309; border: 1px solid #FDE68A; }
+
+.sm-flow { display: flex; align-items: stretch; gap: 4px; overflow-x: auto; padding-bottom: 6px; }
+.sm-arrow { display: flex; align-items: center; color: var(--text-muted, #94a3b8); font-size: 18px; padding: 0 2px; flex: 0 0 auto; }
+
+.sm-node {
+  flex: 1 0 150px;
+  min-width: 150px;
+  border: 1px solid var(--surface-border, #e5e7eb);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: var(--surface-bg, #f8fafc);
+}
+.sm-node.sm-warn { border-color: #FDE68A; background: #FFFBEB; }
+.sm-node.sm-crit { border-color: #FECACA; background: #FEF2F2; }
+
+.sm-node-head { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.sm-stage { font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted, #64748b); font-weight: 700; }
+.sm-node-name { font-size: 13px; font-weight: 600; color: var(--text-primary, #0f172a); margin-bottom: 8px; }
+
+.sm-dot { width: 9px; height: 9px; border-radius: 50%; background: #16a34a; flex: 0 0 auto; display: inline-block; }
+.sm-dot.sm-ok, .sm-ok .sm-dot { background: #16a34a; }
+.sm-dot.sm-warn, .sm-warn .sm-dot { background: #d97706; }
+.sm-dot.sm-crit, .sm-crit .sm-dot { background: #dc2626; }
+
+.sm-shared {
+  font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
+  color: #7e22ce; background: #f3e8ff; border: 1px solid #e9d5ff;
+  padding: 1px 6px; border-radius: 999px; margin-left: auto;
+}
+
+.sm-assets { display: flex; flex-wrap: wrap; gap: 4px; }
+.sm-asset {
+  font-size: 10px; font-family: var(--font-mono, ui-monospace, monospace);
+  color: var(--text-secondary, #475569);
+  background: var(--surface-card, #fff);
+  border: 1px solid var(--surface-border, #e5e7eb);
+  border-radius: 5px; padding: 1px 6px;
+}

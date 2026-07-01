@@ -530,6 +530,7 @@ var Settings = (function() {
       { id: 'sharepoint', icon: 'file', label: 'SharePoint', hint: 'Evidence artifact storage' },
       { id: 'teams', icon: 'chat', label: 'Microsoft Teams', hint: 'Notification webhooks' },
       { id: 'infrastructure', icon: 'bolt', label: 'Servers & Index', hint: 'Redis, Kafka, index storage' },
+      { id: 'connectors', icon: 'database', label: 'Connections', hint: 'Data source connectors & collectors', route: 'connectors' },
       { id: 'system', icon: 'bolt', label: 'System Variables', hint: 'Runtime, SSL, AI mode' }
     ];
   }
@@ -544,15 +545,18 @@ var Settings = (function() {
           ${searching ? `<div class="settings-menu-searching">Filtering variable matches</div>` : ''}
         </div>
         <nav class="settings-tabs" aria-label="Settings section navigation">
-          ${settingsMenuItems().map(item => `
-            <button onclick="Settings.setTab('${item.id}')" class="settings-tab ${state.activeTab === item.id ? 'active' : ''}" aria-current="${state.activeTab === item.id ? 'page' : 'false'}">
+          ${settingsMenuItems().map(item => {
+            const onclick = item.route ? `Router.navigate('${item.route}')` : `Settings.setTab('${item.id}')`;
+            const isActive = !item.route && state.activeTab === item.id;
+            return `
+            <button onclick="${onclick}" class="settings-tab ${isActive ? 'active' : ''}" aria-current="${isActive ? 'page' : 'false'}">
               <span class="settings-tab-icon">${icon(item.icon, 16)}</span>
               <span class="settings-tab-copy">
                 <span class="settings-tab-label">${esc(item.label)}</span>
                 <span class="settings-tab-hint">${esc(item.hint)}</span>
               </span>
-            </button>
-          `).join('')}
+            </button>`;
+          }).join('')}
         </nav>
       </aside>
     `;
