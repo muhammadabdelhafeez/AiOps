@@ -1,240 +1,168 @@
 /**
- * KFH AIOps Command Center - Dashboard Page Module
- * SPA Page Module for the Dashboard
+ * KFH AIOps Command Center — Home / Operations Overview (Phase 1).
+ * Dynatrace-style "Home": KPI tiles, active-problem feed, ingest & source health, incident trend,
+ * top impacted applications, and an AI executive summary — all in KFH "Beyond Horizons" colors using
+ * the shared kfhx-* design system. Element IDs are preserved so later phases bind live data.
  */
-window.DashboardPage = (function() {
+window.DashboardPage = (function () {
   'use strict';
 
-  /**
-   * Render the dashboard content
-   * @returns {string} HTML content
-   */
+  function tile(label, id, caption, variant) {
+    return `
+      <div class="kfhx-tile ${variant || ''}">
+        <div class="kfhx-tile-label">${label}</div>
+        <div class="kfhx-tile-value" id="${id}">—</div>
+        <div class="kfhx-tile-delta" style="color: var(--text-muted); font-weight: 600;">${caption}</div>
+      </div>`;
+  }
+
+  function emptyState(text) {
+    return `<div style="padding: 28px 12px; text-align: center; color: var(--text-muted); font-size: 0.82rem;">${text}</div>`;
+  }
+
   function render() {
     return `
-      <div class="animate-fade-in" style="padding: 24px 32px 32px;">
-        <!-- Page Header -->
-        <div class="flex items-center justify-between mb-8">
+      <div class="kfhx-page animate-fade-in">
+
+        <!-- Page header -->
+        <div class="kfhx-section-head" style="margin-bottom: 16px;">
           <div>
-            <h1 class="text-3xl font-bold tracking-tight" style="color: var(--text-primary);">Operations Overview</h1>
-            <p style="color: var(--text-secondary); font-size: 0.875rem; margin-top: 0.25rem;">Real-time monitoring across all connected sources</p>
+            <div class="kfhx-section-title" style="font-size: 1.25rem;">Operations Overview</div>
+            <div class="kfhx-section-sub">Real-time correlation across BMC, SCOM and connected sources</div>
+          </div>
+          <span class="kfhx-badge info"><span class="kfhx-dot"></span> Live</span>
+        </div>
+
+        <!-- KPI tiles -->
+        <div class="kfhx-tiles">
+          ${tile('Open Critical', 'dashboard-critical', 'Immediate attention', 'is-critical')}
+          ${tile('New Incidents', 'dashboard-new-incidents', 'Last 24 hours', '')}
+          ${tile('Recurring', 'dashboard-recurring', 'Known patterns', '')}
+          ${tile('Alert Groups', 'dashboard-alert-groups', 'Correlated', 'is-warning')}
+          ${tile('Ingested (24h)', 'dashboard-ingested', 'BMC + SCOM events', 'is-success')}
+          ${tile('MTTR', 'dashboard-mttr', 'Mean time to resolve', '')}
+        </div>
+
+        <!-- Split: problem feed + source health -->
+        <div class="kfhx-split" style="margin-bottom: 14px;">
+          <div class="kfhx-panel">
+            <div class="kfhx-section-head">
+              <div class="kfhx-section-title">Active Problems</div>
+              <a href="#incidents" data-page="incidents" class="kfhx-section-sub" style="color: var(--kfh-primary); font-weight: 700; text-decoration: none;">View all →</a>
+            </div>
+            <div id="dashboard-problem-feed">
+              ${emptyState('No active problems in the selected range.<br>Correlated incidents appear here once RCA (Phase 3) is enabled.')}
+            </div>
+          </div>
+
+          <div class="kfhx-panel">
+            <div class="kfhx-section-head">
+              <div class="kfhx-section-title">Ingest &amp; Source Health</div>
+            </div>
+            <div id="dashboard-source-breakdown">
+              ${emptyState('No source data returned yet.')}
+            </div>
           </div>
         </div>
 
-        <!-- KPI Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <!-- New Incidents -->
-          <div class="kfh-card kfh-card-interactive p-6">
-            <div class="flex items-center justify-between mb-4">
-              <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">New Incidents</span>
-              <span class="kfh-chip kfh-chip-default">Live</span>
-            </div>
-            <div id="dashboard-new-incidents" style="font-size: 2.25rem; font-weight: 800; color: var(--text-primary);">0</div>
-            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">From production API</div>
-          </div>
-
-          <!-- Recurring -->
-          <div class="kfh-card kfh-card-interactive p-6">
-            <div class="flex items-center justify-between mb-4">
-              <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">Recurring</span>
-              <span class="kfh-chip kfh-chip-recurring">Pattern</span>
-            </div>
-            <div id="dashboard-recurring" style="font-size: 2.25rem; font-weight: 800; color: var(--text-primary);">0</div>
-            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">Detected from incidents API</div>
-          </div>
-
-          <!-- Open Critical -->
-          <div class="kfh-card kfh-card-interactive p-6" style="border-left: 4px solid var(--color-critical);">
-            <div class="flex items-center justify-between mb-4">
-              <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">Open Critical</span>
-              <svg style="width: 1.25rem; height: 1.25rem; color: var(--color-critical);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-              </svg>
-            </div>
-            <div id="dashboard-critical" style="font-size: 2.25rem; font-weight: 800; color: var(--color-critical);">0</div>
-            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">Requiring immediate attention</div>
-          </div>
-
-          <!-- Alert Groups -->
-          <div class="kfh-card kfh-card-interactive p-6">
-            <div class="flex items-center justify-between mb-4">
-              <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">Alert Groups</span>
-              <span class="kfh-chip kfh-chip-default">Correlated</span>
-            </div>
-            <div id="dashboard-alert-groups" style="font-size: 2.25rem; font-weight: 800; color: var(--text-primary);">0</div>
-            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">From correlation API</div>
-          </div>
-        </div>
-
-        <!-- Charts Row -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          <!-- Trend Chart -->
-          <div class="lg:col-span-2 kfh-card p-6">
-            <div class="flex items-center justify-between mb-6">
-              <h3 style="font-weight: 700; font-size: 1.125rem; color: var(--text-primary);">Incident Trend (15 Days)</h3>
-              <div style="display: flex; align-items: center; gap: 1rem; font-size: 0.75rem;">
-                <span style="display: flex; align-items: center; gap: 0.5rem;">
-                  <span style="width: 12px; height: 12px; border-radius: 50%; background: var(--kfh-primary);"></span> New
-                </span>
-                <span style="display: flex; align-items: center; gap: 0.5rem;">
-                  <span style="width: 12px; height: 12px; border-radius: 50%; background: var(--kfh-gold);"></span> Recurring
-                </span>
+        <!-- Row: trend + top apps -->
+        <div class="kfhx-split" style="grid-template-columns: 1fr 1fr;">
+          <div class="kfhx-panel">
+            <div class="kfhx-section-head">
+              <div class="kfhx-section-title">Incident Trend (15 days)</div>
+              <div style="display:flex; gap:14px; font-size:0.72rem; color: var(--text-muted);">
+                <span style="display:flex; align-items:center; gap:6px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--kfh-primary);"></span>New</span>
+                <span style="display:flex; align-items:center; gap:6px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--kfh-gold);"></span>Recurring</span>
               </div>
             </div>
-            <div id="trend-bars" style="display: flex; align-items: flex-end; gap: 4px; height: 160px;"></div>
-            <div style="display: flex; justify-content: space-between; margin-top: 1rem; font-size: 0.75rem; color: var(--text-muted);">
-              <span>15 days ago</span>
-              <span>Today</span>
+            <div id="trend-bars" style="display:flex; align-items:flex-end; gap:4px; height:150px;"></div>
+            <div style="display:flex; justify-content:space-between; margin-top:10px; font-size:0.72rem; color: var(--text-muted);">
+              <span>15 days ago</span><span>Today</span>
             </div>
           </div>
 
-          <!-- Source Breakdown -->
-          <div class="kfh-card p-6">
-            <h3 style="font-weight: 700; font-size: 1.125rem; color: var(--text-primary); margin-bottom: 1.5rem;">Source Breakdown</h3>
-            <div style="display: flex; flex-direction: column; gap: 1.25rem;">
-              <div id="dashboard-source-breakdown" style="font-size: 0.875rem; color: var(--text-muted);">No source data returned yet.</div>
+          <div class="kfhx-panel">
+            <div class="kfhx-section-head">
+              <div class="kfhx-section-title">Top Impacted Applications</div>
+              <a href="#servicemap" data-page="servicemap" class="kfhx-section-sub" style="color: var(--kfh-primary); font-weight: 700; text-decoration: none;">Service Map →</a>
+            </div>
+            <div id="dashboard-top-apps">
+              ${emptyState('No impacted applications yet.')}
             </div>
           </div>
         </div>
 
-        <!-- Bottom Row -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <!-- Top Impacted Apps -->
-          <div class="kfh-card p-6">
-            <div class="flex items-center justify-between mb-6">
-              <h3 style="font-weight: 700; font-size: 1.125rem; color: var(--text-primary);">Top Impacted Applications</h3>
-              <a href="pages/applications/applications.html" 
-                 style="font-size: 0.75rem; color: var(--kfh-primary); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; text-decoration: none;">
-                View All
-              </a>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 1rem;">
-              <div id="dashboard-top-apps" style="font-size: 0.875rem; color: var(--text-muted);">No impacted applications returned yet.</div>
-            </div>
+        <!-- AI executive summary -->
+        <div class="kfhx-panel" style="margin-top: 14px;">
+          <div class="kfhx-section-head">
+            <div class="kfhx-section-title">AI Executive Summary</div>
+            <span class="kfhx-badge info">DeepSeek → Azure</span>
           </div>
-
-          <!-- Last Hour Summary -->
-          <div class="kfh-card p-6" style="position: relative; overflow: hidden;">
-            <div style="position: absolute; top: 0; right: 0; width: 200px; height: 200px; background: linear-gradient(135deg, var(--kfh-primary-light) 0%, transparent 70%); border-radius: 0 0 0 100%; opacity: 0.5;"></div>
-            <div class="flex items-center justify-between mb-6" style="position: relative; z-index: 1;">
-              <h3 style="font-weight: 700; font-size: 1.125rem; color: var(--text-primary);">Last Hour Summary</h3>
-              <span style="display: flex; align-items: center; gap: 0.5rem; padding: 0.375rem 0.75rem; background: var(--kfh-primary); color: white; border-radius: 9999px; font-size: 0.75rem; font-weight: 600;">
-                <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                </svg>
-                GPT-5.2-Pro
-              </span>
-            </div>
-            <div style="padding: 1rem; background: var(--surface-off-white); border-radius: 12px; border-left: 4px solid var(--kfh-primary); position: relative; z-index: 1;">
-              <p style="font-size: 0.875rem; color: var(--text-primary); line-height: 1.6;">
-                No executive summary returned yet. The dashboard will show production RCA and health summaries when the backend provides them.
-              </p>
-            </div>
-            <div style="display: flex; align-items: center; gap: 1rem; margin-top: 1rem; font-size: 0.75rem; color: var(--text-muted); position: relative; z-index: 1;">
-              <span style="display: flex; align-items: center; gap: 0.375rem; color: var(--kfh-primary);">
-                <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-                Confidence: N/A
-              </span>
-              <span style="width: 4px; height: 4px; background: var(--surface-border); border-radius: 50%;"></span>
-              <span>Evidence: awaiting API data</span>
-            </div>
+          <div id="dashboard-ai-summary" style="padding: 14px 16px; background: var(--surface-off-white); border-radius: 10px; border-left: 3px solid var(--kfh-primary); font-size: 0.86rem; line-height: 1.6; color: var(--text-secondary);">
+            The AI executive summary will appear here once the AI-led RCA stage (Phase 4) is enabled — a grounded, evidence-cited narrative of the period's most impactful incidents and their root causes.
           </div>
         </div>
-      </div>
-    `;
+      </div>`;
   }
 
-  /**
-   * Render source item
-   */
+  /** Source health row (used when live data arrives). */
   function renderSourceItem(name, percent, color) {
     return `
-      <div>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-          <span style="display: flex; align-items: center; gap: 0.5rem;">
-            <span style="width: 8px; height: 8px; border-radius: 50%; background: ${color};"></span>
-            <span style="font-size: 0.875rem; font-weight: 500; color: var(--text-primary);">${name}</span>
+      <div style="margin-bottom: 12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <span style="display:flex; align-items:center; gap:8px; font-size:0.82rem; font-weight:600; color: var(--text-primary);">
+            <span class="kfhx-dot" style="background:${color};"></span>${name}
           </span>
-          <span style="font-size: 0.875rem; font-weight: 700; color: var(--text-primary);">${percent}%</span>
+          <span style="font-size:0.82rem; font-weight:700; color: var(--text-primary);">${percent}%</span>
         </div>
-        <div style="height: 8px; background: var(--surface-off-white); border-radius: 4px; overflow: hidden;">
-          <div style="height: 100%; width: ${percent}%; background: ${color}; border-radius: 4px; transition: width 0.3s ease;"></div>
-        </div>
-      </div>
-    `;
+        <div class="progress-bar"><div class="progress-bar-fill" style="width:${percent}%; background:${color};"></div></div>
+      </div>`;
   }
 
-  /**
-   * Render app item
-   */
+  /** Impacted-application row (used when live data arrives). */
   function renderAppItem(initials, name, domain, badges) {
-    const badgeHtml = badges.map(b => `<span class="kfh-chip kfh-chip-${b.type}">${b.label}</span>`).join('');
+    const badgeHtml = (badges || []).map(b => `<span class="kfh-chip kfh-chip-${b.type}">${b.label}</span>`).join('');
     return `
-      <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: var(--surface-off-white); border-radius: 12px;">
-        <div style="display: flex; align-items: center; gap: 0.75rem;">
-          <div style="width: 40px; height: 40px; background: linear-gradient(135deg, var(--kfh-primary), var(--kfh-primary-dark)); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 0.875rem;">${initials}</div>
-          <div>
-            <div style="font-weight: 600; color: var(--text-primary);">${name}</div>
-            <div style="font-size: 0.75rem; color: var(--text-muted);">${domain}</div>
-          </div>
+      <div class="kfhx-entity">
+        <div class="kfhx-entity-rail"></div>
+        <div class="kfhx-entity-body">
+          <div class="kfhx-entity-head"><span class="kfhx-entity-title">${name}</span></div>
+          <div class="kfhx-entity-meta">${domain}</div>
         </div>
-        <div style="display: flex; gap: 0.5rem;">${badgeHtml}</div>
-      </div>
-    `;
+        <div class="kfhx-entity-side">${badgeHtml}</div>
+      </div>`;
   }
 
-  /**
-   * Initialize the dashboard after rendering
-   */
   function init() {
     generateTrendBars();
-    console.log('[AIOps] Dashboard initialized');
+    console.log('[AIOps] Home initialized');
   }
 
-  /**
-   * Generate trend chart bars
-   */
   function generateTrendBars() {
     const trendChart = document.getElementById('trend-bars');
     if (!trendChart) return;
-
     const bars = [];
     for (let i = 0; i < 15; i++) {
-      const newHeight = 0;
-      const recurringHeight = 0;
-
       bars.push(`
-        <div style="flex: 1; display: flex; flex-direction: column; gap: 2px; align-items: center;">
-          <div style="width: 100%; max-width: 24px; display: flex; flex-direction: column; gap: 2px; align-items: center;">
-            <div style="width: 100%; height: ${Math.max(newHeight, 4)}px; background: var(--surface-border); border-radius: 4px 4px 0 0;"></div>
-            <div style="width: 100%; height: ${Math.max(recurringHeight, 4)}px; background: var(--surface-border); border-radius: 0 0 4px 4px;"></div>
+        <div style="flex:1; display:flex; flex-direction:column; gap:2px; align-items:center;">
+          <div style="width:100%; max-width:22px; display:flex; flex-direction:column; gap:2px; align-items:center;">
+            <div style="width:100%; height:4px; background: var(--surface-border); border-radius:3px 3px 0 0;"></div>
+            <div style="width:100%; height:4px; background: var(--surface-border); border-radius:0 0 3px 3px;"></div>
           </div>
-        </div>
-      `);
+        </div>`);
     }
-
     trendChart.innerHTML = bars.join('');
   }
 
-  /**
-   * Refresh the dashboard data
-   */
   function refresh() {
     generateTrendBars();
     if (window.KFHUtils && KFHUtils.showToast) {
-      KFHUtils.showToast('Dashboard refreshed', 'success');
+      KFHUtils.showToast('Home refreshed', 'success');
     }
-    console.log('[AIOps] Dashboard refreshed');
   }
 
-  // Public API - The router expects these methods
-  return {
-    render,
-    init,
-    refresh
-  };
+  return { render, init, refresh };
 })();
 
-// Also keep the old Dashboard object for backwards compatibility
+// Backwards compatibility alias.
 window.Dashboard = window.DashboardPage;
