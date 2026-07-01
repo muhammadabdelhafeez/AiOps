@@ -66,8 +66,9 @@ window.Router = (function() {
     'connectors': {
       js: 'pages/connectors/connectors.js',
       css: 'pages/connectors/connectors.css',
-      title: 'Connectors',
-      usesReactModule: false
+      title: 'Connections',
+      usesReactModule: false,
+      sidebarPageId: 'settings' // Connectors now live under Settings; keep Settings highlighted
     },
     'schedules': {
       js: 'pages/schedules/schedules.js',

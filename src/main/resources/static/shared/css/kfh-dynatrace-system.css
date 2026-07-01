@@ -134,6 +134,16 @@
 .kfhx-badge.ok { background: var(--color-success-bg, #f0fdf4); color: var(--color-success, #10b981); }
 .kfhx-badge.info { background: var(--kfh-primary-light, #e8f5f0); color: var(--kfh-primary-dark, #003D2E); }
 
+/* ============================ DYNATRACE-MODERN SIDEBAR (KFH colors) ============================ */
+/* Flatter, denser menu with a gold active accent instead of the filled pill. Scoped to the sidebar
+   id + !important to win over the layered theme/parity active styles. */
+#sidebar-container .kfh-sidebar-nav-item { margin: 0 8px 2px !important; padding: 9px 12px !important; border-radius: 8px !important; font-weight: 500 !important; border: 1px solid transparent !important; border-left: 3px solid transparent !important; transform: none !important; }
+#sidebar-container .kfh-sidebar-nav-item:hover { background: rgba(255, 255, 255, 0.07) !important; transform: none !important; border-color: transparent !important; }
+#sidebar-container .kfh-sidebar-nav-item.active { background: rgba(255, 255, 255, 0.10) !important; color: #fff !important; box-shadow: none !important; border-color: transparent !important; border-left: 3px solid var(--kfh-gold, #C8A84E) !important; border-radius: 0 8px 8px 0 !important; }
+#sidebar-container .kfh-sidebar-nav-item.active .kfh-sidebar-nav-icon svg { color: var(--kfh-gold, #C8A84E) !important; }
+#sidebar-container .kfh-sidebar-group-title { font-size: 0.6rem; letter-spacing: 0.14em; color: rgba(255, 255, 255, 0.45); }
+#sidebar-container .kfh-sidebar-group { margin-bottom: 12px; }
+
 /* Timeline (event / lifecycle) */
 .kfhx-timeline { position: relative; padding-left: 18px; }
 .kfhx-timeline::before { content: ''; position: absolute; left: 5px; top: 4px; bottom: 4px; width: 2px; background: var(--surface-border, #e2e8f0); }
