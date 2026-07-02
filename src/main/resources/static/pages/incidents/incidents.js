@@ -1,16 +1,16 @@
 /**
  * KFH AIOps Command Center — Incidents (Problems)
- * Dynatrace-parity list view in KFH "Beyond Horizons" colors.
+ * enterprise-parity list view in KFH "Beyond Horizons" colors.
  *
  * List view  : dense faceted filter rail (flush with content) + toolbar
  *              (Type-to-filter, time range, refresh) + area chart + compact
- *              incident table, matching Dynatrace Problems page density.
+ *              incident table, matching enterprise observability Problems page density.
  * Detail view: header (status·id·severity·category·duration + Explain/Graph/Notify)
  *              → impact tile strip → tabs → Overview = Impact ↔ Root cause
  *              + Visual resolution path. Each card is a drill-down.
  *
- * Data below is the Fund Transfer / SAN-STORAGE worked example — illustrative
- * until the correlation + RCA + AI stages (Phases 2–4) light it up live.
+ * Live incidents, loaded from correlation/RCA output via /api/v1/incidents.
+ * Empty until the correlation + RCA + AI stages produce real incidents.
  */
 (function () {
   'use strict';
@@ -26,60 +26,110 @@
 
   var SEV_CLASS = { Critical: 'sev-critical', High: 'sev-high', Medium: 'sev-medium', Low: 'sev-low' };
 
-  // ---- Illustrative incidents (replaced by live correlation/RCA output in Phases 2–4) ----
-  var INCIDENTS = [
-    {
-      id: 'INC-20260701-014', status: 'Open', classification: 'New', severity: 'Critical', category: 'Availability',
-      title: 'Mobile Banking — Fund Transfer degraded', started: 'Jul 1, 2026, 10:00', duration: '33m',
-      apps: ['Fund Transfer', 'KFHOnline', 'WAMD'], services: 3, assets: 5, journeys: 2, alerts: 142, sources: ['BMC', 'SCOM'],
-      rootCause: {
-        id: 'SAN-STORAGE-02', type: 'SAN Storage', confidence: 0.74,
-        evidence: [
-          { sev: 'crit', src: 'SCOM', ref: 'E1', title: 'LUN-04 write latency 2ms → 82ms (20×)', time: '10:00' },
-          { sev: 'high', src: 'SCOM', ref: 'E2', title: 'Oracle buffer-busy waits +480%', time: '10:14' },
-          { sev: 'high', src: 'BMC', ref: 'E3', title: 'Transfer Service DB timeouts (1,247)', time: '10:15' },
-          { sev: 'crit', src: 'BMC', ref: 'E4', title: 'API Gateway /transfer HTTP 502 (412/min)', time: '10:16' }
-        ]
-      },
-      ai: 'SAN Storage 02 write latency rose 20× at 10:00, causing Oracle buffer-busy waits at 10:14, Transfer Service DB timeouts at 10:15 and API gateway 502s at 10:16. Mobile Banking Fund Transfer success fell to 81.4%.',
-      recommended: 'Engage Storage team for SAN-STORAGE-02 LUN-04 controller; fail transfer workloads over to SAN-STORAGE-03 if latency persists > 15 min.',
-      journeysDetail: [{ name: 'Fund Transfer', before: 99.2, after: 81.4 }, { name: 'WAMD Instant Payment', before: 99.6, after: 92.1 }],
-      path: [
-        { name: 'SAN-STORAGE-02', stage: 'Storage', health: 'crit' },
-        { name: 'ORACLE-CORE-01', stage: 'Database', health: 'warn' },
-        { name: 'Transfer Service', stage: 'Service', health: 'warn' },
-        { name: 'API Gateway', stage: 'Gateway', health: 'ok' }
-      ]
-    },
-    {
-      id: 'INC-20260701-011', status: 'Open', classification: 'Recurring', severity: 'High', category: 'Performance',
-      title: 'KFHOnline login latency elevated', started: 'Jul 1, 2026, 09:42', duration: '51m',
-      apps: ['KFHOnline'], services: 2, assets: 3, journeys: 1, alerts: 63, sources: ['SCOM'],
-      rootCause: { id: 'LDAP-01', type: 'Directory', confidence: 0.61, evidence: [{ sev: 'high', src: 'SCOM', ref: 'E1', title: 'LDAP bind time +300%', time: '09:42' }] },
-      ai: 'LDAP-01 bind latency tripled at 09:42, slowing KFHOnline authentication.', recommended: 'Check LDAP-01 replication and connection pool.',
-      journeysDetail: [{ name: 'KFHOnline Login', before: 99.9, after: 96.4 }],
-      path: [{ name: 'LDAP-01', stage: 'Directory', health: 'warn' }, { name: 'Auth Service', stage: 'Service', health: 'warn' }, { name: 'API Gateway', stage: 'Gateway', health: 'ok' }]
-    },
-    {
-      id: 'INC-20260701-007', status: 'Closed', classification: 'Recurring', severity: 'Medium', category: 'Resource contention',
-      title: 'Report generator CPU saturation', started: 'Jul 1, 2026, 08:05', duration: '1h 12m',
-      apps: ['Reporting'], services: 1, assets: 2, journeys: 0, alerts: 28, sources: ['BMC'],
-      rootCause: { id: 'RPT-APP-03', type: 'Server', confidence: 0.55, evidence: [{ sev: 'medium', src: 'BMC', ref: 'E1', title: 'CPU 95% sustained 40m', time: '08:05' }] },
-      ai: 'RPT-APP-03 CPU saturated during batch reporting window.', recommended: 'Stagger batch schedule or scale the report worker.',
-      journeysDetail: [], path: [{ name: 'RPT-APP-03', stage: 'Server', health: 'warn' }, { name: 'Report Generator', stage: 'Service', health: 'ok' }]
+  // Live incidents, loaded from /api/v1/incidents. Empty until correlation produces incidents.
+  var INCIDENTS = [];
+
+  // Normalise CRITICAL/HIGH/MEDIUM/LOW/INFO (read-model) to the page's Title-case severities.
+  function normSev(v) {
+    switch (String(v == null ? '' : v).toUpperCase()) {
+      case 'CRITICAL': return 'Critical';
+      case 'HIGH': return 'High';
+      case 'MEDIUM': return 'Medium';
+      case 'LOW': case 'INFO': case 'INFORMATIONAL': return 'Low';
+      default: return v ? String(v) : 'Low';
     }
-  ];
+  }
+
+  function fmtTime(v) {
+    if (!v) return '';
+    var d = new Date(v);
+    if (isNaN(d.getTime())) return String(v);
+    return d.toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+
+  function titleCase(v) {
+    var s = String(v == null ? '' : v);
+    if (!s) return '';
+    return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+  }
+
+  // Map a live incident row into the exact display shape the list + detail view consume.
+  function mapIncident(r, i) {
+    r = r || {};
+    var rc = r.rootCause || {};
+    return {
+      id: r.id || r.incidentKey || r.incidentId || ('INC-' + i),
+      status: titleCase(r.status) || 'Open',
+      classification: r.classification || 'New',
+      severity: normSev(r.severity),
+      category: r.category || 'Availability',
+      title: r.title || r.name || r.summary || '(untitled incident)',
+      started: fmtTime(r.startedAt || r.started || r.createdAt || r.firstSeenAt || r.timestamp),
+      duration: r.duration || '',
+      apps: r.apps || r.impactedApplications || [],
+      services: Number(r.services || 0),
+      assets: Number(r.assets || 0),
+      journeys: Number(r.journeys || 0),
+      alerts: Number(r.alerts || r.alertCount || (Array.isArray(r.evidence) ? r.evidence.length : 0)),
+      sources: r.sources || [],
+      rootCause: {
+        id: rc.id || r.rootCauseAssetCi || r.rootCauseComponentName || '',
+        type: rc.type || r.rootCauseComponentName || '',
+        confidence: Number(rc.confidence || r.confidence || 0),
+        evidence: (rc.evidence || r.evidence || []).map(function (e, j) {
+          e = e || {};
+          var rawSev = e.sev || e.severity;
+          return {
+            sev: rawSev ? String(rawSev).toLowerCase().slice(0, 4) : 'info',
+            src: e.src || e.sourceSystem || e.source || '',
+            ref: e.ref || ('E' + (j + 1)),
+            title: e.title || e.message || e.msg || '',
+            time: (e.time || e.timestamp) ? fmtTime(e.time || e.timestamp) : ''
+          };
+        })
+      },
+      ai: r.ai || r.aiSummary || r.summary || '',
+      recommended: r.recommended || r.recommendation || '',
+      journeysDetail: r.journeysDetail || [],
+      path: r.path || []
+    };
+  }
+
+  var REFRESHED = '';
+  function sessionCountry() {
+    try { var s = (window.KFHConfig && KFHConfig.getSession && KFHConfig.getSession()) || {}; return s.countryCode || 'ALL'; } catch (e) { return 'ALL'; }
+  }
+  // Persist the chosen country app-wide (header country is the global scope filter now).
+  function applyCountryScope(code) {
+    try {
+      if (!(window.KFHConfig && KFHConfig.getSession && KFHConfig.setSession)) return;
+      var s = KFHConfig.getSession() || {};
+      if (s.countryCode === code) return;
+      s.countryCode = code;
+      KFHConfig.setSession(s);
+      window.dispatchEvent(new CustomEvent('kfh:scope-changed', { detail: { countryCode: code } }));
+    } catch (e) { /* non-fatal */ }
+  }
 
   var state = {
     view: 'list',
     selected: null,
+    loading: true,
+    error: null,
+    loaded: false,
     filters: {
       status: 'all',
       categories: [],
       impacts: [],
       severities: [],
+      recurrence: 'all',
       search: ''
     },
+    country: sessionCountry(),
+    sort: 'sev_desc',
+    railOpen: true,
+    searchFocus: false,
+    groupsCollapsed: {},
     open: { status: true, category: true, impact: true, severity: true },
     timeRange: 'Last 2 hours',
     showChart: true,
@@ -95,6 +145,25 @@
   var SEVERITY_MAP_FROM_UI = { Critical: ['Critical'], Major: ['High'], Minor: ['Medium'], Warning: ['Low'], Informational: [] };
   var IMPACT_MAP_FROM_STAGE = { Storage: 'Infrastructure', Database: 'Infrastructure', Server: 'Infrastructure', Service: 'Services', Gateway: 'Services', Directory: 'Infrastructure' };
 
+  function loadIncidents() {
+    if (!(window.APIClient && APIClient.incidents && APIClient.incidents.list)) {
+      state.loading = false; state.loaded = true; state.error = 'Incidents API is not available.'; render(); return;
+    }
+    state.loading = true; state.error = null; render();
+    var params = { page: 0, size: 100 };
+    if (state.country && state.country !== 'ALL') params.country = state.country;
+    APIClient.incidents.list(params).then(function (res) {
+      var rows = (res && (res.content || res.items || res.data || res.rows)) || (Array.isArray(res) ? res : []);
+      INCIDENTS = rows.map(mapIncident);
+      REFRESHED = new Date().toLocaleString();
+      state.loading = false; state.loaded = true; render();
+    }).catch(function (err) {
+      INCIDENTS = [];
+      REFRESHED = new Date().toLocaleString();
+      state.loading = false; state.loaded = true; state.error = (err && err.message) || 'Failed to load incidents.'; render();
+    });
+  }
+
   function impactsOf(x) {
     var set = {};
     (x.path || []).forEach(function (n) { var m = IMPACT_MAP_FROM_STAGE[n.stage]; if (m) set[m] = 1; });
@@ -107,7 +176,7 @@
     var s = document.createElement('style');
     s.id = 'inc-styles';
     s.textContent = [
-      /* ========== Dynatrace-parity list layout (KFH green) ========== */
+      /* ========== enterprise-parity list layout (KFH green) ========== */
       '.incx-shell{display:grid;grid-template-columns:264px 1fr;gap:12px;background:#f4f6f8;min-height:calc(100vh - 60px);font-size:12.5px;color:#242a33;padding:12px;}',
       '.incx-rail{border:1px solid #dfe3e8;background:#fff;padding:12px 12px 18px;overflow-y:auto;border-radius:10px;box-shadow:0 1px 2px rgba(15,23,42,.04);height:max-content;position:sticky;top:12px;max-height:calc(100vh - 84px);}',
       '.incx-rail-head{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:2px 2px 12px;}',
@@ -221,6 +290,7 @@
     var f = state.filters;
     if (f.status === 'active' && x.status !== 'Open') return false;
     if (f.status === 'closed' && x.status !== 'Closed') return false;
+    if (f.recurrence === 'recurring' && String(x.classification || '').toLowerCase() !== 'recurring') return false;
     if (f.categories.length && f.categories.indexOf(x.category) < 0) return false;
     if (f.severities.length) {
       var mapped = SEVERITY_MAP_UI[x.severity] || x.severity;
@@ -239,62 +309,7 @@
     return true;
   }
 
-  // Count how many incidents pass all OTHER active filters (used for per-option counts)
-  function countWith(overrides) {
-    var saved = JSON.parse(JSON.stringify(state.filters));
-    Object.keys(overrides).forEach(function (k) { state.filters[k] = overrides[k]; });
-    var n = INCIDENTS.filter(passes).length;
-    state.filters = saved;
-    return n;
-  }
-
-  // ---- Filter rail ----
-  function chevronSvg() {
-    return '<svg class="chev" viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 5 L6 8 L9 5"/></svg>';
-  }
-  function facetHead(key, label) {
-    var closed = !state.open[key];
-    return '<div class="incx-facet-head" data-facet-toggle="' + key + '"><span>' + esc(label) + '</span>' + chevronSvg() + '</div>';
-  }
-  function radioFacet(key, label, options) {
-    var body = options.map(function (o) {
-      var val = o.value, lbl = o.label;
-      var checked = state.filters.status === val;
-      return '<label class="incx-opt"><input type="radio" name="status" value="' + esc(val) + '" ' + (checked ? 'checked' : '') + ' data-radio-status><span class="incx-opt-label">' + esc(lbl) + '</span></label>';
-    }).join('');
-    return '<div class="incx-facet ' + (state.open[key] ? '' : 'closed') + '">' + facetHead(key, label) + '<div class="incx-facet-body">' + body + '</div></div>';
-  }
-  function checkboxFacet(key, filterKey, label, options) {
-    var body = options.map(function (v) {
-      var checked = state.filters[filterKey].indexOf(v) >= 0;
-      var overrides = {};
-      overrides[filterKey] = checked ? state.filters[filterKey] : state.filters[filterKey].concat(v);
-      var count = countWith(overrides);
-      return '<label class="incx-opt"><input type="checkbox" value="' + esc(v) + '" ' + (checked ? 'checked' : '') + ' data-cb="' + esc(filterKey) + '"><span class="incx-opt-label">' + esc(v) + '</span><span class="incx-opt-count">' + count + '</span></label>';
-    }).join('');
-    return '<div class="incx-facet ' + (state.open[key] ? '' : 'closed') + '">' + facetHead(key, label) + '<div class="incx-facet-body">' + body + '</div></div>';
-  }
-
-  function railHtml() {
-    return '<aside class="incx-rail">' +
-      '<div class="incx-rail-head">' +
-        '<span class="incx-filter-chip">Default filter <span class="chk">✓</span></span>' +
-        '<button class="incx-bell" title="Notification settings" aria-label="Notification settings">' +
-          '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>' +
-        '</button>' +
-      '</div>' +
-      radioFacet('status', 'Status', [
-        { value: 'all', label: 'All' },
-        { value: 'active', label: 'Active' },
-        { value: 'closed', label: 'Closed' }
-      ]) +
-      checkboxFacet('category', 'categories', 'Category', CATEGORY_VALUES) +
-      checkboxFacet('impact', 'impacts', 'Impact', IMPACT_VALUES) +
-      checkboxFacet('severity', 'severities', 'Severity', SEVERITY_VALUES) +
-    '</aside>';
-  }
-
-  // ---- Header + toolbar + chart ----
+  // ---- Chart ----
   function chartSvg(list) {
     // Stack bars over ~24 buckets; height proportional to incidents active during that bucket.
     var buckets = 24;
@@ -348,7 +363,10 @@
 
   function rowsHtml(list) {
     if (!list.length) {
-      return '<tr><td colspan="10" class="incx-empty">No incidents match the current filters.</td></tr>';
+      var msg = INCIDENTS.length === 0
+        ? 'No incidents yet. Incidents are produced by correlation from ingested alerts once connectors are enabled under <a href="#settings" data-page="settings">Settings → Connections</a>.'
+        : 'No incidents match the current filters.';
+      return '<tr><td colspan="10" class="incx-empty">' + msg + '</td></tr>';
     }
     return list.map(function (x) {
       var cls = x.status === 'Open' ? 'crit' : '';
@@ -371,128 +389,192 @@
     }).join('');
   }
 
-  function toolbarHtml() {
-    return '<div class="incx-toolbar">' +
-      '<button class="incx-entity-picker" title="Entity picker" aria-label="Entity picker">' +
-        '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 12l9 4 9-4"/><path d="M3 17l9 4 9-4"/></svg>' +
-      '</button>' +
-      '<div class="incx-search">' +
-        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>' +
-        '<input id="incx-search-input" type="text" placeholder="Type to filter" value="' + esc(state.filters.search) + '" autocomplete="off">' +
+  // ---- Consolidated slim header (title + search + country + filters popover + sort) ----
+  var COUNTRIES = [
+    { v: 'ALL', t: 'All KFH Groups' }, { v: 'KW', t: 'Kuwait' }, { v: 'BH', t: 'Bahrain' }, { v: 'EG', t: 'Egypt' }
+  ];
+  var SORTS = [
+    { v: 'sev_desc', t: 'Severity: High to low' }, { v: 'sev_asc', t: 'Severity: Low to high' },
+    { v: 'time_desc', t: 'Newest first' }, { v: 'time_asc', t: 'Oldest first' }
+  ];
+
+  function sortList(list) {
+    var rank = { Critical: 4, High: 3, Medium: 2, Low: 1 };
+    function started(x) { var d = new Date(x.started); return isNaN(d.getTime()) ? 0 : d.getTime(); }
+    switch (state.sort) {
+      case 'sev_asc': list.sort(function (a, b) { return (rank[a.severity] || 0) - (rank[b.severity] || 0); }); break;
+      case 'time_desc': list.sort(function (a, b) { return started(b) - started(a); }); break;
+      case 'time_asc': list.sort(function (a, b) { return started(a) - started(b); }); break;
+      default: list.sort(function (a, b) { return (rank[b.severity] || 0) - (rank[a.severity] || 0); });
+    }
+    return list;
+  }
+
+  function activeFilterCount() {
+    var f = state.filters, n = 0;
+    if (f.status !== 'all') n++;
+    if (f.recurrence !== 'all') n++;
+    n += f.categories.length + f.severities.length;
+    return n;
+  }
+
+  function header() {
+    var total = INCIDENTS.length;
+    var n = activeFilterCount();
+    var fLabel = n ? (n + ' filter' + (n > 1 ? 's' : '')) : 'All incidents';
+    var countryOpts = COUNTRIES.map(function (c) { return '<option value="' + c.v + '" ' + (state.country === c.v ? 'selected' : '') + '>' + esc(c.t) + '</option>'; }).join('');
+    var sortOpts = SORTS.map(function (o) { return '<option value="' + o.v + '" ' + (state.sort === o.v ? 'selected' : '') + '>' + esc(o.t) + '</option>'; }).join('');
+    var badge = state.error
+      ? '<span class="kfhx-badge" style="background:var(--color-critical);color:#fff;">' + esc(state.error) + '</span>'
+      : '<span class="kfhx-badge info">Live</span>';
+    return '<div class="kfh-phdr">' +
+      '<div class="kfh-phdr-titlewrap"><h1 class="kfh-phdr-title">Incidents</h1><span class="kfh-phdr-sub">' + total + ' incident' + (total === 1 ? '' : 's') + ' · refreshed ' + esc(REFRESHED || '—') + '</span></div>' +
+      '<div class="kfh-phdr-search">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>' +
+        '<input id="inc-q" type="text" placeholder="Search incidents, hosts, teams…" value="' + esc(state.filters.search) + '"></div>' +
+      '<div class="kfh-phdr-ctrls">' +
+        badge +
+        '<div class="kfh-phdr-cty"><span class="lbl">Country</span><select id="inc-country" class="kfh-phdr-select">' + countryOpts + '</select></div>' +
       '</div>' +
-      '<select class="incx-time" id="incx-time-select" aria-label="Time range">' +
-        ['Last 30 minutes', 'Last 2 hours', 'Last 24 hours', 'Last 7 days', 'Last 15 days'].map(function (t) {
-          return '<option value="' + esc(t) + '" ' + (t === state.timeRange ? 'selected' : '') + '>' + esc(t) + '</option>';
-        }).join('') +
-      '</select>' +
-      '<button class="incx-tbtn" title="Previous" aria-label="Previous">‹</button>' +
-      '<button class="incx-tbtn" title="Next" aria-label="Next">›</button>' +
-      '<button class="incx-refresh" id="incx-refresh" title="Refresh">' +
-        '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M20.49 15A9 9 0 1 1 5.64 5.64L23 10"/></svg>' +
-        '<span>Refresh</span>' +
-      '</button>' +
-      '<button class="incx-tbtn" title="More" aria-label="More">⌄</button>' +
     '</div>';
   }
 
-  function headerHtml(list, active, total) {
-    return '<div class="incx-topbar">' +
-      '<button class="incx-icobtn" title="Collapse filter rail" aria-label="Collapse filter rail">' +
-        '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="9" y1="4" x2="9" y2="20"/></svg>' +
-      '</button>' +
-      '<span class="incx-title">Incidents <span class="incx-badge-active"><span class="dot"></span>' + active + ' active</span><span class="incx-title-total">/ ' + total + '</span></span>' +
-      '<span class="incx-topbar-spacer"></span>' +
-      '<button class="incx-linkbtn" id="incx-toggle-chart">' +
-        '<svg class="ico" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="10" width="4" height="10"/><rect x="10" y="4" width="4" height="16"/><rect x="17" y="14" width="4" height="6"/></svg>' +
-        (state.showChart ? 'Hide chart' : 'Show chart') +
-      '</button>' +
-      '<span class="incx-topbar-meta">⟳ refreshed 20 sec. ago</span>' +
-    '</div>';
+  // One collapsible filter section (accordion) with radio rows (single-select).
+  function fltRadio(id, title, opts) {
+    var collapsed = !!state.groupsCollapsed[id];
+    var body = opts.map(function (o) {
+      return '<label class="kfh-fltopt"><input type="radio" name="inc-flt-' + id + '" ' + (o.on ? 'checked' : '') + ' data-fgrp="' + id + '" data-fval="' + esc(o.value) + '">' +
+        (o.dot ? '<span class="dot" style="background:' + o.dot + ';"></span>' : '') +
+        '<span>' + esc(o.label) + '</span>' + (o.n != null ? '<span class="n">' + o.n + '</span>' : '') + '</label>';
+    }).join('');
+    return '<div class="kfh-fltg ' + (collapsed ? 'collapsed' : '') + '">' +
+      '<div class="kfh-fltg-head" data-grptoggle="' + id + '"><span class="t">' + esc(title) + '</span><span class="chev">▾</span></div>' +
+      '<div class="kfh-fltg-body">' + body + '</div></div>';
+  }
+
+  // One collapsible filter section (accordion) with checkbox rows (multi-select).
+  function fltCheck(id, title, opts) {
+    var collapsed = !!state.groupsCollapsed[id];
+    var body = opts.map(function (o) {
+      return '<label class="kfh-fltopt"><input type="checkbox" ' + (o.on ? 'checked' : '') + ' data-fgrpc="' + id + '" data-fval="' + esc(o.value) + '">' +
+        (o.dot ? '<span class="dot" style="background:' + o.dot + ';"></span>' : '') +
+        '<span>' + esc(o.label) + '</span>' + (o.n != null ? '<span class="n">' + o.n + '</span>' : '') + '</label>';
+    }).join('');
+    return '<div class="kfh-fltg ' + (collapsed ? 'collapsed' : '') + '">' +
+      '<div class="kfh-fltg-head" data-grptoggle="' + id + '"><span class="t">' + esc(title) + '</span><span class="chev">▾</span></div>' +
+      '<div class="kfh-fltg-body">' + body + '</div></div>';
+  }
+
+  // Collapsible bordered filter panel (Dynatrace Problems-style) — accordion sections.
+  function filterRail() {
+    // Status (single select)
+    var statusOpts = [['all', 'All'], ['active', 'Open'], ['closed', 'Closed']].map(function (o) {
+      var n = o[0] === 'all' ? INCIDENTS.length
+        : o[0] === 'active' ? INCIDENTS.filter(function (x) { return x.status === 'Open'; }).length
+        : INCIDENTS.filter(function (x) { return x.status === 'Closed'; }).length;
+      return { label: o[1], value: o[0], on: state.filters.status === o[0], n: n };
+    });
+    // Severity (UI vocabulary, multi-select)
+    var sevOpts = SEVERITY_VALUES.map(function (v) {
+      return { label: v, value: v, on: state.filters.severities.indexOf(v) >= 0,
+        n: INCIDENTS.filter(function (x) { return (SEVERITY_MAP_UI[x.severity] || x.severity) === v; }).length };
+    });
+    // Category (multi-select)
+    var catOpts = CATEGORY_VALUES.map(function (v) {
+      return { label: v, value: v, on: state.filters.categories.indexOf(v) >= 0,
+        n: INCIDENTS.filter(function (x) { return x.category === v; }).length };
+    });
+    // Recurrence (single select)
+    var recOpts = [['all', 'All'], ['recurring', 'Recurring only']].map(function (o) {
+      var n = o[0] === 'all' ? INCIDENTS.length
+        : INCIDENTS.filter(function (x) { return String(x.classification || '').toLowerCase() === 'recurring'; }).length;
+      return { label: o[1], value: o[0], on: state.filters.recurrence === o[0], n: n };
+    });
+    return '<aside class="kfh-filters">' +
+      fltRadio('status', 'Status', statusOpts) +
+      fltCheck('sev', 'Severity', sevOpts) +
+      fltCheck('cat', 'Category', catOpts) +
+      fltRadio('rec', 'Recurrence', recOpts) +
+      '<button id="inc-filters-clear" class="kfh-filters-clear">Clear all filters</button>' +
+    '</aside>';
   }
 
   function renderList() {
-    var list = INCIDENTS.filter(passes);
-    var active = INCIDENTS.filter(function (x) { return x.status === 'Open'; }).length;
+    if (state.loading && !state.loaded) {
+      mount.innerHTML = '<div class="kfh-phdr"><div class="kfh-phdr-titlewrap"><h1 class="kfh-phdr-title">Incidents</h1><span class="kfh-phdr-sub">loading…</span></div></div>' +
+        '<div class="kfh-worklayout"><div class="kfh-workbody"><div class="incx-empty" style="padding:48px;">Loading incidents…</div></div></div>';
+      return;
+    }
+    var list = sortList(INCIDENTS.filter(passes));
     var chartHtml = state.showChart ? '<div class="incx-chart">' + chartSvg(list) + '</div>' : '';
 
     mount.innerHTML =
-      '<div class="incx-shell">' +
-        railHtml() +
-        '<section class="incx-main">' +
-          headerHtml(list, active, INCIDENTS.length) +
-          toolbarHtml() +
-          '<div class="incx-body">' +
-            chartHtml +
-            '<div class="incx-tablewrap">' +
-              '<div class="incx-tablehead-note">7 columns hidden <span>⬇</span></div>' +
-              '<table class="incx-table"><thead><tr>' +
-                '<th class="incx-cellchk"><input type="checkbox" aria-label="Select all"></th>' +
-                '<th>ID</th>' +
-                '<th>Name</th>' +
-                '<th>Status</th>' +
-                '<th>Category</th>' +
-                '<th>Affected</th>' +
-                '<th>Affected entities</th>' +
-                '<th>Root cause</th>' +
-                '<th>Started</th>' +
-                '<th>Duration</th>' +
-              '</tr></thead><tbody>' + rowsHtml(list) + '</tbody></table>' +
-            '</div>' +
+      header() +
+      '<div class="kfh-worklayout">' +
+        filterRail() +
+        '<div class="kfh-workbody">' +
+          chartHtml +
+          '<div class="incx-tablewrap">' +
+            '<div class="incx-tablehead-note">Showing ' + list.length + ' of ' + INCIDENTS.length + ' <span>⬇</span></div>' +
+            '<table class="incx-table"><thead><tr>' +
+              '<th class="incx-cellchk"><input type="checkbox" aria-label="Select all"></th>' +
+              '<th>ID</th>' +
+              '<th>Name</th>' +
+              '<th>Status</th>' +
+              '<th>Category</th>' +
+              '<th>Affected</th>' +
+              '<th>Affected entities</th>' +
+              '<th>Root cause</th>' +
+              '<th>Started</th>' +
+              '<th>Duration</th>' +
+            '</tr></thead><tbody>' + rowsHtml(list) + '</tbody></table>' +
           '</div>' +
-        '</section>' +
+        '</div>' +
       '</div>';
 
-    // Facet section toggles
-    mount.querySelectorAll('[data-facet-toggle]').forEach(function (el) {
-      el.addEventListener('click', function () {
-        var k = el.getAttribute('data-facet-toggle');
-        state.open[k] = !state.open[k];
-        renderList();
-      });
-    });
-    // Status radios
-    mount.querySelectorAll('[data-radio-status]').forEach(function (r) {
-      r.addEventListener('change', function () {
-        state.filters.status = r.value;
-        renderList();
-      });
-    });
-    // Category / impact / severity checkboxes
-    mount.querySelectorAll('[data-cb]').forEach(function (c) {
-      c.addEventListener('change', function () {
-        var key = c.getAttribute('data-cb');
-        var v = c.value;
-        var arr = state.filters[key];
-        var idx = arr.indexOf(v);
-        if (c.checked && idx < 0) arr.push(v);
-        else if (!c.checked && idx >= 0) arr.splice(idx, 1);
-        renderList();
-      });
-    });
-    // Search — debounced re-render
-    var search = mount.querySelector('#incx-search-input');
-    if (search) {
-      var timer = null;
-      search.addEventListener('input', function () {
-        clearTimeout(timer);
-        var v = search.value;
-        timer = setTimeout(function () {
-          state.filters.search = v;
-          renderList();
-          var f = mount.querySelector('#incx-search-input');
-          if (f) { f.focus(); f.setSelectionRange(v.length, v.length); }
-        }, 180);
-      });
+    // Search (caret-preserving)
+    var q = mount.querySelector('#inc-q');
+    if (q) {
+      q.addEventListener('input', function () { state.filters.search = q.value; state.searchFocus = true; renderList(); });
+      q.addEventListener('focus', function () { state.searchFocus = true; });
+      q.addEventListener('blur', function () { state.searchFocus = false; });
     }
-    // Time range
-    var time = mount.querySelector('#incx-time-select');
-    if (time) time.addEventListener('change', function () { state.timeRange = time.value; });
-    // Refresh
-    var refresh = mount.querySelector('#incx-refresh');
-    if (refresh) refresh.addEventListener('click', function () { renderList(); });
-    // Hide/Show chart
-    var tc = mount.querySelector('#incx-toggle-chart');
-    if (tc) tc.addEventListener('click', function () { state.showChart = !state.showChart; renderList(); });
+    // Country
+    var cty = mount.querySelector('#inc-country');
+    if (cty) cty.addEventListener('change', function () { state.country = cty.value; applyCountryScope(cty.value); loadIncidents(); });
+    // Sort
+    var srt = mount.querySelector('#inc-sort');
+    if (srt) srt.addEventListener('change', function () { state.sort = srt.value; renderList(); });
+    // Per-group accordion collapse (chevron)
+    mount.querySelectorAll('[data-grptoggle]').forEach(function (h) {
+      h.addEventListener('click', function () { var g = h.getAttribute('data-grptoggle'); state.groupsCollapsed[g] = !state.groupsCollapsed[g]; renderList(); });
+    });
+    // Radio filters (single select): Status, Recurrence
+    mount.querySelectorAll('input[data-fgrp]').forEach(function (r) {
+      r.addEventListener('change', function () {
+        var grp = r.getAttribute('data-fgrp'), val = r.getAttribute('data-fval');
+        if (grp === 'status') state.filters.status = val;
+        else if (grp === 'rec') state.filters.recurrence = val;
+        renderList();
+      });
+    });
+    // Checkbox filters (multi select): Severity, Category
+    mount.querySelectorAll('input[data-fgrpc]').forEach(function (c) {
+      c.addEventListener('change', function () {
+        var grp = c.getAttribute('data-fgrpc'), val = c.getAttribute('data-fval');
+        var arr = grp === 'sev' ? state.filters.severities : state.filters.categories;
+        var i = arr.indexOf(val);
+        if (i >= 0) arr.splice(i, 1); else arr.push(val);
+        renderList();
+      });
+    });
+    // Clear all
+    var fclr = mount.querySelector('#inc-filters-clear');
+    if (fclr) fclr.addEventListener('click', function () {
+      state.filters.status = 'all'; state.filters.recurrence = 'all';
+      state.filters.categories = []; state.filters.severities = []; state.filters.impacts = [];
+      renderList();
+    });
     // Row click → detail
     mount.querySelectorAll('.incx-table tbody tr[data-id]').forEach(function (r) {
       r.addEventListener('click', function () {
@@ -501,6 +583,8 @@
         render();
       });
     });
+    // Keep caret in the search box across re-renders
+    if (state.searchFocus && q) { q.focus(); var v = q.value; q.value = ''; q.value = v; }
   }
 
   // ---- Detail view (retained from prior implementation) ----
@@ -696,5 +780,5 @@
     if (back) { e.preventDefault(); e.stopPropagation(); state.selected = null; render(); }
   }, true);
 
-  render();
+  loadIncidents();
 })();

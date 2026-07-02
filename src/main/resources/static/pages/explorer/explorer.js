@@ -1,6 +1,6 @@
 /**
  * KFH AIOps — Log Explorer over POST /api/v1/logs/search (Custom Index Engine).
- * Dynatrace-logs-style search/present in KFH colors: left facet rail (with counts), a query pill bar,
+ * enterprise log-analytics style search/present in KFH colors: left facet rail (with counts), a query pill bar,
  * a volume timeseries, and a dense results table with expandable property rows + CSV export.
  * Country-scoped + RBAC-gated server-side; newest-first + paginated. Live search integration preserved.
  */
@@ -207,13 +207,31 @@
       '</div>';
   }
 
+  // Unified slim page header (full-width; shared .kfh-phdr* styles).
+  function header() {
+    var rangeOpts = ranges.map(function (r) {
+      return '<option value="' + esc(r.id) + '"' + (state.filters.rangeId === r.id ? ' selected' : '') + '>' + esc(r.label) + '</option>';
+    }).join('');
+    var total = (state.result && state.result.total != null) ? state.result.total : null;
+    var sub = state.error ? esc(state.error) : (total != null ? (total + ' records') : 'Custom Index Engine');
+    return '<div class="kfh-phdr">' +
+      '<div class="kfh-phdr-titlewrap"><h1 class="kfh-phdr-title">Log Explorer</h1><span class="kfh-phdr-sub">' + sub + '</span></div>' +
+      '<div class="kfh-phdr-search">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>' +
+        '<input id="lx-q" type="text" placeholder="Search logs — message text…" value="' + esc(state.filters.text) + '"></div>' +
+      '<div class="kfh-phdr-ctrls">' +
+        '<div class="kfh-phdr-cty"><span class="lbl">Time range</span><select id="lx-range-hdr" class="kfh-phdr-select">' + rangeOpts + '</select></div>' +
+      '</div>' +
+    '</div>';
+  }
+
   function render() {
     injectStyles();
     var el = root(); if (!el) return;
-    el.innerHTML = '<div class="lx2-wrap">' + facetRail() +
+    el.innerHTML = header() +
+      '<div class="lx2-wrap">' + facetRail() +
       '<div class="lx2-main">' +
-        '<div class="kfhx-section-head" style="margin-bottom:10px;"><div class="kfhx-section-title" style="font-size:1.15rem;">Log Explorer</div>' +
-        (state.showChart ? '' : '<button id="lx-showchart" class="lx2-linkbtn">Show chart</button>') + '</div>' +
+        (state.showChart ? '' : '<div style="margin-bottom:10px;"><button id="lx-showchart" class="lx2-linkbtn">Show chart</button></div>') +
         queryBar() + timeseries() + resultsPanel() +
       '</div></div>';
     wire(el);
@@ -234,6 +252,12 @@
     if (text) text.addEventListener('keydown', function (e) { if (e.key === 'Enter') { state.filters.text = text.value; state.page = 0; runSearch(); } });
     var rg = el.querySelector('#lx-range');
     if (rg) rg.addEventListener('change', function () { state.filters.rangeId = rg.value; state.page = 0; runSearch(); });
+    // Header search: wired to the existing log query on Enter.
+    var hq = el.querySelector('#lx-q');
+    if (hq) hq.addEventListener('keydown', function (e) { if (e.key === 'Enter') { state.filters.text = hq.value; state.page = 0; runSearch(); } });
+    // Header time-range select: bound to state.filters.rangeId.
+    var rgh = el.querySelector('#lx-range-hdr');
+    if (rgh) rgh.addEventListener('change', function () { state.filters.rangeId = rgh.value; state.page = 0; runSearch(); });
     var prev = el.querySelector('#lx-prev');
     if (prev) prev.addEventListener('click', function () { if (state.page > 0) { state.page -= 1; runSearch(); } });
     var next = el.querySelector('#lx-next');
@@ -263,7 +287,21 @@
     } catch (e) { /* ignore */ }
   }
 
-  function init() { state.page = 0; render(); runSearch(); }
+  // Seed the text filter from a routed hash query, e.g. "#explorer?q=disk".
+  function seedFromHash() {
+    try {
+      var h = window.location.hash || '';
+      var qi = h.indexOf('?');
+      if (qi < 0) return;
+      var params = h.slice(qi + 1).split('&');
+      for (var i = 0; i < params.length; i++) {
+        var kv = params[i].split('=');
+        if (kv[0] === 'q') { state.filters.text = decodeURIComponent((kv[1] || '').replace(/\+/g, ' ')); break; }
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  function init() { state.page = 0; seedFromHash(); render(); runSearch(); }
   window.LogExplorer = { init: init };
   init();
 })();

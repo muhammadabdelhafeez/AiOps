@@ -650,6 +650,16 @@ Run the normal database-backed application for local UI/API work. User Managemen
 - Worker picks up via outbox pattern
 - Supports custom window override
 
+#### NOC pages are live (no demo data)
+- The Alerts, Incidents, and Logs Explorer pages render **only real data** from the backend — all illustrative/demo rows were removed.
+  - Alerts (`pages/alerts/alerts.js`) → `GET /api/v1/alerts` (Custom Index read model), mapped defensively (TelemetryDocument fields), Title-case severities. The page uses the shared **slim page header** (see below) with a Filters popover holding Severity/Source/Kind + Impact sort; hourly activity strip is computed from real alert timestamps.
+
+- **Unified slim page header (`.kfh-phdr`)** — every page renders one consistent ~54px header (title + subtitle + search + optional scope/filters/sort/actions) defined once in `shared/css/kfh-design-system.css` (`.kfh-phdr*`, `.kfh-fchip`). Any page containing a `.kfh-phdr` auto-hides the shell `#global-bar` via `main.kfh-main-content:has(.kfh-phdr) #global-bar{display:none}`, so there is exactly one header per page. Applied to Dashboard, Incidents, Alerts, Log Explorer, Applications, Inventory, Reports, Users, Audit, Schedules and Settings. NOTE: the shared stylesheet was renamed from `kfh-dynatrace-system.css` → `kfh-design-system.css` (no third-party product names in shipped code); the roadmap doc is `docs/UI_PARITY_ROADMAP.md`.
+  - Incidents (`pages/incidents/incidents.js`) → `GET /api/v1/incidents` (correlation/RCA output), defensively mapped to the detail shape.
+  - Logs Explorer (`pages/explorer/explorer.js`) → `POST /api/v1/logs/search` (already live).
+- Until a connector is enabled and has ingested, each page shows a clean **empty state** ("No alerts/incidents yet — enable a connector under Settings → Connections"). On API failure a red error badge is shown with the empty state.
+- Connection editor (Settings → Connections): the **Share access** tab and the **Manage External Requests** banner were removed; the editor is a single Set-up form (identity/scope/schedule/credentials).
+
 #### Revealing secrets (ADMIN only)
 - POST /api/v1/connectors/{id}/reveal
 - Requires reason for audit trail

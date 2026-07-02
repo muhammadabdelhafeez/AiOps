@@ -1,5 +1,5 @@
 /**
- * KFH AIOps Command Center — Alert Explorer, reconstructed to Dynatrace's "Events" organization
+ * KFH AIOps Command Center — Alert Explorer, reconstructed to enterprise observability's "Events" organization
  * in KFH "Beyond Horizons" colors. Self-mounting, vanilla, uses the shared kfhx-* design system.
  *
  * Faceted rail (Severity/Source/Kind) + count-labeled severity tabs + query pill bar + volume timeline
@@ -19,22 +19,91 @@
     });
   }
 
-  var ALERTS = [
-    { id: 'a1', time: 'Jul 1, 10:00:12', sev: 'Critical', source: 'SCOM', kind: 'ALERTS', entity: 'SAN-STORAGE-02', etype: 'Storage.SAN.Lun', cat: 'PerformanceHealth', msg: 'LUN-04 write latency rose from 2 ms to 82 ms (20×) on SAN-STORAGE-02.', count: 5, inc: 'INC-20260701-014', attrs: { errorCode: 'SAN.WriteLatency.High', host: 'san-ctrl-02', priority: 'High', resolutionState: 'New' } },
-    { id: 'a2', time: 'Jul 1, 10:14:03', sev: 'High', source: 'SCOM', kind: 'ALERTS', entity: 'ORACLE-CORE-01', etype: 'OracleDatabase', cat: 'DatabaseHealth', msg: 'Oracle buffer-busy waits increased +480% on ORACLE-CORE-01.', count: 12, inc: 'INC-20260701-014', attrs: { errorCode: 'buffer_busy_waits', host: 'db-host-07', priority: 'High' } },
-    { id: 'a3', time: 'Jul 1, 10:15:41', sev: 'High', source: 'BMC', kind: 'ALERTS', entity: 'Transfer Service', etype: 'CoreBanking', cat: 'ApplicationError', msg: 'Transfer Service DB timeouts: error_count reached 1,247 (baseline 3/min).', count: 1247, inc: 'INC-20260701-014', attrs: { errorCode: 'DB_TIMEOUT', alertName: 'DB_TIMEOUT', impactedService: 'Fund Transfer', status: 'OPEN' } },
-    { id: 'a4', time: 'Jul 1, 10:16:20', sev: 'Critical', source: 'BMC', kind: 'ALERTS', entity: 'API-GATEWAY', etype: 'ApiGateway', cat: 'Availability', msg: 'API Gateway /transfer returned HTTP 502 at 412/min (baseline 0).', count: 412, inc: 'INC-20260701-014', attrs: { errorCode: 'http_502', alertName: 'GATEWAY_5XX', status: 'OPEN' } },
-    { id: 'a5', time: 'Jul 1, 09:42:10', sev: 'High', source: 'SCOM', kind: 'ALERTS', entity: 'LDAP-01', etype: 'Directory', cat: 'PerformanceHealth', msg: 'LDAP bind time increased +300% on LDAP-01.', count: 3, inc: 'INC-20260701-011', attrs: { errorCode: 'LDAP.BindTime.High', host: 'ldap-01', priority: 'High' } },
-    { id: 'a6', time: 'Jul 1, 08:05:00', sev: 'Medium', source: 'BMC', kind: 'ALERTS', entity: 'RPT-APP-03', etype: 'Server', cat: 'ResourceContention', msg: 'CPU utilization 95% sustained for 40 minutes on RPT-APP-03.', count: 8, inc: 'INC-20260701-007', attrs: { errorCode: 'CPU_HIGH', host: 'rpt-app-03' } },
-    { id: 'a7', time: 'Jul 1, 10:18:55', sev: 'Low', source: 'SCOM', kind: 'ALERTS', entity: 'WIN-APP-07', etype: 'WindowsServer', cat: 'PerformanceHealth', msg: 'Memory usage 82% on WIN-APP-07 (informational threshold).', count: 2, inc: null, attrs: { errorCode: 'MEM_WARN', host: 'win-app-07' } },
-    { id: 'a8', time: 'Jul 1, 07:31:12', sev: 'Low', source: 'BMC', kind: 'ALERTS', entity: 'SW-CORE-11', etype: 'Switch', cat: 'Availability', msg: 'Interface Gi0/3 flapped twice on SW-CORE-11.', count: 2, inc: null, attrs: { errorCode: 'IF_FLAP' } }
-  ];
+  // Live alerts, loaded from the Custom Index via /api/v1/alerts. Empty until a connector ingests.
+  var ALERTS = [];
+
+  // Normalise CRITICAL/HIGH/MEDIUM/LOW/INFO (index/read-model) to the page's Title-case severities.
+  function normSev(v) {
+    switch (String(v == null ? '' : v).toUpperCase()) {
+      case 'CRITICAL': return 'Critical';
+      case 'HIGH': return 'High';
+      case 'MEDIUM': return 'Medium';
+      case 'LOW': case 'INFO': case 'INFORMATIONAL': return 'Low';
+      default: return v ? String(v) : 'Low';
+    }
+  }
+
+  function fmtTime(v) {
+    if (!v) return '';
+    var d = new Date(v);
+    if (isNaN(d.getTime())) return String(v);
+    return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+
+  // Map a live read-model / index row (TelemetryDocument-shaped) into the display row this page renders.
+  function mapAlert(r, i) {
+    r = r || {};
+    var attrs = r.attributes || r.attrs || {};
+    return {
+      id: r.id || r.alertId || r.fingerprint || ('a' + i),
+      time: fmtTime(r.timestamp || r.time || r.creationTime || r.createdAt || r.occurredAt),
+      sev: normSev(r.severity || r.sev),
+      source: r.sourceSystem || r.source || r.sourceType || '—',
+      kind: r.kind || 'ALERTS',
+      entity: r.resourceId || r.entity || r.ci || r.host || r.sourceHostname || '—',
+      etype: r.entityType || r.etype || r.resourceType || r.className || r.class || '',
+      cat: r.category || r.cat || r.className || '',
+      msg: r.message || r.msg || r.summary || r.alertName || '',
+      count: Number(r.count || r.dedupeCount || r.occurrences || 1),
+      inc: r.incidentId || r.incidentKey || r.inc || null,
+      ts: r.timestamp || r.time || r.creationTime || r.createdAt || r.occurredAt || null,
+      attrs: (attrs && typeof attrs === 'object') ? attrs : {}
+    };
+  }
 
   var SEV_ORDER = ['Critical', 'High', 'Medium', 'Low'];
+  var REFRESHED = '';
+  function sessionCountry() {
+    try { var s = (window.KFHConfig && KFHConfig.getSession && KFHConfig.getSession()) || {}; return s.countryCode || 'ALL'; } catch (e) { return 'ALL'; }
+  }
+  // Persist the chosen country app-wide and notify listeners, so the header country
+  // acts as the global scope filter (the sidebar scope switcher was removed).
+  function applyCountryScope(code) {
+    try {
+      if (!(window.KFHConfig && KFHConfig.getSession && KFHConfig.setSession)) return;
+      var s = KFHConfig.getSession() || {};
+      if (s.countryCode === code) return;
+      s.countryCode = code;
+      KFHConfig.setSession(s);
+      window.dispatchEvent(new CustomEvent('kfh:scope-changed', { detail: { countryCode: code } }));
+    } catch (e) { /* non-fatal */ }
+  }
   var state = {
-    filters: { severity: '', source: '', kind: '' }, tab: 'All', selected: null, colsOpen: false,
+    filters: { source: '', kind: '', text: '' }, tab: 'All', sort: 'sev_desc',
+    country: sessionCountry(), selected: null, colsOpen: false, railOpen: true, searchFocus: false,
+    groupsCollapsed: {},
+    loading: true, error: null, loaded: false,
     cols: { time: true, sev: true, source: true, entity: true, category: true, message: true, count: true, incident: true }
   };
+
+  function loadAlerts() {
+    if (!(window.APIClient && APIClient.alerts && APIClient.alerts.list)) {
+      state.loading = false; state.loaded = true; state.error = 'Alerts API is not available.'; render(); return;
+    }
+    state.loading = true; state.error = null; render();
+    var params = { page: 0, size: 100 };
+    if (state.country && state.country !== 'ALL') params.country = state.country;
+    APIClient.alerts.list(params).then(function (res) {
+      var rows = (res && (res.content || res.items || res.data || res.rows)) || (Array.isArray(res) ? res : []);
+      ALERTS = rows.map(mapAlert);
+      REFRESHED = new Date().toLocaleString();
+      state.loading = false; state.loaded = true; render();
+    }).catch(function (err) {
+      ALERTS = [];
+      REFRESHED = new Date().toLocaleString();
+      state.loading = false; state.loaded = true; state.error = (err && err.message) || 'Failed to load alerts.'; render();
+    });
+  }
 
   function sevColor(sev) {
     return { Critical: 'var(--color-critical)', High: 'var(--color-high)', Medium: 'var(--color-medium)', Low: 'var(--color-low)' }[sev] || 'var(--text-muted)';
@@ -49,7 +118,7 @@
     { key: 'category', label: 'Category', cell: function (a) { return '<td>' + esc(a.cat) + '</td>'; } },
     { key: 'message', label: 'Message', cell: function (a) { return '<td style="color:var(--text-primary);">' + esc(a.msg) + '</td>'; } },
     { key: 'count', label: 'Count', align: 'right', cell: function (a) { return '<td style="text-align:right;"><span class="alx-count" title="occurrences (dedup)">×' + a.count + '</span></td>'; } },
-    { key: 'incident', label: 'Incident', cell: function (a) { return '<td>' + (a.inc ? '<a href="#incidents" data-page="incidents" class="kfhx-badge info" style="text-decoration:none;">◈ ' + esc(a.inc.replace('INC-20260701-', 'INC-…')) + '</a>' : '<span style="color:var(--text-muted);font-size:.72rem;">—</span>') + '</td>'; } }
+    { key: 'incident', label: 'Incident', cell: function (a) { var lbl = a.inc ? (String(a.inc).length > 18 ? String(a.inc).slice(0, 16) + '…' : String(a.inc)) : ''; return '<td>' + (a.inc ? '<a href="#incidents" data-page="incidents" class="kfhx-badge info" style="text-decoration:none;">◈ ' + esc(lbl) + '</a>' : '<span style="color:var(--text-muted);font-size:.72rem;">—</span>') + '</td>'; } }
   ];
 
   function injectStyles() {
@@ -79,18 +148,42 @@
       '.alx-sev{display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:.76rem;}',
       '.alx-count{display:inline-flex;align-items:center;height:18px;padding:0 7px;border-radius:999px;background:var(--surface-off-white);border:1px solid var(--surface-border);font-size:.68rem;font-weight:700;color:var(--text-secondary);}',
       '.alx-prop{display:grid;grid-template-columns:130px 1fr;gap:2px 10px;font-size:.8rem;}',
-      '.alx-prop .k{color:var(--text-muted);}.alx-prop .v{color:var(--text-primary);font-family:var(--font-mono);font-size:.76rem;word-break:break-all;}'
+      '.alx-prop .k{color:var(--text-muted);}.alx-prop .v{color:var(--text-primary);font-family:var(--font-mono);font-size:.76rem;word-break:break-all;}',
+      /* page body layout (header styles are shared: .kfh-phdr* in kfh-design-system.css) */
+      '.alx-wrap{display:block;grid-template-columns:none;}'
     ].join('');
     document.head.appendChild(s);
   }
 
   function passes(a) {
     var f = state.filters;
-    if (f.severity && a.sev !== f.severity) return false;
     if (f.source && a.source !== f.source) return false;
     if (f.kind && a.kind !== f.kind) return false;
     if (state.tab !== 'All' && a.sev !== state.tab) return false;
+    if (f.text) {
+      var q = f.text.toLowerCase();
+      var hay = ((a.msg || '') + ' ' + (a.entity || '') + ' ' + (a.source || '') + ' ' + (a.cat || '') + ' ' + (a.inc || '')).toLowerCase();
+      if (hay.indexOf(q) < 0) return false;
+    }
     return true;
+  }
+
+  function sortList(list) {
+    var rank = { Critical: 4, High: 3, Medium: 2, Low: 1 };
+    switch (state.sort) {
+      case 'sev_asc': list.sort(function (a, b) { return (rank[a.sev] || 0) - (rank[b.sev] || 0); }); break;
+      case 'count_desc': list.sort(function (a, b) { return (b.count || 0) - (a.count || 0); }); break;
+      case 'time_desc': list.sort(function (a, b) { return new Date(b.ts || 0) - new Date(a.ts || 0); }); break;
+      default: list.sort(function (a, b) { return (rank[b.sev] || 0) - (rank[a.sev] || 0); });
+    }
+    return list;
+  }
+
+  function uniqueVals(key, fallback) {
+    var set = {};
+    ALERTS.forEach(function (a) { if (a[key]) set[a[key]] = 1; });
+    var vals = Object.keys(set);
+    return vals.length ? vals : fallback;
   }
 
   function facet(title, key, values) {
@@ -103,32 +196,90 @@
     return '<div class="alx-facet"><h4>' + esc(title) + '</h4>' + btns.join('') + '</div>';
   }
 
+  // Real hourly activity (24 buckets, by hour-of-day) computed from loaded alerts.
   function timeline() {
-    var out = '';
-    for (var i = 0; i < 44; i++) {
-      var active = i > 28;
-      var h = 8 + ((i * 5) % 34) + (active ? 12 : 0);
-      out += '<div class="b" style="height:' + h + 'px;background:' + (active ? 'var(--color-critical)' : 'var(--surface-border)') + ';"></div>';
-    }
-    return out;
-  }
-
-  function sevTabs() {
-    var tabs = [{ k: 'All', n: ALERTS.length }].concat(SEV_ORDER.map(function (s) { return { k: s, n: ALERTS.filter(function (a) { return a.sev === s; }).length }; }));
-    return tabs.map(function (t) {
-      var dot = t.k === 'All' ? '' : '<span class="kfhx-dot" style="background:' + sevColor(t.k) + ';"></span>';
-      return '<div class="alx-tab ' + (state.tab === t.k ? 'on' : '') + '" data-tab="' + t.k + '">' + dot + esc(t.k) + ' <span class="n">' + t.n + '</span></div>';
+    var buckets = [];
+    for (var i = 0; i < 24; i++) buckets.push(0);
+    ALERTS.forEach(function (a) {
+      if (!a.ts) return;
+      var d = new Date(a.ts);
+      if (isNaN(d.getTime())) return;
+      buckets[d.getHours()]++;
+    });
+    var max = 1;
+    buckets.forEach(function (n) { if (n > max) max = n; });
+    return buckets.map(function (n, h) {
+      var ht = 6 + Math.round((n / max) * 34);
+      var col = n > 0 ? 'var(--color-critical)' : 'var(--surface-border)';
+      var hh = (h < 10 ? '0' : '') + h;
+      return '<div class="b" title="' + hh + ':00 — ' + n + ' alert(s)" style="height:' + ht + 'px;background:' + col + ';"></div>';
     }).join('');
   }
 
-  function pillBar() {
-    var pills = '';
-    if (state.tab !== 'All') pills += '<span class="alx-pill">severity: <b>' + esc(state.tab) + '</b> <span class="x" data-clear="tab">×</span></span>';
-    if (state.filters.source) pills += '<span class="alx-pill">source: <b>' + esc(state.filters.source) + '</b> <span class="x" data-clear="source">×</span></span>';
-    if (state.filters.kind) pills += '<span class="alx-pill">kind: <b>' + esc(state.filters.kind) + '</b> <span class="x" data-clear="kind">×</span></span>';
-    return '<div class="alx-qbar">' + pills +
-      '<input id="alx-q" class="alx-qinput" type="text" placeholder="Type to filter events…">' +
-      (pills ? '<button id="alx-clearall" class="alx-linkbtn">Clear all</button>' : '') + '</div>';
+  // ---- Consolidated header (title + search + country + filters popover + sort) ----
+  var COUNTRIES = [
+    { v: 'ALL', t: 'All KFH Groups' }, { v: 'KW', t: 'Kuwait' }, { v: 'BH', t: 'Bahrain' }, { v: 'EG', t: 'Egypt' }
+  ];
+  var SORTS = [
+    { v: 'sev_desc', t: 'Impact: High to low' }, { v: 'sev_asc', t: 'Impact: Low to high' },
+    { v: 'count_desc', t: 'Most frequent' }, { v: 'time_desc', t: 'Newest first' }
+  ];
+
+  function header() {
+    var total = ALERTS.length;
+    var activeF = (state.tab !== 'All' ? 1 : 0) + (state.filters.source ? 1 : 0) + (state.filters.kind ? 1 : 0);
+    var fLabel = activeF ? (activeF + ' filter' + (activeF > 1 ? 's' : '')) : 'All alerts';
+    var countryOpts = COUNTRIES.map(function (c) { return '<option value="' + c.v + '" ' + (state.country === c.v ? 'selected' : '') + '>' + esc(c.t) + '</option>'; }).join('');
+    var sortOpts = SORTS.map(function (o) { return '<option value="' + o.v + '" ' + (state.sort === o.v ? 'selected' : '') + '>' + esc(o.t) + '</option>'; }).join('');
+    var badge = state.error
+      ? '<span class="kfhx-badge" style="background:var(--color-critical);color:#fff;">' + esc(state.error) + '</span>'
+      : '<span class="kfhx-badge info">Live</span>';
+    return '<div class="kfh-phdr">' +
+      '<div class="kfh-phdr-titlewrap"><h1 class="kfh-phdr-title">Alert Correlation</h1><span class="kfh-phdr-sub">' + total + ' issues · refreshed ' + esc(REFRESHED || '—') + '</span></div>' +
+      '<div class="kfh-phdr-search">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>' +
+        '<input id="alx-q" type="text" placeholder="Search alerts, hosts, teams…" value="' + esc(state.filters.text) + '"></div>' +
+      '<div class="kfh-phdr-ctrls">' +
+        badge +
+        '<div class="kfh-phdr-cty"><span class="lbl">Country</span><select id="alx-country" class="kfh-phdr-select">' + countryOpts + '</select></div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  // One collapsible filter section (accordion) with radio rows.
+  function fltGroup(id, title, opts) {
+    var collapsed = !!state.groupsCollapsed[id];
+    var body = opts.map(function (o) {
+      return '<label class="kfh-fltopt"><input type="radio" name="alx-flt-' + id + '" ' + (o.on ? 'checked' : '') + ' data-fgrp="' + id + '" data-fval="' + esc(o.value) + '">' +
+        (o.dot ? '<span class="dot" style="background:' + o.dot + ';"></span>' : '') +
+        '<span>' + esc(o.label) + '</span>' + (o.n != null ? '<span class="n">' + o.n + '</span>' : '') + '</label>';
+    }).join('');
+    return '<div class="kfh-fltg ' + (collapsed ? 'collapsed' : '') + '">' +
+      '<div class="kfh-fltg-head" data-grptoggle="' + id + '"><span class="t">' + esc(title) + '</span><span class="chev">▾</span></div>' +
+      '<div class="kfh-fltg-body">' + body + '</div></div>';
+  }
+
+  // Collapsible bordered filter panel (Dynatrace Problems-style) — radio rows.
+  function filterRail() {
+    var sevOpts = ['All'].concat(SEV_ORDER).map(function (s) {
+      return { label: s, value: s, on: (s === 'All' ? state.tab === 'All' : state.tab === s),
+        dot: s === 'All' ? null : sevColor(s),
+        n: s === 'All' ? ALERTS.length : ALERTS.filter(function (a) { return a.sev === s; }).length };
+    });
+    var srcOpts = ['All'].concat(uniqueVals('source', ['BMC', 'SCOM'])).map(function (s) {
+      return { label: s, value: (s === 'All' ? '' : s), on: (s === 'All' ? !state.filters.source : state.filters.source === s),
+        n: s === 'All' ? ALERTS.length : ALERTS.filter(function (a) { return a.source === s; }).length };
+    });
+    var kindOpts = ['All'].concat(uniqueVals('kind', ['ALERTS', 'LOGS', 'METRICS'])).map(function (k) {
+      return { label: k, value: (k === 'All' ? '' : k), on: (k === 'All' ? !state.filters.kind : state.filters.kind === k),
+        n: k === 'All' ? ALERTS.length : ALERTS.filter(function (a) { return a.kind === k; }).length };
+    });
+    return '<aside class="kfh-filters">' +
+      fltGroup('sev', 'Severity', sevOpts) +
+      fltGroup('src', 'Source', srcOpts) +
+      fltGroup('kind', 'Kind', kindOpts) +
+      '<button id="alx-filters-clear" class="kfh-filters-clear">Clear all filters</button>' +
+    '</aside>';
   }
 
   function visibleCols() { return COLS.filter(function (c) { return state.cols[c.key]; }); }
@@ -149,7 +300,8 @@
   }
 
   function detailPanel(a) {
-    var props = Object.keys(a.attrs).map(function (k) { return '<div class="k">' + esc(k) + '</div><div class="v">' + esc(a.attrs[k]) + '</div>'; }).join('');
+    var attrs = a.attrs || {};
+    var props = Object.keys(attrs).map(function (k) { return '<div class="k">' + esc(k) + '</div><div class="v">' + esc(attrs[k]) + '</div>'; }).join('');
     return '<div class="kfhx-panel">' +
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;">' +
         '<div><div class="kfhx-entity-title">' + esc(a.entity) + '</div><div class="kfhx-section-sub">' + esc(a.etype) + ' · ' + esc(a.source) + '</div></div>' +
@@ -167,7 +319,12 @@
 
   function render() {
     injectStyles();
-    var list = ALERTS.filter(passes);
+    if (state.loading && !state.loaded) {
+      mount.innerHTML = '<div class="kfh-phdr"><div class="kfh-phdr-titlewrap"><h1 class="kfh-phdr-title">Alert Correlation</h1><span class="kfh-phdr-sub">loading…</span></div></div>' +
+        '<div class="kfh-worklayout"><div class="kfh-workbody"><div class="kfhx-panel" style="padding:40px;text-align:center;color:var(--text-muted);">Loading alerts…</div></div></div>';
+      return;
+    }
+    var list = sortList(ALERTS.filter(passes));
     var active = ALERTS.filter(function (a) { return a.sev === 'Critical' || a.sev === 'High'; }).length;
     var sel = state.selected ? ALERTS.filter(function (a) { return a.id === state.selected; })[0] : null;
     var vis = visibleCols();
@@ -181,34 +338,62 @@
           '<div><button id="alx-cols" class="alx-linkbtn">Columns' + (hidden ? ' (' + hidden + ' hidden)' : '') + '</button>' + (state.colsOpen ? colMenu() : '') + '</div>' +
         '</div>' +
         '<div style="overflow-x:auto;"><table class="kfhx-table"><thead><tr>' + headCells + '</tr></thead>' +
-        '<tbody>' + (tableRows(list) || '<tr><td colspan="' + vis.length + '" style="padding:26px;text-align:center;color:var(--text-muted);">No alerts match the filter.</td></tr>') + '</tbody></table></div>' +
+        '<tbody>' + (tableRows(list) || '<tr><td colspan="' + vis.length + '" style="padding:26px;text-align:center;color:var(--text-muted);">' + (ALERTS.length === 0 ? 'No alerts yet. Enable a connector under <a href="#settings" data-page="settings">Settings → Connections</a> to start ingesting.' : 'No alerts match the filter.') + '</td></tr>') + '</tbody></table></div>' +
       '</div>';
 
     mount.innerHTML =
-      '<div class="alx-wrap">' +
-        '<aside class="alx-rail">' + facet('Severity', 'severity', SEV_ORDER) + facet('Source', 'source', ['BMC', 'SCOM']) + facet('Kind', 'kind', ['ALERTS', 'LOGS', 'METRICS']) + '</aside>' +
-        '<section>' +
-          '<div class="kfhx-section-head"><div class="kfhx-section-title">Alert Explorer <span style="color:var(--color-critical);">' + active + ' actionable</span> <span style="color:var(--text-muted);font-weight:500;">/ ' + ALERTS.length + '</span></div>' +
-            '<span class="kfhx-badge info">Illustrative — live from the index next</span></div>' +
-          '<div class="alx-tabs">' + sevTabs() + '</div>' +
-          pillBar() +
-          '<div class="kfhx-panel" style="padding:10px 16px;margin-bottom:14px;"><div style="font-size:.72rem;color:var(--text-muted);">Alert volume (last 2h)</div><div class="alx-timeline">' + timeline() + '</div></div>' +
+      header() +
+      '<div class="kfh-worklayout">' +
+        filterRail() +
+        '<div class="kfh-workbody">' +
+          '<div class="kfhx-panel" style="padding:10px 16px;margin-bottom:14px;">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">' +
+              '<div style="font-size:.7rem;font-weight:800;letter-spacing:.06em;color:var(--text-muted);text-transform:uppercase;">Hourly activity</div>' +
+              '<div style="font-size:.72rem;color:var(--text-muted);"><b style="color:var(--color-critical);">' + active + '</b> actionable / ' + ALERTS.length + '</div>' +
+            '</div>' +
+            '<div class="alx-timeline">' + timeline() + '</div>' +
+          '</div>' +
           (sel ? '<div class="kfhx-split" style="grid-template-columns:1fr 380px;">' + tableHtml + detailPanel(sel) + '</div>' : tableHtml) +
-        '</section>' +
+        '</div>' +
       '</div>';
 
-    mount.querySelectorAll('[data-facet]').forEach(function (b) { b.addEventListener('click', function () { state.filters[b.getAttribute('data-facet')] = b.getAttribute('data-val'); render(); }); });
-    mount.querySelectorAll('[data-tab]').forEach(function (t) { t.addEventListener('click', function () { state.tab = t.getAttribute('data-tab'); render(); }); });
-    mount.querySelectorAll('[data-clear]').forEach(function (x) {
-      x.addEventListener('click', function () { var k = x.getAttribute('data-clear'); if (k === 'tab') state.tab = 'All'; else state.filters[k] = ''; render(); });
+    // Search (caret-preserving)
+    var q = mount.querySelector('#alx-q');
+    if (q) {
+      q.addEventListener('input', function () { state.filters.text = q.value; state.searchFocus = true; render(); });
+      q.addEventListener('focus', function () { state.searchFocus = true; });
+      q.addEventListener('blur', function () { state.searchFocus = false; });
+    }
+    // Country — actionable global filter: scope this page's data AND persist the scope
+    // app-wide (so other pages inherit it) now that the sidebar scope switcher is gone.
+    var cty = mount.querySelector('#alx-country');
+    if (cty) cty.addEventListener('change', function () { state.country = cty.value; applyCountryScope(cty.value); loadAlerts(); });
+    // Sort
+    var srt = mount.querySelector('#alx-sort');
+    if (srt) srt.addEventListener('change', function () { state.sort = srt.value; render(); });
+    // Per-group accordion collapse (chevron)
+    mount.querySelectorAll('[data-grptoggle]').forEach(function (h) {
+      h.addEventListener('click', function () { var g = h.getAttribute('data-grptoggle'); state.groupsCollapsed[g] = !state.groupsCollapsed[g]; render(); });
     });
-    var clearAll = mount.querySelector('#alx-clearall');
-    if (clearAll) clearAll.addEventListener('click', function () { state.tab = 'All'; state.filters = { severity: '', source: '', kind: '' }; render(); });
+    // Radio filter selection
+    mount.querySelectorAll('input[data-fgrp]').forEach(function (r) {
+      r.addEventListener('change', function () {
+        var grp = r.getAttribute('data-fgrp'), val = r.getAttribute('data-fval');
+        if (grp === 'sev') state.tab = val;
+        else if (grp === 'src') state.filters.source = val;
+        else if (grp === 'kind') state.filters.kind = val;
+        render();
+      });
+    });
+    var fclr = mount.querySelector('#alx-filters-clear');
+    if (fclr) fclr.addEventListener('click', function () { state.tab = 'All'; state.filters.source = ''; state.filters.kind = ''; render(); });
+    // Column manager
     var colsBtn = mount.querySelector('#alx-cols');
     if (colsBtn) colsBtn.addEventListener('click', function (e) { e.stopPropagation(); state.colsOpen = !state.colsOpen; render(); });
     mount.querySelectorAll('[data-col]').forEach(function (cb) {
       cb.addEventListener('change', function () { state.cols[cb.getAttribute('data-col')] = cb.checked; render(); });
     });
+    // Rows
     mount.querySelectorAll('.alx-row').forEach(function (r) {
       r.addEventListener('click', function (e) {
         if (e.target.closest('a')) return;
@@ -216,7 +401,9 @@
         render();
       });
     });
+    // Keep caret in the search box across re-renders
+    if (state.searchFocus && q) { q.focus(); var v = q.value; q.value = ''; q.value = v; }
   }
 
-  render();
+  loadAlerts();
 })();

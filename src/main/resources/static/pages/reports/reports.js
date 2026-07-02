@@ -814,16 +814,18 @@ var Reports = (function() {
     const runs = state.filteredRuns;
 
     container.innerHTML = `
+      <div class="kfh-phdr">
+        <div class="kfh-phdr-titlewrap"><h1 class="kfh-phdr-title">Reports</h1><span class="kfh-phdr-sub">${runs.length} run${runs.length === 1 ? '' : 's'}</span></div>
+        <div class="kfh-phdr-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input id="reports-search" type="text" maxlength="120" placeholder="Search reports, runs, or notes…" value="${esc(state.searchQuery)}">
+        </div>
+        <div class="kfh-phdr-ctrls">
+          <button type="button" class="kfh-phdr-btn-primary" onclick="Reports.generatePack()">＋ Run report</button>
+        </div>
+      </div>
       <!-- Page Content -->
       <div style="padding: 24px;">
-        <div class="filters-card" style="margin-bottom: 16px; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
-          <div>
-            <p style="margin:0; color:var(--kfh-gold); font-size:12px; font-weight:900; letter-spacing:0.08em; text-transform:uppercase;">Evidence & Reporting</p>
-            <h1 style="margin:4px 0 0; font-size:28px; font-weight:900; color:var(--text-primary);">Reports</h1>
-          </div>
-          <input id="reports-search" class="kfh-input" style="width:320px;" maxlength="120" placeholder="Search reports, runs, or notes" value="${esc(state.searchQuery)}">
-        </div>
-
         <!-- Filters (minimal) -->
         <div class="filters-card" style="margin-bottom: 16px;">
           <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">

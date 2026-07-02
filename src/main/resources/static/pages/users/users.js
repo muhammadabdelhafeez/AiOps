@@ -183,26 +183,24 @@ var Users = (function() {
   function render() {
     const container = document.getElementById('users-content') || document.getElementById('page-root') || document.getElementById('content-area');
     if (!container) return;
+    const totalUsers = getFilteredUsers().length;
     container.innerHTML = `
+      <div class="kfh-phdr">
+        <div class="kfh-phdr-titlewrap"><h1 class="kfh-phdr-title">User Management</h1><span class="kfh-phdr-sub">${totalUsers} user${totalUsers === 1 ? '' : 's'}</span></div>
+        <div class="kfh-phdr-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input id="user-search" type="text" placeholder="Search users by name, username, or email…" value="${esc(searchQuery)}" aria-label="Search users by name, username, or email">
+        </div>
+        <div class="kfh-phdr-ctrls">
+          ${renderCountryFilterControl()}
+          <select id="role-filter" class="kfh-phdr-select" aria-label="Filter users by role">
+            <option value="">All roles</option>
+            ${ROLE_CHOICES.map(role => `<option value="${esc(role.id)}" ${roleFilter === role.id ? 'selected' : ''}>${esc(role.name)}</option>`).join('')}
+          </select>
+          <button type="button" class="kfh-phdr-btn-primary" onclick="Users.openCreateUserModal()">＋ Add user</button>
+        </div>
+      </div>
       <div class="users-page-shell">
-        <section class="users-header-card animate-fade-in">
-          <div class="users-header-top">
-            <div class="users-header-copy">
-              <h1>User Management</h1>
-            </div>
-          </div>
-          <div class="users-header-controls" aria-label="User search and filters">
-            <div class="users-search-box">
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-              <input id="user-search" value="${esc(searchQuery)}" placeholder="Search users by name, username, or email..." aria-label="Search users by name, username, or email">
-            </div>
-            ${renderCountryFilterControl()}
-            <select id="role-filter" class="users-filter-select" aria-label="Filter users by role">
-              <option value="">All roles</option>
-              ${ROLE_CHOICES.map(role => `<option value="${esc(role.id)}" ${roleFilter === role.id ? 'selected' : ''}>${esc(role.name)}</option>`).join('')}
-            </select>
-          </div>
-        </section>
         <div id="users-table-region" class="animate-fade-in">${renderUsersTable()}</div>
         ${renderCreateUserModal()}
         ${renderEditUserModal()}
@@ -217,12 +215,12 @@ var Users = (function() {
   }
   function renderCountryFilterControl() {
     if (canViewAllCountries()) {
-      return `<select id="country-filter" class="users-filter-select" aria-label="Filter users by country">
+      return `<select id="country-filter" class="kfh-phdr-select" aria-label="Filter users by country">
         ${countryOptions(true).map(country => `<option value="${esc(country.code)}" ${countryFilter === country.code ? 'selected' : ''}>${esc(country.name || country.code)}</option>`).join('')}
       </select>`;
     }
     const country = currentCountryOption();
-    return `<div class="users-filter-select" role="status" aria-label="Assigned country scope">Platform: ${esc(country.groupName || 'KFH Group')} • ${esc(country.name || country.code)}</div>`;
+    return `<div class="kfh-phdr-chip" role="status" aria-label="Assigned country scope"><span class="lbl">Scope</span> <span class="val">${esc(country.name || country.code)}</span></div>`;
   }
   function renderCountryFormControl(name, selectedCode) {
     if (canViewAllCountries()) {

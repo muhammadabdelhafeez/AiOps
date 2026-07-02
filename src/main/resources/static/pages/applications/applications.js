@@ -982,28 +982,32 @@
       return { totalApps: totalApps, healthyApps: healthyApps, degradedApps: degradedApps, criticalApps: criticalApps, totalIncidents: totalIncidents, criticalIncidents: criticalIncidents, tier1Apps: tier1Apps };
     }, [apps]);
 
-    return h('div', { className: 'space-y-4', style: { padding: '24px 32px 32px' } },
-      h('div', { className: 'kfh-card', style: { padding: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 } },
-        h('div', null,
-          h('p', { style: { margin: 0, color: 'var(--kfh-gold)', fontSize: 12, fontWeight: 900, letterSpacing: '0.08em', textTransform: 'uppercase' } }, 'Application Portfolio'),
-          h('h1', { style: { margin: '4px 0 0', fontSize: 28, fontWeight: 900, color: 'var(--text-primary)' } }, 'Applications')
+    return h(React.Fragment, null,
+      h('div', { className: 'kfh-phdr' },
+        h('div', { className: 'kfh-phdr-titlewrap' },
+          h('h1', { className: 'kfh-phdr-title' }, 'Applications'),
+          h('span', { className: 'kfh-phdr-sub' }, apps.length + ' applications')
         ),
-        h('div', { style: { display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', justifyContent: 'flex-end' } },
+        h('div', { className: 'kfh-phdr-search' },
+          h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' },
+            h('circle', { cx: 11, cy: 11, r: 8 }),
+            h('path', { d: 'm21 21-4.3-4.3' })
+          ),
           h('input', {
-            className: 'kfh-input',
+            type: 'text',
+            placeholder: 'Search applications…',
             value: search,
-            onChange: function(e) { setSearch(e.target.value || ''); },
-            placeholder: 'Search applications',
-            style: { width: 280 }
-          }),
+            onChange: function(e) { setSearch(e.target.value || ''); }
+          })
+        ),
+        h('div', { className: 'kfh-phdr-ctrls' },
           h('button', {
-            type: 'button',
-            onClick: function() { setCreateOpen(true); },
-            className: 'px-4 py-2 bg-[var(--kfh-primary)] text-white text-sm font-semibold rounded-lg shadow-sm'
-          }, '+ Add Application')
+            className: 'kfh-phdr-btn-primary',
+            onClick: function() { setCreateOpen(true); }
+          }, '＋ New application')
         )
       ),
-
+      h('div', { className: 'space-y-4', style: { padding: '24px 32px 32px' } },
       // KPI Summary Row
       h('div', { className: 'grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3' },
         h(KPICard, { icon: '📱', value: kpis.totalApps, label: 'Total Apps', bgColor: 'var(--kfh-primary-light)', color: 'var(--kfh-primary-dark)' }),
@@ -1040,6 +1044,7 @@
         onClose: function() { setCreateOpen(false); },
         onSave: handleCreateSave
       })
+      )
     );
   }
 

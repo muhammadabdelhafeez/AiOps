@@ -241,7 +241,7 @@ Validation:
 
 ## 8A. Correlation & AI-led RCA — the banking-flow model
 
-> The differentiator vs BMC/Dynatrace. We do **not** correlate by text similarity or static severity
+> The differentiator vs BMC/enterprise observability. We do **not** correlate by text similarity or static severity
 > weights (the failure mode of normal AIOps). We correlate by the **banking transaction flow** and
 > let **AI reason the root cause** over the reduced evidence.
 
@@ -284,11 +284,11 @@ to assets**, stored in Neo4j:
   fault yields the same key each cycle → **one incident that updates**, not a new one per cycle. New
   incidents only for new root causes. (Redis dedup handles within-cycle repeats.)
 
-### Depth roadmap (match Dynatrace)
+### Depth roadmap (match enterprise observability)
 The index already carries `LOGS/ALERTS/TRACES/METRICS/CHANGES`. Ingesting **distributed traces
-(OpenTelemetry / APM spans)** gives code/query-level RCA (Dynatrace-class depth) **plus** whole-estate
-breadth Dynatrace can't see (mainframe, storage, network, external, BMC/SCOM). Other RCA tools —
-including Dynatrace — can be **ingested as sources**.
+(OpenTelemetry / APM spans)** gives code/query-level RCA (enterprise observability-class depth) **plus** whole-estate
+breadth enterprise observability can't see (mainframe, storage, network, external, BMC/SCOM). Other RCA tools —
+including enterprise observability — can be **ingested as sources**.
 
 ### Accuracy is measured, not claimed
 KPIs: **root-cause precision** (opened incidents with the correct cause vs post-mortems), **recall**

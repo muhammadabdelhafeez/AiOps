@@ -76,7 +76,7 @@ window.Router = (function() {
     },
     'connectors': {
       // Legacy hash alias — standalone Connectors marketplace has been removed.
-      // Redirect into Settings → Connections (Dynatrace-style catalog + popup).
+      // Redirect into Settings → Connections (enterprise-grade catalog + popup).
       js: 'pages/settings/settings.js',
       css: 'pages/settings/settings.css',
       title: 'Connections',

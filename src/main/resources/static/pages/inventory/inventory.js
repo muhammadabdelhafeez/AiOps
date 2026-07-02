@@ -267,7 +267,7 @@ const TEAMS = ['Platform Ops', 'DBA Team', 'Network Ops', 'Security Ops', 'App S
 const STATUSES = ['Good', 'Degraded', 'Critical', 'Unknown'];
 const PLATFORMS = ['Windows Server 2019', 'Windows Server 2022', 'RHEL 8', 'RHEL 9', 'Ubuntu 22.04', 'Oracle Linux', 'Kubernetes 1.28', 'Kubernetes 1.27', 'Docker', 'OracleDB 19c', 'PostgreSQL 15', 'MySQL 8.0', 'MongoDB 7'];
 const LOCATIONS = ['DC1-Kuwait', 'DC2-Kuwait', 'DR-Bahrain', 'Azure-EastUS', 'AWS-EU-West', 'On-Premises'];
-const SOURCES = ['SCOM', 'vROps', 'BMC', 'SolarWinds', 'Elastic', 'Dynatrace', 'Prometheus'];
+const SOURCES = ['SCOM', 'vROps', 'BMC', 'SolarWinds', 'Elastic', 'enterprise observability', 'Prometheus'];
 const TAG_POOL = ['critical', 'payment', 'core', 'api', 'frontend', 'backend', 'database', 'cache', 'messaging', 'compliance', 'pci-dss', 'legacy', 'migration', 'monitored', 'prod-ready'];
 
 const getAssetIcon = (type) => {
@@ -1495,6 +1495,25 @@ const InventoryPage = () => {
   const CHART_COLORS = [KFH.primary, KFH.warning, KFH.critical, '#9CA3AF'];
 
   return (
+    <>
+      <div className="kfh-phdr">
+        <div className="kfh-phdr-titlewrap">
+          <h1 className="kfh-phdr-title">Inventory</h1>
+          <span className="kfh-phdr-sub">{filteredAssets.length} assets</span>
+        </div>
+        <div className="kfh-phdr-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input
+            type="text"
+            placeholder="Search assets…"
+            value={filters.search}
+            onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
+          />
+        </div>
+        <div className="kfh-phdr-ctrls">
+          <button className="kfh-phdr-btn-primary" onClick={() => setShowAssetForm(true)}>＋ Add asset</button>
+        </div>
+      </div>
     <div className="h-full overflow-y-auto" style={{ background: KFH.bgBody }}>
       <div className="max-w-[1800px] mx-auto p-6 space-y-6">
         {/* KPI Cards Row */}
@@ -1561,18 +1580,6 @@ const InventoryPage = () => {
               <h3 className="text-lg font-bold" style={{ color: KFH.textMain }}>Assets Catalog ({filteredAssets.length})</h3>
 
               <div className="flex items-center gap-3">
-                {/* Search */}
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: KFH.textMuted }} size={16} />
-                  <input
-                    type="text"
-                    value={filters.search}
-                    onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
-                    placeholder="Search assets..."
-                    className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[rgba(18,135,84,0.2)] focus:border-[#128754] pl-10 w-64"
-                  />
-                </div>
-
                 {/* View Mode Toggle */}
                 <div className="flex gap-1 rounded-lg p-1" style={{ background: KFH.offWhite, border: `1px solid ${KFH.border}` }}>
                   <button onClick={() => setViewMode('cards')} className="p-2 rounded-md" style={viewMode === 'cards' ? { background: KFH.primary, color: '#fff' } : { color: KFH.textMuted }} aria-label="Cards">
@@ -1585,12 +1592,6 @@ const InventoryPage = () => {
                     <GitBranch size={16} />
                   </button>
                 </div>
-
-                {/* Add Asset Button */}
-                <Button variant="primary" onClick={() => setShowAssetForm(true)}>
-                  <Plus size={16} />
-                  Add Asset
-                </Button>
 
                 {viewMode === 'topology' && selectedAsset && (
                   <Button size="sm" variant="outline" onClick={() => setDrawerAsset(selectedAsset)}>
@@ -1669,6 +1670,7 @@ const InventoryPage = () => {
         <AssetForm onSubmit={handleAddAsset} onCancel={() => setShowAssetForm(false)} />
       )}
     </div>
+    </>
   );
 };
 

@@ -664,7 +664,7 @@ Legend: ðŸŸ¢ Done  ðŸŸ¡ In progress  ðŸ”´ Blocked  âšª Not start
 
 ---
 
-## 2026-06-08 — UI redesign: Dynatrace-style Settings + Connections
+## 2026-06-08 — UI redesign: enterprise-grade Settings + Connections
 
 - **Phase / module:** UI Phase / `ui-settings`, `ui-connections`
 - **Type:** ui-refactor
@@ -672,7 +672,7 @@ Legend: ðŸŸ¢ Done  ðŸŸ¡ In progress  ðŸ”´ Blocked  âšª Not start
 - **Correlation:** none (local UI-only change)
 
 ### Summary
-Redesigned the `#settings` page to mirror the Dynatrace settings shell (left sub-nav with an "Environment" card, a "Search settings" input, and a vertical section list with an active green indicator bar) using KFH brand tokens (`--kfh-primary #00634A`, `--kfh-accent #C8A84E`). Consolidated all connector management under Settings > Connections and fully removed the standalone `#connectors` marketplace / install-detail / 5-tab drawer flow. A new Dynatrace-style Add / View connection popup (two tabs: Set up connection, Share access; info + warning banners; Test / Save / Close footer) is now the single entry point for creating, viewing, editing and deleting connectors. All backend API calls (`APIClient.connectors.list/get/create/update/delete/toggle/test/heartbeat/types` and `APIClient.settings.*`) are preserved unchanged; this is a UI-only refactor.
+Redesigned the `#settings` page to mirror the enterprise observability settings shell (left sub-nav with an "Environment" card, a "Search settings" input, and a vertical section list with an active green indicator bar) using KFH brand tokens (`--kfh-primary #00634A`, `--kfh-accent #C8A84E`). Consolidated all connector management under Settings > Connections and fully removed the standalone `#connectors` marketplace / install-detail / 5-tab drawer flow. A new enterprise-grade Add / View connection popup (two tabs: Set up connection, Share access; info + warning banners; Test / Save / Close footer) is now the single entry point for creating, viewing, editing and deleting connectors. All backend API calls (`APIClient.connectors.list/get/create/update/delete/toggle/test/heartbeat/types` and `APIClient.settings.*`) are preserved unchanged; this is a UI-only refactor.
 
 ### KFH sub-nav mapping
 | New section       | Reused renderers                                                       |
@@ -681,14 +681,14 @@ Redesigned the `#settings` page to mirror the Dynatrace settings shell (left sub
 | Databases         | `renderDatabases()` + Neo4j / database connector modals                |
 | Notifications     | `renderSharePoint()` + `renderTeams()` + team modal                    |
 | Infrastructure    | `renderInfrastructure()` + infrastructure connector modal              |
-| Connections       | New Dynatrace vertical catalog + Add/View popup                        |
+| Connections       | New enterprise observability vertical catalog + Add/View popup                        |
 | System Variables  | `renderSystem()`                                                       |
 
 Active section persists to `localStorage['kfh.aiops.settings.activeSection']`; a `LEGACY_TAB_MIGRATIONS` map upgrades old `activeTab` keys (`azure`->`ai`, `sharepoint|teams`->`notifications`, `connectors`->`connections`) on first load.
 
 ### Files changed
 - Modified
-  - `src/main/resources/static/pages/settings/settings.js` - new tab IDs, alias map, Dynatrace header + sub-nav, `renderConnections()`, full `renderConnectionModal()` (tabs, banners, form, credential fields per auth mode, share-access tab, existing-instances list), `loadConnectors()`, `loadConnectorTypes()`, `openConnectionPopup()`, `connectionEditPopup()`, `saveConnection()`, `testConnection()`, `deleteConnection()`; ~+950 lines / final ~145 KB.
+  - `src/main/resources/static/pages/settings/settings.js` - new tab IDs, alias map, enterprise observability header + sub-nav, `renderConnections()`, full `renderConnectionModal()` (tabs, banners, form, credential fields per auth mode, share-access tab, existing-instances list), `loadConnectors()`, `loadConnectorTypes()`, `openConnectionPopup()`, `connectionEditPopup()`, `saveConnection()`, `testConnection()`, `deleteConnection()`; ~+950 lines / final ~145 KB.
   - `src/main/resources/static/pages/settings/settings.css` - appended ~140 lines (`.kfh-settings-shell`, `.kfh-settings-sidebar`, `.kfh-settings-env-card`, `.kfh-settings-search`, `.kfh-settings-tabs/.kfh-settings-tab.active`, `.kfh-conn-shell/-list/-row`, `.kfh-conn-modal*`, `.kfh-conn-banner-info/-warn`, `.kfh-conn-tabs/.kfh-conn-tab.active`, `.kfh-conn-form/-field/-input`, `.kfh-conn-share*`, `.kfh-conn-inst*`); final 1943 lines.
   - `src/main/resources/static/shared/js/router.js` - aliased `connections` and `connectors` routes to load the Settings module with `settingsSection: 'connections'`; init hook now calls `Settings.init(pageConfig.settingsSection)`.
   - `src/main/resources/static/shared/js/config.js` - removed `connectors` from `NAV_ITEMS` and `PAGE_TITLES`.

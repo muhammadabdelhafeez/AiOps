@@ -460,18 +460,6 @@ const FiltersBar = ({ search, setSearch, filters, setFilters, view, setView, onA
   return (
     <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
       <div className="flex flex-wrap gap-3 items-center">
-        <div className="relative">
-          <Icons.Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search jobs..."
-            className="pl-10 pr-4 py-2 bg-white border rounded-lg text-sm focus:outline-none focus:ring-2 w-64"
-            style={{ borderColor: 'rgba(0,0,0,0.08)', boxShadow: 'none' }}
-          />
-        </div>
-
         <select
           value={filters.jobType}
           onChange={(e) => setFilters({ ...filters, jobType: e.target.value })}
@@ -553,15 +541,6 @@ const FiltersBar = ({ search, setSearch, filters, setFilters, view, setView, onA
             Timeline
           </button>
         </div>
-
-        <button
-          onClick={onAddJob}
-          className="px-4 py-2 kfh-btn kfh-btn-primary"
-          style={{ paddingTop: '0.5rem', paddingBottom: '0.5rem' }}
-        >
-          <Icons.Plus className="w-4 h-4" />
-          Add Job
-        </button>
       </div>
     </div>
   );
@@ -1255,6 +1234,25 @@ const SchedulesPage = () => {
   };
 
   return (
+    <>
+      <div className="kfh-phdr">
+        <div className="kfh-phdr-titlewrap">
+          <h1 className="kfh-phdr-title">Schedules</h1>
+          <span className="kfh-phdr-sub">{store.jobs.length} jobs</span>
+        </div>
+        <div className="kfh-phdr-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input
+            type="text"
+            placeholder="Search jobs…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <div className="kfh-phdr-ctrls">
+          <button className="kfh-phdr-btn-primary" onClick={() => setShowAddModal(true)}>＋ New schedule</button>
+        </div>
+      </div>
     <div className="h-full flex flex-col" style={{ background: 'var(--surface-bg)' }}>
       <div className="p-6 border-b" style={{ background: 'var(--surface-card)', borderColor: 'rgba(0,0,0,0.04)' }}>
 
@@ -1306,6 +1304,7 @@ const SchedulesPage = () => {
         ))}
       </div>
     </div>
+    </>
   );
 };
 

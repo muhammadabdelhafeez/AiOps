@@ -19,7 +19,7 @@ var Settings = (function() {
     }
   ];
   const SETTINGS_ACTIVE_TAB_KEY = 'kfh.aiops.settings.activeSection';
-  // Section IDs used by the KFH Dynatrace-style Settings shell. Old IDs are
+  // Section IDs used by the KFH enterprise-grade Settings shell. Old IDs are
   // migrated in restoreActiveTab() below.
   const SETTINGS_TAB_IDS = ['ai', 'databases', 'notifications', 'infrastructure', 'connections', 'system'];
   // A section may render legacy sub-renderers keyed under different IDs; the
@@ -121,7 +121,7 @@ var Settings = (function() {
     teamDraft: null,
     teamEditIndex: null,
     settings: emptySettings(),
-    // Dynatrace-style Connections catalog (Settings → Connections)
+    // enterprise-grade Connections catalog (Settings → Connections)
     connectors: [],
     connectorTypes: [],
     connectorsLoaded: false,
@@ -132,7 +132,7 @@ var Settings = (function() {
     //          connectorId: string|null, draft: {...}, testing: bool, saving: bool,
     //          readOnly: bool, message: string|null }
     connectionPopup: null,
-    // Dynatrace-style connector detail page (drill-down inside Connections).
+    // enterprise-grade connector detail page (drill-down inside Connections).
     // When set, Settings → Connections shows the per-connector detail page
     // (breadcrumb + header + toolbar + connections table) instead of the catalog.
     connectionDetailType: null,
@@ -555,24 +555,24 @@ var Settings = (function() {
     return `<span class="settings-chip ${variants[variant] || variants.default}">${esc(label)}</span>`;
   }
 
-  // Render header — Dynatrace-style compact header (title + search).
+  // Render header — unified slim page header (.kfh-phdr): title + search + reset.
   function renderHeader() {
     return `
-      <div class="settings-header kfh-settings-header">
-        <div class="settings-hero">
-          <div class="settings-hero-copy">
-            <h1 class="settings-title">Settings</h1>
-          </div>
-          <div class="settings-actions">
-            <button onclick="Settings.resetSettings()" class="settings-btn settings-btn-outline">Reset</button>
-          </div>
+      <div class="kfh-phdr">
+        <div class="kfh-phdr-titlewrap"><h1 class="kfh-phdr-title">Settings</h1><span class="kfh-phdr-sub">Providers · databases · connections · system</span></div>
+        <div class="kfh-phdr-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input id="settings-search" type="text" placeholder="Search settings…" value="${esc(state.searchQuery || '')}">
+        </div>
+        <div class="kfh-phdr-ctrls">
+          <button onclick="Settings.resetSettings()" class="kfh-phdr-chip">Reset</button>
         </div>
       </div>
     `;
   }
 
   function settingsMenuItems() {
-    // KFH-focused Dynatrace-style sub-nav (image 1). Each item is a section
+    // KFH-focused enterprise-grade sub-nav (image 1). Each item is a section
     // rendered in the main pane. Icons come from the local `icons` map.
     return [
       { id: 'ai',             icon: 'cloud',    label: 'AI Providers',     hint: 'Azure OpenAI endpoints, deployments, keys' },
@@ -2049,7 +2049,7 @@ var Settings = (function() {
   }
 
   // ============================================================
-  // Connections (Dynatrace-style catalog + Add/View popup)
+  // Connections (enterprise-grade catalog + Add/View popup)
   // Consolidates the removed #connectors marketplace into a single
   // Settings section. All connector CRUD still goes through the
   // existing APIClient.connectors.* endpoints (no new backend).
@@ -2166,6 +2166,53 @@ var Settings = (function() {
     return (state.connectors || []).filter(function (c) { return c.pluginType === pluginType; });
   }
 
+  // Human-friendly "last sync" for the connections table. null/never → "Never".
+  function formatConnLastSync(ts) {
+    if (!ts) return 'Never';
+    try {
+      var d = new Date(ts);
+      if (isNaN(d.getTime())) return String(ts);
+      var diff = Date.now() - d.getTime();
+      if (diff < 0) return d.toLocaleString();
+      if (diff < 60000) return 'just now';
+      var m = Math.floor(diff / 60000);
+      if (m < 60) return m + 'm ago';
+      var h = Math.floor(m / 60);
+      if (h < 24) return h + 'h ago';
+      var days = Math.floor(h / 24);
+      if (days < 7) return days + 'd ago';
+      return d.toLocaleDateString();
+    } catch (e) {
+      return String(ts);
+    }
+  }
+
+  // Enable/disable a single connection. Optimistic UI, then persist via connectors.toggle;
+  // once enabled the scheduled poller (kfh.ingestion.*.enabled) collects on its interval.
+  function toggleConnectionEnabled(id, enable) {
+    if (!id) return;
+    var row = (state.connectors || []).find(function (c) { return String(c.id) === String(id); });
+    var previous = row ? row.enabled : undefined;
+    if (row) row.enabled = enable;         // optimistic
+    render();
+    if (!(window.APIClient && APIClient.connectors && APIClient.connectors.toggle)) return;
+    APIClient.connectors.toggle(id, enable)
+      .then(function () { return loadConnectors(); })
+      .then(function () {
+        render();
+        if (window.KFHUtils && KFHUtils.showToast) {
+          KFHUtils.showToast('Connection ' + (enable ? 'enabled — collection will run on schedule' : 'disabled'), 'success');
+        }
+      })
+      .catch(function (err) {
+        if (row) row.enabled = previous;   // roll back
+        render();
+        if (window.KFHUtils && KFHUtils.showToast) {
+          KFHUtils.showToast('Could not ' + (enable ? 'enable' : 'disable') + ' connection: ' + ((err && err.message) || 'request failed'), 'error');
+        }
+      });
+  }
+
   function renderConnections() {
     if (!isVisible('connections', 'connections connector plugin bmc scom vrops appdynamics emco integrations catalog data source')) return '';
     if (state.connectionDetailType) {
@@ -2206,7 +2253,7 @@ var Settings = (function() {
     `;
   }
 
-  // ---- Connector detail page (Dynatrace "Connections › <Name>") --------
+  // ---- Connector detail page (enterprise observability "Connections › <Name>") --------
 
   function renderConnectionDetailPage(pluginType) {
     const entry = connectionCatalogEntry(pluginType);
@@ -2229,22 +2276,34 @@ var Settings = (function() {
       const shareIcon = shareCount > 0
         ? `<span class="kfh-conn-detail-shared" title="Shared with ${shareCount} team(s)">${icon('users', 14)}</span>`
         : '';
-      const owner = row.ownerTeam
-        ? esc(row.ownerTeam)
-        : `<span class="kfh-conn-detail-owner-unknown">Unknown (${esc(String(row.id || '').slice(0, 8))}…)</span>`;
+      const enabled = row.enabled !== false;
+      const country = row.countryCode ? esc(row.countryCode) + (row.environment ? ` · ${esc(row.environment)}` : '') : '—';
+      const attrs = row.attributes || {};
+      const interval = attrs.intervalMin || attrs.pollIntervalMin;
+      const schedule = interval ? `${esc(interval)} min` : '<span class="kfh-conn-detail-inherit">System default</span>';
+      const lastSync = esc(formatConnLastSync(row.lastSyncAt));
+      const status = enabled
+        ? '<span class="kfh-conn-status kfh-conn-status-on">● Enabled</span>'
+        : '<span class="kfh-conn-status kfh-conn-status-off">○ Disabled</span>';
+      const toggle = `<button type="button" class="kfh-conn-toggle ${enabled ? 'is-on' : ''}" title="${enabled ? 'Disable' : 'Enable'} connection"
+              onclick="event.stopPropagation(); Settings.toggleConnectionEnabled('${esc(row.id)}', ${!enabled})">${enabled ? 'Disable' : 'Enable'}</button>`;
       return `
         <tr class="kfh-conn-detail-row" onclick="Settings.openConnectionEditor('${esc(row.id)}')">
           <td class="kfh-conn-detail-col-name">
             <span class="kfh-conn-detail-name">${esc(row.name || '(unnamed)')}</span>
             ${shareIcon}
           </td>
-          <td class="kfh-conn-detail-col-owner">${owner}</td>
+          <td class="kfh-conn-detail-col-country">${country}</td>
+          <td class="kfh-conn-detail-col-sched">${schedule}</td>
+          <td class="kfh-conn-detail-col-sync">${lastSync}</td>
+          <td class="kfh-conn-detail-col-status">${status}</td>
           <td class="kfh-conn-detail-col-actions" onclick="event.stopPropagation()">
-            <button type="button" class="kfh-conn-detail-menu" title="Actions" onclick="Settings.openConnectionEditor('${esc(row.id)}')" aria-label="Open connection">⋯</button>
+            ${toggle}
+            <button type="button" class="kfh-conn-detail-menu" title="Configure" onclick="Settings.openConnectionEditor('${esc(row.id)}')" aria-label="Open connection">⋯</button>
           </td>
         </tr>`;
     }).join('') : `
-      <tr><td colspan="3" class="kfh-conn-detail-empty">
+      <tr><td colspan="6" class="kfh-conn-detail-empty">
         ${all.length === 0
           ? `No connections yet. Use <strong>+ Connection</strong> to add your first ${esc(entry.displayName)} connection.`
           : 'No connections match your filters.'}
@@ -2292,7 +2351,10 @@ var Settings = (function() {
               <thead>
                 <tr>
                   <th class="kfh-conn-detail-col-name">Connection</th>
-                  <th class="kfh-conn-detail-col-owner">Owner</th>
+                  <th class="kfh-conn-detail-col-country">Country</th>
+                  <th class="kfh-conn-detail-col-sched">Schedule</th>
+                  <th class="kfh-conn-detail-col-sync">Last sync</th>
+                  <th class="kfh-conn-detail-col-status">Status</th>
                   <th class="kfh-conn-detail-col-actions" aria-label="Actions"></th>
                 </tr>
               </thead>
@@ -2357,6 +2419,7 @@ var Settings = (function() {
       countryCode: country,
       environment: environment,
       ownerTeam: '',
+      intervalMin: '',
       authMode: defaults.authMode || defaultAuthModeFor(pluginType),
       baseUrl: defaults.baseUrl || '',
       // Credential fields (per auth mode). Kept in-memory only, cleared on close.
@@ -2393,6 +2456,7 @@ var Settings = (function() {
       countryCode: row.countryCode || 'KW',
       environment: row.environment || 'PROD',
       ownerTeam: row.ownerTeam || '',
+      intervalMin: attrs.intervalMin || '',
       authMode: row.authMode || defaultAuthModeFor(row.pluginType),
       baseUrl: attrs.baseUrl || attrs.controllerUrl || attrs.host || attrs.sqlServer || '',
       // Credentials never come back from the API in plaintext — leave blank.
@@ -2530,6 +2594,7 @@ var Settings = (function() {
       environment: draft.environment,
       environmentScope: draft.environment,
       ownerTeam: draft.ownerTeam || null,
+      intervalMin: draft.intervalMin ? Number(draft.intervalMin) : null,
       authMode: draft.authMode,
       baseUrl: draft.baseUrl || null,
       sharedWithTeams: Array.isArray(draft.sharedWithTeams) ? draft.sharedWithTeams.slice() : []
@@ -2745,31 +2810,18 @@ var Settings = (function() {
       ? `<div class="kfh-conn-banner kfh-conn-banner-info"><span class="kfh-conn-banner-ic">${icon('info', 16)}</span><div>You do not have the permission to change any values in this dialog.</div></div>`
       : `<div class="kfh-conn-banner kfh-conn-banner-info"><span class="kfh-conn-banner-ic">${icon('info', 16)}</span><div>You are ${isEditing ? 'viewing' : 'creating a new connection to'} <strong>${esc(entry.displayName)}</strong>.</div></div>`;
 
-    const secBanner = `
-      <div class="kfh-conn-banner kfh-conn-banner-warn">
-        <span class="kfh-conn-banner-ic">${icon('alert', 16)}</span>
-        <div>For security reasons, KFH AIOps blocks outgoing traffic by default. You need to allow the URL under external requests.</div>
-        <button type="button" class="settings-btn settings-btn-outline kfh-conn-banner-btn" onclick="Settings.setTab('system')">Manage External Requests</button>
-      </div>`;
-
     const msg = popup.message
       ? `<div class="kfh-conn-msg kfh-conn-msg-${esc(popup.messageType || 'info')}">${esc(popup.message)}</div>`
       : '';
 
     const setupBody = renderConnectionSetupFields(entry, draft, readOnly, isEditing);
-    const shareBody = renderConnectionShareFields(draft, readOnly);
 
     return `
       <div class="settings-modal-body kfh-conn-modal-body">
         ${infoBanner}
-        <div class="kfh-conn-tabs" role="tablist">
-          <button role="tab" aria-selected="${activeTab === 'setup'}" class="kfh-conn-tab ${activeTab === 'setup' ? 'active' : ''}" onclick="Settings.switchConnectionTab('setup')">Set up connection</button>
-          <button role="tab" aria-selected="${activeTab === 'share'}" class="kfh-conn-tab ${activeTab === 'share' ? 'active' : ''}" onclick="Settings.switchConnectionTab('share')">Share access</button>
-        </div>
-        ${activeTab === 'setup' ? secBanner : ''}
         ${msg}
         <div class="kfh-conn-tab-panel">
-          ${activeTab === 'setup' ? setupBody : shareBody}
+          ${setupBody}
         </div>
       </div>
       <div class="settings-modal-footer kfh-conn-modal-footer">
@@ -2796,6 +2848,19 @@ var Settings = (function() {
     const teamOptions = ['<option value="">— None —</option>'].concat(CONNECTION_OWNER_TEAMS.map(function (t) {
       return `<option value="${t}" ${draft.ownerTeam === t ? 'selected' : ''}>${t}</option>`;
     })).join('');
+    const currentInterval = draft.intervalMin ? Number(draft.intervalMin) : '';
+    const scheduleOptions = [
+      { value: '', label: 'System default (15 min)' },
+      { value: 5, label: 'Every 5 minutes' },
+      { value: 10, label: 'Every 10 minutes' },
+      { value: 15, label: 'Every 15 minutes' },
+      { value: 30, label: 'Every 30 minutes' },
+      { value: 60, label: 'Every hour' },
+      { value: 120, label: 'Every 2 hours' },
+      { value: 360, label: 'Every 6 hours' }
+    ].map(function (o) {
+      return `<option value="${o.value}" ${currentInterval === o.value ? 'selected' : ''}>${o.label}</option>`;
+    }).join('');
 
     return `
       <div class="kfh-conn-form">
@@ -2832,6 +2897,13 @@ var Settings = (function() {
         <div class="kfh-conn-field">
           <label class="kfh-conn-label">Owner team</label>
           <select class="kfh-conn-input" onchange="Settings.updateConnectionField('ownerTeam', this.value)" ${ro}>${teamOptions}</select>
+        </div>
+        <div class="kfh-conn-field">
+          <label class="kfh-conn-label">Ingestion schedule</label>
+          <select class="kfh-conn-input" onchange="Settings.updateConnectionField('intervalMin', this.value ? Number(this.value) : '')" ${ro}>
+            ${scheduleOptions}
+          </select>
+          <small class="kfh-conn-help">How often this connection collects alerts once enabled (5 min–24 h). <strong>System default</strong> applies the platform default of 15 minutes.</small>
         </div>
         ${renderConnectionCredentialFields(draft, ro, isEditing)}
         ${renderConnectionAdvancedFields(draft, ro)}
@@ -3083,13 +3155,14 @@ var Settings = (function() {
     openModal,
     closeModal,
     keepModalOpen,
-    // Dynatrace-style Connections popup public API
+    // enterprise-grade Connections popup public API
     openConnectionPopup,
     openConnectionEditor: connectionEditPopup,
     openConnectionDetail,
     closeConnectionDetail,
     setConnectionDetailSearch,
     setConnectionDetailOwner,
+    toggleConnectionEnabled,
     closeConnectionPopup,
     switchConnectionTab,
     setConnectionPopupMode,

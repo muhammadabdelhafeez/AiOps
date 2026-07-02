@@ -2,7 +2,7 @@
  * KFH AIOps — Connections (redirect stub).
  *
  * The standalone Connections page has been consolidated into
- * Settings → Connections (Dynatrace-style catalog + Add/View popup).
+ * Settings → Connections (enterprise-grade catalog + Add/View popup).
  * The router now aliases the "connections" and legacy "connectors" hash
  * routes to the Settings module (see shared/js/router.js). This file
  * remains only as a safety net in case something loads it directly.

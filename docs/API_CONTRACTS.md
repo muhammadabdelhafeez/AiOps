@@ -288,6 +288,7 @@ If missing: 400/401 (implementation choice) with standard error response.
   - Audit: CONNECTOR_TOGGLED
   - Outbox: CONNECTOR_TOGGLED event
   - Permission: connectors:edit
+  - UI: Settings → Connections lists each connection as **Connection · Country · Schedule · Last sync · Status** with an inline Enable/Disable action that calls `PATCH /toggle`. The connection editor exposes an **Ingestion schedule** control persisted as `attributes.intervalMin` (integer minutes, bounded 5–1440; omitted/`null` → platform default 15, matching `BmcConnectorConfigValidator`/`ScomConnectorConfigValidator`). NOTE: enabling a connection + its `intervalMin` are persisted and audited, but the scheduled pollers (`BmcScheduledPoller`/`ScomScheduledPoller`) still run off the global `kfh.ingestion.*` properties — the per-connector enable/interval do not yet drive collection cadence (pending: connector-instance-driven ingestion bridge).
   
 - POST /api/v1/connectors/{connectorId}/test — Test connection
   - Creates run record (runType=TEST)

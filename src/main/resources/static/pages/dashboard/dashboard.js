@@ -1,6 +1,6 @@
 /**
  * KFH AIOps Command Center — Home / Operations Overview (Phase 1).
- * Dynatrace-style "Home": KPI tiles, active-problem feed, ingest & source health, incident trend,
+ * enterprise-grade "Home": KPI tiles, active-problem feed, ingest & source health, incident trend,
  * top impacted applications, and an AI executive summary — all in KFH "Beyond Horizons" colors using
  * the shared kfhx-* design system. Element IDs are preserved so later phases bind live data.
  */
@@ -22,16 +22,22 @@ window.DashboardPage = (function () {
 
   function render() {
     return `
-      <div class="kfhx-page animate-fade-in">
-
-        <!-- Page header -->
-        <div class="kfhx-section-head" style="margin-bottom: 16px;">
-          <div>
-            <div class="kfhx-section-title" style="font-size: 1.25rem;">Operations Overview</div>
-            <div class="kfhx-section-sub">Real-time correlation across BMC, SCOM and connected sources</div>
-          </div>
+      <!-- Unified slim page header (full-width; shared .kfh-phdr* styles) -->
+      <div class="kfh-phdr">
+        <div class="kfh-phdr-titlewrap">
+          <h1 class="kfh-phdr-title">Operations Overview</h1>
+          <span class="kfh-phdr-sub">Real-time correlation across BMC, SCOM and connected sources</span>
+        </div>
+        <div class="kfh-phdr-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input id="dashboard-q" type="text" placeholder="Search logs — press Enter to open Log Explorer…">
+        </div>
+        <div class="kfh-phdr-ctrls">
           <span class="kfhx-badge info"><span class="kfhx-dot"></span> Live</span>
         </div>
+      </div>
+
+      <div class="kfhx-page animate-fade-in">
 
         <!-- KPI tiles -->
         <div class="kfhx-tiles">
@@ -135,7 +141,19 @@ window.DashboardPage = (function () {
 
   function init() {
     generateTrendBars();
+    wireHeaderSearch();
     console.log('[AIOps] Home initialized');
+  }
+
+  /** Header search routes to the Log Explorer on Enter. */
+  function wireHeaderSearch() {
+    var q = document.getElementById('dashboard-q');
+    if (!q) return;
+    q.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter') return;
+      var val = q.value.trim();
+      if (window.Router) Router.navigate('explorer?q=' + encodeURIComponent(val));
+    });
   }
 
   function generateTrendBars() {

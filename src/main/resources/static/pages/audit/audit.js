@@ -213,19 +213,36 @@ var Audit = (function() {
     const summary = stats(events);
 
     container.innerHTML = `
-      <section class="audit-hero animate-fade-in">
-        <div>
-          <div class="audit-eyebrow">Governed application activity</div>
-          <h1 class="audit-title">Audit Activity</h1>
-          <p class="audit-subtitle">Live tenant-scoped actions recorded by the Command Center. No sample, dummy, or generated audit records are displayed.</p>
+      <div class="kfh-phdr">
+        <div class="kfh-phdr-titlewrap"><h1 class="kfh-phdr-title">Audit Activity</h1><span class="kfh-phdr-sub">${events.length} event${events.length === 1 ? '' : 's'}</span></div>
+        <div class="kfh-phdr-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input id="audit-search" type="text" placeholder="Search action, actor, target, correlation ID…" value="${esc(state.ui.searchQuery)}" autocomplete="off">
         </div>
-        <div class="audit-hero-actions">
+        <div class="kfh-phdr-ctrls">
+          <select id="date-range" class="kfh-phdr-select" aria-label="Date range">
+            ${option('today', 'Today', state.ui.dateRange)}
+            ${option('24h', 'Last 24 Hours', state.ui.dateRange)}
+            ${option('7d', 'Last 7 Days', state.ui.dateRange)}
+            ${option('15d', 'Last 15 Days', state.ui.dateRange)}
+            ${option('30d', 'Last 30 Days', state.ui.dateRange)}
+          </select>
+          <select id="category-filter" class="kfh-phdr-select" aria-label="Category">
+            ${option('ALL', 'All categories', state.ui.category)}
+            ${categories().map(category => option(category, category, state.ui.category)).join('')}
+          </select>
+          <select id="result-filter" class="kfh-phdr-select" aria-label="Result">
+            ${option('ALL', 'All results', state.ui.result)}
+            ${option('Success', 'Success', state.ui.result)}
+            ${option('Fail', 'Failure', state.ui.result)}
+          </select>
           <button class="audit-btn audit-btn-secondary" onclick="Audit.refresh()">${icon('refresh', 15)} Refresh</button>
           <button class="audit-btn audit-btn-secondary" onclick="Audit.exportCSV()">${icon('download', 15)} CSV</button>
-          <button class="audit-btn audit-btn-primary" onclick="Audit.exportJSON()">${icon('download', 15)} JSON</button>
+          <button class="kfh-phdr-btn-primary" onclick="Audit.exportJSON()">${icon('download', 15)} JSON</button>
         </div>
-      </section>
+      </div>
 
+      <div class="audit-page-body" style="padding:18px;">
       ${state.error ? `<div class="audit-alert audit-alert-error">${esc(state.error)}</div>` : ''}
 
       <div class="audit-stats-grid animate-fade-in">
@@ -233,31 +250,6 @@ var Audit = (function() {
         ${statCard('shield', summary.failures, 'Failures', 'Failed or denied actions', summary.failures > 0 ? 'danger' : 'success')}
         ${statCard('clipboard', summary.actors, 'Actors', 'Unique users/systems')}
         ${statCard('activity', summary.categories, 'Categories', 'Modules with activity')}
-      </div>
-
-      <div class="kfh-card audit-filters-card animate-fade-in">
-        <div class="audit-search-row">
-          <div class="audit-search">
-            <span class="audit-search-icon">${icon('search', 16)}</span>
-            <input id="audit-search" type="text" placeholder="Search action, actor, target, country, correlation ID..." class="audit-search-input" value="${esc(state.ui.searchQuery)}" autocomplete="off">
-          </div>
-          <select id="date-range" class="audit-select" aria-label="Date range">
-            ${option('today', 'Today', state.ui.dateRange)}
-            ${option('24h', 'Last 24 Hours', state.ui.dateRange)}
-            ${option('7d', 'Last 7 Days', state.ui.dateRange)}
-            ${option('15d', 'Last 15 Days', state.ui.dateRange)}
-            ${option('30d', 'Last 30 Days', state.ui.dateRange)}
-          </select>
-          <select id="category-filter" class="audit-select" aria-label="Category">
-            ${option('ALL', 'All categories', state.ui.category)}
-            ${categories().map(category => option(category, category, state.ui.category)).join('')}
-          </select>
-          <select id="result-filter" class="audit-select" aria-label="Result">
-            ${option('ALL', 'All results', state.ui.result)}
-            ${option('Success', 'Success', state.ui.result)}
-            ${option('Fail', 'Failure', state.ui.result)}
-          </select>
-        </div>
       </div>
 
       <div class="kfh-card audit-activity-card animate-fade-in">
@@ -271,6 +263,7 @@ var Audit = (function() {
           </select>
         </div>
         ${state.loading ? renderLoading() : renderActivityTable(events)}
+      </div>
       </div>
     `;
 

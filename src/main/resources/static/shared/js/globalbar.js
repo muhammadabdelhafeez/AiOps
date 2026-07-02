@@ -1,6 +1,6 @@
 /**
  * KFH AIOps — Global context bar (Phase 0 shell).
- * A persistent Dynatrace-style top bar: current scope (country) + environment + a global time-range
+ * A persistent enterprise-grade top bar: current scope (country) + environment + a global time-range
  * segmented control + global search. Time-range selection is published on window.KFHGlobalFilter and
  * a 'kfh:timerange-changed' event so pages can consume it. Search routes to the Log Explorer.
  */
@@ -31,7 +31,7 @@
   }
 
   function shortLabel(r) {
-    // Compact Dynatrace-style label (1h, 24h, 7d, 30d) regardless of the verbose config label.
+    // Compact enterprise-grade label (1h, 24h, 7d, 30d) regardless of the verbose config label.
     return String(r.id || r.label || '').toUpperCase();
   }
 

@@ -2789,8 +2789,8 @@ textarea:focus,
 
 
 /* ==========================================================================
-   KFH AIOps — Collapsed sidebar tight spacing (Dynatrace parity, 2026-07-02)
-   Overrides earlier collapsed spacing so icons stack tightly like Dynatrace
+   KFH AIOps — Collapsed sidebar tight spacing (enterprise observability parity, 2026-07-02)
+   Overrides earlier collapsed spacing so icons stack tightly like enterprise observability
    with no visible group gaps.
    ========================================================================== */
 .kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-nav,
@@ -2866,4 +2866,19 @@ textarea:focus,
   margin: 0 !important;
   padding: 0 !important;
   border: 0 !important;
+}
+
+/* Country scope switcher removed from sidebar — sidebar group titles are plain
+   (no grid two-column layout, no trailing divider line). Text styling kept.
+   Collapsed-state rules above are more specific, so collapse still hides titles. */
+.kfh-sidebar .kfh-sidebar-group-title {
+  display: block !important;
+  grid-template-columns: none !important;
+  column-gap: 0 !important;
+  padding: 0 12px !important;
+  margin: 0 0 6px !important;
+}
+.kfh-sidebar .kfh-sidebar-group-title::after {
+  display: none !important;
+  content: none !important;
 }

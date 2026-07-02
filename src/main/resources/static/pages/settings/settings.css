@@ -1002,7 +1002,7 @@
   color: #4b6b5e;
 }
 
-/* ===== Dynatrace-density settings category list (KFH colors), CSS-only ===== */
+/* ===== enterprise-density settings category list (KFH colors), CSS-only ===== */
 .settings-page-shell .settings-tabs { gap: 3px !important; padding: 5px !important; border-radius: 14px !important; }
 .settings-page-shell .settings-tab { min-height: 40px !important; padding: 6px 10px !important; grid-template-columns: 28px minmax(0, 1fr) !important; gap: 9px !important; border-radius: 10px !important; }
 .settings-page-shell .settings-tab:hover { transform: none !important; }
@@ -1804,7 +1804,7 @@
 
 
 /* ============================================================
-   KFH Dynatrace-style Settings shell (image 1 layout).
+   KFH enterprise-grade Settings shell (image 1 layout).
    Added by the Connections redesign — do not remove.
    ============================================================ */
 .kfh-settings-shell { background: var(--surface-bg, #f5f6f8); min-height: 100%; }
@@ -1839,7 +1839,7 @@
 .kfh-settings-tab.active .settings-tab-hint { color: var(--kfh-primary, #00634a); opacity: .8; }
 
 /* ============================================================
-   Connections section — Dynatrace-style vertical list (image 1).
+   Connections section — enterprise-grade vertical list (image 1).
    ============================================================ */
 .kfh-conn-shell { max-width: none; width: 100%; }
 .kfh-conn-header { padding: 4px 4px 18px; }
@@ -1985,8 +1985,24 @@
 .kfh-conn-detail-table tbody tr:last-child td { border-bottom: none; }
 .kfh-conn-detail-row { cursor: pointer; transition: background .12s; }
 .kfh-conn-detail-row:hover { background: var(--kfh-primary-light, #e6f0ec); }
-.kfh-conn-detail-col-actions { width: 60px; text-align: right; }
+.kfh-conn-detail-col-actions { width: 120px; text-align: right; white-space: nowrap; }
 .kfh-conn-detail-col-owner { width: 34%; color: var(--text-secondary, #475569); }
+.kfh-conn-detail-col-country { width: 16%; color: var(--text-secondary, #475569); font-variant: tabular-nums; }
+.kfh-conn-detail-col-sched { width: 15%; color: var(--text-secondary, #475569); }
+.kfh-conn-detail-col-sync { width: 15%; color: var(--text-secondary, #475569); }
+.kfh-conn-detail-col-status { width: 14%; }
+.kfh-conn-detail-inherit { color: var(--text-muted, #64748b); font-style: italic; }
+
+/* Enabled / disabled status pill */
+.kfh-conn-status { display: inline-flex; align-items: center; gap: 4px; font-size: .78rem; font-weight: 700; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+.kfh-conn-status-on { color: #0f7a5a; background: var(--kfh-primary-light, #e6f0ec); }
+.kfh-conn-status-off { color: #64748b; background: #eef1f4; }
+
+/* Inline enable/disable action */
+.kfh-conn-toggle { border: 1px solid var(--surface-border, #cbd5e1); background: #fff; color: var(--kfh-primary, #00634A); font-size: .76rem; font-weight: 700; cursor: pointer; padding: 4px 12px; border-radius: 6px; margin-right: 4px; transition: background .12s, border-color .12s; }
+.kfh-conn-toggle:hover { background: var(--kfh-primary-light, #e6f0ec); border-color: var(--kfh-primary, #00634A); }
+.kfh-conn-toggle.is-on { color: #b4551f; }
+.kfh-conn-toggle.is-on:hover { background: #fdeee4; border-color: #e2a97e; }
 .kfh-conn-detail-name { font-weight: 600; margin-right: 8px; }
 .kfh-conn-detail-shared { display: inline-flex; align-items: center; justify-content: center; color: var(--text-muted, #64748b); vertical-align: middle; }
 .kfh-conn-detail-owner-unknown { color: var(--text-muted, #64748b); font-family: 'SFMono-Regular', ui-monospace, monospace; font-size: .8rem; }
