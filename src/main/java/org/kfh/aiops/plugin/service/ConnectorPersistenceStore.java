@@ -11,6 +11,11 @@ public interface ConnectorPersistenceStore {
 
     List<Map<String, Object>> list(TenantContext ctx);
 
+    /** All enabled connectors across every tenant/country/environment scope — used by the ingestion bridge. */
+    default List<Map<String, Object>> listEnabled() {
+        return List.of();
+    }
+
     Optional<Map<String, Object>> find(UUID id);
 
     Map<String, Object> create(TenantContext ctx, String countryCode, String environment,

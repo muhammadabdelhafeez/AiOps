@@ -63,6 +63,17 @@ public class JdbcConnectorPersistenceStore implements ConnectorPersistenceStore 
     }
 
     @Override
+    public List<Map<String, Object>> listEnabled() {
+        return jdbcTemplate.query("""
+                SELECT connector_id, tenant_id, type, name, enabled, config, created_at, updated_at,
+                       last_test_at, last_test_status, last_run_at, next_run_at
+                FROM config.connectors
+                WHERE enabled = true
+                ORDER BY updated_at DESC
+                """, (rs, rowNum) -> row(rs));
+    }
+
+    @Override
     public Optional<Map<String, Object>> find(UUID id) {
         var rows = jdbcTemplate.query("""
                 SELECT connector_id, tenant_id, type, name, enabled, config, created_at, updated_at,

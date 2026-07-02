@@ -644,6 +644,15 @@ Run the normal database-backed application for local UI/API work. User Managemen
 - Disabled connectors are skipped because they are intentionally not eligible for collection.
 - Use heartbeat after backend restart, network changes, AppDynamics/BMC credential rotation, proxy/DNS changes, or before enabling scheduled connector collection.
 
+#### Connector-driven ingestion bridge (enable a connector → pull real alerts)
+End-to-end path so enabling a connector in the UI actually pulls alerts, no env vars / restart needed:
+1. **Configure + enable a connector** (Settings → Connections): base-url + credentials for BMC, or management-server/username/password for SCOM; set its **Ingestion schedule** (`attributes.intervalMin`); toggle **Enable**. Persisted in `config.connectors` (requires PostgreSQL — see connector persistence).
+2. **`ConnectorIngestionScheduler`** (`org.kfh.aiops.ingestion.ConnectorIngestionScheduler`) ticks every `kfh.ingestion.bridge.tick-ms` (default 60s). Each tick it calls `ConnectorPersistenceStore.listEnabled()`, and for every connector whose `intervalMin` is **due** it builds a per-connector `BmcHelixClient`/`ScomWinRmClient` from the stored config + **decrypted secrets** and runs one collect cycle → `IngestionService` (normalize → Redis dedup → `IndexWriterService`). Scope = the connector's `(country, environment)`.
+3. **Alerts read live from the index**: `AlertService.list()` queries `IndexSearchService` for `TelemetryKind.ALERTS` over the last `kfh.alerts.window-hours` (default 168h) and maps `TelemetryDocument` → the Alert Explorer row shape. Falls back to the (empty) read model if the index is unavailable.
+- Config: `kfh.ingestion.bridge.enabled` (default `true`; no-op when no DB store), `kfh.ingestion.bridge.tick-ms`, `kfh.ingestion.bridge.initial-delay-ms`, `kfh.alerts.window-hours`.
+- Trace with markers: `[BRIDGE]` (per-connector collect), `[INGEST]`, `[CORRELATE]`. A connector that's enabled but missing credentials logs `not fully configured … skipping`.
+- Prereqs: PostgreSQL (connector persistence + `listEnabled`), reachable BMC/SCOM endpoints, Redis (dedup degrades gracefully), `@EnableScheduling` (already on).
+
 #### Manual data collection
 - POST /api/v1/connectors/{id}/collect-now
 - Creates QUEUED run record
@@ -652,7 +661,7 @@ Run the normal database-backed application for local UI/API work. User Managemen
 
 #### NOC pages are live (no demo data)
 - The Alerts, Incidents, and Logs Explorer pages render **only real data** from the backend — all illustrative/demo rows were removed.
-  - Alerts (`pages/alerts/alerts.js`) → `GET /api/v1/alerts` (Custom Index read model), mapped defensively (TelemetryDocument fields), Title-case severities. The page uses the shared **slim page header** (see below) with a Filters popover holding Severity/Source/Kind + Impact sort; hourly activity strip is computed from real alert timestamps.
+  - Alerts (`pages/alerts/alerts.js`) → `GET /api/v1/alerts` → **served live from the Custom Index** (`AlertService.list` → `IndexSearchService`, trailing `kfh.alerts.window-hours`), mapped defensively (TelemetryDocument fields), Title-case severities. The page uses the shared **slim page header** (see below) with a Filters popover holding Severity/Source/Kind + Impact sort; hourly activity strip is computed from real alert timestamps.
 
 - **Unified slim page header (`.kfh-phdr`)** — every page renders one consistent ~54px header (title + subtitle + search + optional scope/filters/sort/actions) defined once in `shared/css/kfh-design-system.css` (`.kfh-phdr*`, `.kfh-fchip`). Any page containing a `.kfh-phdr` auto-hides the shell `#global-bar` via `main.kfh-main-content:has(.kfh-phdr) #global-bar{display:none}`, so there is exactly one header per page. Applied to Dashboard, Incidents, Alerts, Log Explorer, Applications, Inventory, Reports, Users, Audit, Schedules and Settings. NOTE: the shared stylesheet was renamed from `kfh-dynatrace-system.css` → `kfh-design-system.css` (no third-party product names in shipped code); the roadmap doc is `docs/UI_PARITY_ROADMAP.md`.
   - Incidents (`pages/incidents/incidents.js`) → `GET /api/v1/incidents` (correlation/RCA output), defensively mapped to the detail shape.

@@ -2277,7 +2277,7 @@ var Settings = (function() {
         ? `<span class="kfh-conn-detail-shared" title="Shared with ${shareCount} team(s)">${icon('users', 14)}</span>`
         : '';
       const enabled = row.enabled !== false;
-      const country = row.countryCode ? esc(row.countryCode) + (row.environment ? ` · ${esc(row.environment)}` : '') : '—';
+      const country = row.countryCode ? esc(row.countryCode) : '—';
       const attrs = row.attributes || {};
       const interval = attrs.intervalMin || attrs.pollIntervalMin;
       const schedule = interval ? `${esc(interval)} min` : '<span class="kfh-conn-detail-inherit">System default</span>';
@@ -2411,7 +2411,9 @@ var Settings = (function() {
     const defaults = entry.defaults || {};
     const s = session();
     const country = CONNECTION_COUNTRIES.includes(s.countryCode) ? s.countryCode : 'KW';
-    const environment = CONNECTION_ENVIRONMENTS.includes(s.environment) ? s.environment : 'PROD';
+    // Environment concept removed from the UI: always bind to the active session environment so a
+    // saved connector is never hidden by a scope mismatch on reload (the list query uses the same env).
+    const environment = s.environment || 'PROD';
     return {
       pluginType: pluginType,
       name: '',
@@ -2680,6 +2682,28 @@ var Settings = (function() {
     }
   }
 
+  // Enable/disable an existing connector directly from its editor popup (persists via the API).
+  async function togglePopupConnector() {
+    const popup = state.connectionPopup;
+    if (!popup || !popup.connectorId) return;
+    const enable = popup.draft.enabled === false; // currently disabled → enable, else disable
+    if (!(window.APIClient && APIClient.connectors && APIClient.connectors.toggle)) {
+      popup.message = 'Connector API is not available.'; popup.messageType = 'error'; render(); return;
+    }
+    popup.saving = true; popup.message = null; render();
+    try {
+      await APIClient.connectors.toggle(popup.connectorId, enable);
+      popup.draft.enabled = enable;
+      popup.message = enable ? 'Connection enabled — it will collect on its schedule.' : 'Connection disabled.';
+      popup.messageType = 'success';
+      await loadConnectors();
+    } catch (error) {
+      popup.message = errorMessage(error, 'Unable to change connection status');
+      popup.messageType = 'error';
+    }
+    popup.saving = false; render();
+  }
+
   async function testConnection() {
     if (!state.connectionPopup) return;
     const popup = state.connectionPopup;
@@ -2827,6 +2851,7 @@ var Settings = (function() {
       <div class="settings-modal-footer kfh-conn-modal-footer">
         ${isEditing && !readOnly ? `<button type="button" class="settings-btn settings-btn-danger-text" onclick="Settings.deleteConnection()" ${popup.deleting ? 'disabled' : ''}>${popup.deleting ? 'Deleting…' : 'Delete this connection'}</button>` : '<span></span>'}
         <div class="kfh-conn-modal-footer-actions">
+          ${isEditing ? `<button type="button" class="settings-btn ${draft.enabled !== false ? 'settings-btn-outline' : 'settings-btn-primary'}" onclick="Settings.togglePopupConnector()" ${saving || readOnly ? 'disabled' : ''} title="${draft.enabled !== false ? 'Stop this connection collecting' : 'Enable this connection to start collecting'}">${draft.enabled !== false ? 'Disable' : 'Enable'}</button>` : ''}
           <button type="button" class="settings-btn settings-btn-outline" onclick="Settings.testConnection()" ${testing || readOnly ? 'disabled' : ''}>${testing ? 'Testing…' : 'Test connection'}</button>
           <button type="button" class="settings-btn settings-btn-primary" onclick="Settings.saveConnection()" ${saving || readOnly ? 'disabled' : ''}>${saving ? 'Saving…' : (isEditing ? 'Save' : 'Save')}</button>
           <button type="button" class="settings-btn settings-btn-outline" onclick="Settings.closeConnectionPopup()">Close</button>
@@ -2874,15 +2899,9 @@ var Settings = (function() {
           <select class="kfh-conn-input" disabled aria-disabled="true"><option>${esc(entry.displayName)}</option></select>
           <small class="kfh-conn-help">${esc(entry.category || '')}${isEditing ? ' · read-only when editing' : ''}</small>
         </div>
-        <div class="kfh-conn-field-row">
-          <div class="kfh-conn-field">
-            <label class="kfh-conn-label">Country</label>
-            <select class="kfh-conn-input" onchange="Settings.updateConnectionField('countryCode', this.value)" ${ro}>${countryOptions}</select>
-          </div>
-          <div class="kfh-conn-field">
-            <label class="kfh-conn-label">Environment</label>
-            <select class="kfh-conn-input" onchange="Settings.updateConnectionField('environment', this.value)" ${ro}>${envOptions}</select>
-          </div>
+        <div class="kfh-conn-field kfh-conn-field-wide">
+          <label class="kfh-conn-label">Country</label>
+          <select class="kfh-conn-input" onchange="Settings.updateConnectionField('countryCode', this.value)" ${ro}>${countryOptions}</select>
         </div>
         ${['BMC','APPDYNAMICS','VROPS'].includes(draft.pluginType) ? `
         <div class="kfh-conn-field kfh-conn-field-wide">
@@ -3169,6 +3188,7 @@ var Settings = (function() {
     updateConnectionField,
     toggleConnectionShareTeam,
     saveConnection,
+    togglePopupConnector,
     testConnection,
     deleteConnection,
     keepConnectionPopup,
