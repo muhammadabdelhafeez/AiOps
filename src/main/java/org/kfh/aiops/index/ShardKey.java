@@ -6,9 +6,12 @@ import java.util.Locale;
 import org.kfh.aiops.index.model.TelemetryKind;
 
 /**
- * Identifies one shard directory: {@code {country}/{environment}/{kind}/{yyyy-MM-dd}/shard-NN}
- * (§10 shard path). Documents route to a shard by a stable hash of their id, so a document always
- * lands in the same shard and searches can fan out across all shards of a partition in parallel.
+ * Identifies one shard directory: {@code {country}/{kind}/{yyyy-MM-dd}/shard-NN} (§10 shard path).
+ * Environment is intentionally NOT part of the path — it has no meaning in this deployment, so all
+ * telemetry for a country/kind/date lands in one partition regardless of environment. Documents route
+ * to a shard by a stable hash of their id, so a document always lands in the same shard and searches
+ * fan out across all shards of a partition in parallel. The {@code environment} field is retained for
+ * call-site compatibility but ignored by {@link #relativePath()}.
  */
 public record ShardKey(String country, String environment, TelemetryKind kind, LocalDate date, int shard) {
 
@@ -26,9 +29,9 @@ public record ShardKey(String country, String environment, TelemetryKind kind, L
         }
     }
 
-    /** Relative shard directory beneath the index root. */
+    /** Relative shard directory beneath the index root ({@code {country}/{kind}/{date}/shard-NN}). */
     public Path relativePath() {
-        return Path.of(country, environment, kind.dir(), date.toString(), "shard-" + String.format(Locale.ROOT, "%02d", shard));
+        return Path.of(country, kind.dir(), date.toString(), "shard-" + String.format(Locale.ROOT, "%02d", shard));
     }
 
     /** Stable shard number for a document id given the configured shards-per-day. */

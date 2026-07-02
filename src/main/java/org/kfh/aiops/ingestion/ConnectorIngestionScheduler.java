@@ -168,6 +168,7 @@ public class ConnectorIngestionScheduler {
         p.setHoursBack(intOr(firstNonBlank(c.get("hoursBack"), c.get("hours")), 1));
         p.setWinrmPort(intOr(c.get("winrmPort"), 5986));
         p.setUseHttps(!Boolean.FALSE.equals(c.get("useHttps")));
+        p.setVerifySsl(!Boolean.FALSE.equals(c.get("verifySsl")));
         p.setTenantId(tenantId);
         p.setCountryCode(country);
         p.setEnvironment(environment);

@@ -10,10 +10,11 @@ import org.kfh.aiops.index.model.TelemetryKind;
 class ShardKeyTest {
 
     @Test
-    void buildsCountryEnvKindDateShardPath() {
+    void buildsCountryKindDateShardPath() {
+        // Environment is intentionally excluded from the shard path (no meaning in this deployment).
         var key = new ShardKey("kw", "prod", TelemetryKind.ALERTS, LocalDate.of(2026, 6, 7), 3);
         assertThat(key.relativePath())
-                .isEqualTo(Path.of("KW", "PROD", "alerts", "2026-06-07", "shard-03"));
+                .isEqualTo(Path.of("KW", "alerts", "2026-06-07", "shard-03"));
     }
 
     @Test

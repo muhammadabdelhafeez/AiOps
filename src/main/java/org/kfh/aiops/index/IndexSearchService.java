@@ -1,5 +1,6 @@
 package org.kfh.aiops.index;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -74,17 +75,42 @@ public class IndexSearchService {
         var firstDate = LocalDate.ofInstant(from, ZoneOffset.UTC);
         var lastDate = LocalDate.ofInstant(to, ZoneOffset.UTC);
         var shards = Math.max(1, properties.getShardsPerDay());
-        for (var kind : kinds) {
-            for (var date = firstDate; !date.isAfter(lastDate); date = date.plusDays(1)) {
-                for (var shard = 0; shard < shards; shard++) {
-                    var dir = root.resolve(new ShardKey(country, environment, kind, date, shard).relativePath());
-                    if (Files.isDirectory(dir)) {
-                        dirs.add(dir);
+        for (var scopedCountry : expandCountries(root, country)) {
+            for (var kind : kinds) {
+                for (var date = firstDate; !date.isAfter(lastDate); date = date.plusDays(1)) {
+                    for (var shard = 0; shard < shards; shard++) {
+                        var dir = root.resolve(new ShardKey(scopedCountry, environment, kind, date, shard).relativePath());
+                        if (Files.isDirectory(dir)) {
+                            dirs.add(dir);
+                        }
                     }
                 }
             }
         }
         return dirs;
+    }
+
+    /**
+     * A concrete country searches only its own partition; the global {@code ALL} scope (a global-admin
+     * session) fans out across every country partition present under the index root — otherwise alerts
+     * ingested under e.g. {@code KW} would be invisible to an {@code ALL}-scoped caller.
+     */
+    private List<String> expandCountries(Path root, String country) {
+        if (country != null && !country.isBlank()
+                && !CountryAccessGuard.ALL_COUNTRIES_SCOPE.equalsIgnoreCase(country.trim())) {
+            return List.of(country.trim());
+        }
+        if (!Files.isDirectory(root)) {
+            return List.of();
+        }
+        try (var stream = Files.list(root)) {
+            return stream.filter(Files::isDirectory)
+                    .map(dir -> dir.getFileName().toString())
+                    .filter(name -> !CountryAccessGuard.ALL_COUNTRIES_SCOPE.equalsIgnoreCase(name))
+                    .collect(Collectors.toList());
+        } catch (IOException ex) {
+            return List.of();
+        }
     }
 
     private List<TelemetryDocument> scanShards(List<Path> shardDirs, IndexQuery query,

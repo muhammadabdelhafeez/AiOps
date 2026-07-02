@@ -11,7 +11,7 @@ import java.util.Optional;
 public interface ArchiveStore {
 
     /**
-     * Archive the shard's segment under {@code relativePath} ({@code country/env/kind/date/shard-NN}).
+     * Archive the shard's segment under {@code relativePath} ({@code country/kind/date/shard-NN}).
      * Returns the archive reference (path/URI), or empty if the shard has no segment.
      */
     Optional<String> archiveShard(Path shardDir, Path relativePath);

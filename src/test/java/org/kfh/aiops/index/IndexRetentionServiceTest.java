@@ -17,7 +17,7 @@ class IndexRetentionServiceTest {
         props.getStorage().setPath(root.toString()); // alerts retention = 30 days; archive disabled
         var service = new IndexRetentionService(props, new FilesystemArchiveStore(props));
 
-        var alerts = root.resolve(Path.of("KW", "PROD", "alerts"));
+        var alerts = root.resolve(Path.of("KW", "alerts"));
         Files.createDirectories(alerts.resolve("2026-05-01").resolve("shard-00"));
         Files.createDirectories(alerts.resolve("2026-06-28").resolve("shard-00"));
 
@@ -36,16 +36,16 @@ class IndexRetentionServiceTest {
         props.getArchive().setPath(archiveRoot.toString());
         var service = new IndexRetentionService(props, new FilesystemArchiveStore(props));
 
-        var expiredShard = root.resolve(Path.of("KW", "PROD", "alerts", "2026-05-01", "shard-00"));
+        var expiredShard = root.resolve(Path.of("KW", "alerts", "2026-05-01", "shard-00"));
         Files.createDirectories(expiredShard);
         Files.writeString(expiredShard.resolve("segment.jsonl"), "{\"id\":\"a\"}\n");
 
         var deleted = service.purgeExpired(root, LocalDate.of(2026, 7, 1));
 
         assertThat(deleted).isEqualTo(1);
-        assertThat(Files.exists(root.resolve(Path.of("KW", "PROD", "alerts", "2026-05-01")))).isFalse();
+        assertThat(Files.exists(root.resolve(Path.of("KW", "alerts", "2026-05-01")))).isFalse();
         assertThat(Files.exists(archiveRoot.resolve(
-                Path.of("KW", "PROD", "alerts", "2026-05-01", "shard-00", "segment.jsonl.gz")))).isTrue();
+                Path.of("KW", "alerts", "2026-05-01", "shard-00", "segment.jsonl.gz")))).isTrue();
     }
 
     @Test

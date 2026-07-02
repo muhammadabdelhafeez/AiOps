@@ -41,8 +41,9 @@ public class IndexRetentionService {
     }
 
     /**
-     * Delete every {@code {country}/{env}/{kind}/{date}} directory whose date is older than the
-     * kind's retention window relative to {@code asOf}. Returns the number of date-directories removed.
+     * Delete every {@code {country}/{kind}/{date}} directory whose date is older than the kind's
+     * retention window relative to {@code asOf}. Returns the number of date-directories removed.
+     * (Environment is no longer part of the shard path — see {@link ShardKey}.)
      */
     public int purgeExpired(Path root, LocalDate asOf) {
         if (!Files.isDirectory(root)) {
@@ -50,24 +51,22 @@ public class IndexRetentionService {
         }
         var deleted = 0;
         for (var countryDir : childDirs(root)) {
-            for (var envDir : childDirs(countryDir)) {
-                for (var kindDir : childDirs(envDir)) {
-                    var kind = parseKind(kindDir.getFileName().toString());
-                    if (kind == null) {
-                        continue;
-                    }
-                    var cutoff = asOf.minusDays(retentionDays(kind));
-                    for (var dateDir : childDirs(kindDir)) {
-                        var date = parseDate(dateDir.getFileName().toString());
-                        if (date != null && date.isBefore(cutoff)) {
-                            if (properties.getArchive().isEnabled()) {
-                                for (var shardDir : childDirs(dateDir)) {
-                                    archiveStore.archiveShard(shardDir, root.relativize(shardDir));
-                                }
+            for (var kindDir : childDirs(countryDir)) {
+                var kind = parseKind(kindDir.getFileName().toString());
+                if (kind == null) {
+                    continue;
+                }
+                var cutoff = asOf.minusDays(retentionDays(kind));
+                for (var dateDir : childDirs(kindDir)) {
+                    var date = parseDate(dateDir.getFileName().toString());
+                    if (date != null && date.isBefore(cutoff)) {
+                        if (properties.getArchive().isEnabled()) {
+                            for (var shardDir : childDirs(dateDir)) {
+                                archiveStore.archiveShard(shardDir, root.relativize(shardDir));
                             }
-                            deleteRecursively(dateDir);
-                            deleted++;
                         }
+                        deleteRecursively(dateDir);
+                        deleted++;
                     }
                 }
             }

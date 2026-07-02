@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * Filesystem/NFS {@link ArchiveStore}: gzip-copies a shard's segment to
- * {@code {archive.path}/{country}/{env}/{kind}/{date}/shard-NN/segment.jsonl.gz}. This is the
+ * {@code {archive.path}/{country}/{kind}/{date}/shard-NN/segment.jsonl.gz}. This is the
  * on-prem "object storage" target; a cloud (S3/Azure Blob) implementation would swap in here.
  */
 @Component

@@ -107,6 +107,16 @@ public class ScomWinRmClient {
         var authMethod = requireAuthMethod(properties.getAuthMethod());
         var winRmPort = requirePort(properties.getWinrmPort());
         var useSslSwitch = properties.isUseHttps() ? " -UseSSL" : "";
+        // Corporate WinRM-over-HTTPS: the CRL endpoint is frequently unreachable from the collector,
+        // so the revocation check must be skipped or Invoke-Command fails (matches the live tester).
+        // When SSL verification is disabled we also skip CA/CN validation (self-signed certs).
+        var sessionOption = "";
+        if (properties.isUseHttps()) {
+            var skips = properties.isVerifySsl()
+                    ? "-SkipRevocationCheck"
+                    : "-SkipCACheck -SkipCNCheck -SkipRevocationCheck";
+            sessionOption = " -SessionOption (New-PSSessionOption " + skips + ")";
+        }
         var psHoursBack = hoursBack + Math.max(0, properties.getServerLocalOffsetHours());
 
         return String.format(Locale.ROOT,
@@ -114,7 +124,7 @@ public class ScomWinRmClient {
                         + "$secPass = ConvertTo-SecureString '%s' -AsPlainText -Force; "
                         + "$cred = New-Object System.Management.Automation.PSCredential('%s', $secPass); "
                         + "$startLocal = (Get-Date).AddHours(-%d); "
-                        + "$result = Invoke-Command -ComputerName '%s' -Port %d%s -Credential $cred -Authentication %s "
+                        + "$result = Invoke-Command -ComputerName '%s' -Port %d%s -Credential $cred -Authentication %s%s "
                         + "-ScriptBlock { param([datetime]$startUtcInner) %s } -ArgumentList $startLocal; "
                         + "if ($null -eq $result -or $result.Count -eq 0) { Write-Output '[]' } "
                         + "else { $result | ConvertTo-Json -Depth 10 -Compress }",
@@ -125,6 +135,7 @@ public class ScomWinRmClient {
                 winRmPort,
                 useSslSwitch,
                 authMethod,
+                sessionOption,
                 remoteScript);
     }
 

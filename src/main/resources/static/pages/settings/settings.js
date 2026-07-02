@@ -2098,7 +2098,9 @@ var Settings = (function() {
 
   function normalizeConnectorRow(row) {
     if (!row || typeof row !== 'object') return null;
-    const attrs = row.attributes || row.attr || {};
+    // The DB store returns connector config at the row's top level (no nested `attributes`), so fall
+    // back to the row itself — otherwise editing shows empty Base URL / SCOM fields (config not reloaded).
+    const attrs = (row.attributes && typeof row.attributes === 'object') ? row.attributes : row;
     const pluginType = row.type || row.pluginType || attrs.pluginType || attrs.type || '';
     return {
       raw: row,
