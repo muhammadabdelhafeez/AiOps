@@ -31,6 +31,7 @@ import org.springframework.stereotype.Service;
 public class CorrelationService {
 
     private static final int WINDOW_FETCH = 500;
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(CorrelationService.class);
 
     private final IndexSearchService indexSearchService;
     private final TopologyService topology;
@@ -43,10 +44,15 @@ public class CorrelationService {
     /** Correlate a window's ALERTS read from the Custom Index. Requires {@code ALERT_READ}. */
     public CorrelationResult correlateWindow(TenantContext ctx, Instant from, Instant to) {
         ctx.requirePermission("ALERT_READ");
+        long t0 = System.nanoTime();
         var query = new IndexQuery(List.of(TelemetryKind.ALERTS), ctx.countryCode(), ctx.environment(),
                 from, to, null, null, null, null, null, null, null, null, 0, WINDOW_FETCH);
         var result = indexSearchService.search(ctx, query);
-        return correlate(result.hits());
+        var correlation = correlate(result.hits());
+        log.info("[CORRELATE] window {}..{} country={} env={} -> alerts={} mapped={} unmappedCIs={} incidents={} took={}ms correlationId={}",
+                from, to, ctx.countryCode(), ctx.environment(), correlation.alertsProcessed(), correlation.alertsMapped(),
+                correlation.unmappedCis().size(), correlation.incidents().size(), (System.nanoTime() - t0) / 1_000_000, ctx.correlationId());
+        return correlation;
     }
 
     /** Pure correlation: alerts → resolved components → blast-radius clusters → candidate incidents. */
@@ -84,6 +90,17 @@ public class CorrelationService {
             int c = Integer.compare(sevRank(y.severity()), sevRank(x.severity()));
             return c != 0 ? c : Integer.compare(y.alertCount(), x.alertCount());
         });
+        for (var inc : incidents) {
+            log.info("[CORRELATE] incident key={} severity={} rootCause={} ({}) apps={} alerts={}",
+                    inc.incidentKey(), inc.severity(), inc.rootCauseComponentName(), inc.rootCauseAssetCi(),
+                    inc.impactedApplications(), inc.alertCount());
+        }
+        if (!unmapped.isEmpty()) {
+            var preview = unmapped.size() <= 20 ? new ArrayList<>(unmapped) : new ArrayList<>(unmapped).subList(0, 20);
+            log.info("[CORRELATE] {} unmapped CI(s) not in topology (CMDB gap): {}", unmapped.size(), preview);
+        }
+        log.info("[CORRELATE] formed {} incident(s) from {} alerts ({} mapped, {} unmapped)",
+                incidents.size(), list.size(), mapped, unmapped.size());
         return new CorrelationResult(incidents, new ArrayList<>(unmapped), list.size(), mapped);
     }
 

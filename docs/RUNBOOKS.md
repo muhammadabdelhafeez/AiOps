@@ -964,4 +964,31 @@ Then open **Log Explorer**, filter `sourceSystem = SCOM`. Now BMC + SCOM land in
 | Alerts missing near window edge | server-vs-UTC offset wrong | confirm `SCOM_SERVER_LOCAL_OFFSET_HOURS` matches the SCOM server's real offset |
 | Runs on Linux → fails | `powershell.exe` not present | SCOM collection is Windows-only by design; run it from the Windows Tomcat host |
 
+---
+
+## Enabling real collection + tracing the flow in the web-server logs
+
+### The real backend flow (enable → collect → ingest → correlate)
+1. **Verify** each connector (Settings → Connections → Test) so credentials/endpoints are good.
+2. **Enable ingestion** so the scheduled poller runs automatically:
+   `BMC_INGESTION_ENABLED=true` (and/or `SCOM_INGESTION_ENABLED=true`) + the collector env vars, then restart. The poller then collects every `poll-interval-ms` (default 20 min) and ingests. Manual runs remain available via `POST /api/v1/ingestion/{bmc,scom}/collect-now`.
+3. Alerts land in the **Custom Index** (visible in Log Explorer).
+4. **Correlate** on demand: `GET /api/v1/correlation?minutes=120` → candidate incidents.
+
+### Every stage is logged (grep the Tomcat log to trace)
+All actions write INFO lines with a greppable stage marker and the request `correlationId` (also in the log MDC via `logging.pattern.level`). Trace an end-to-end cycle with:
+```
+grep -E "\[COLLECT\]|\[INGEST\]|\[CORRELATE\]" catalina.out
+```
+| Marker | Emitted by | What it records |
+|---|---|---|
+| `[COLLECT] BMC/SCOM start` / `complete` | `BmcCollector` / `ScomCollector` | window, scope, **fetched** count, indexed/duplicates/failed, **took=…ms**, correlationId |
+| `[INGEST] {source} batch start` / `complete` | `IngestionService` | received / normalized / duplicates / indexed / failed, correlationId |
+| `[INGEST] dropping unmappable …` | `IngestionService` | per-event normalization failure (never aborts the batch) |
+| `[CORRELATE] window … -> alerts=… mapped=… unmappedCIs=… incidents=… took=…ms` | `CorrelationService` | correlation run summary |
+| `[CORRELATE] incident key=… rootCause=… apps=… alerts=…` | `CorrelationService` | one line per formed incident |
+| `[CORRELATE] N unmapped CI(s) not in topology (CMDB gap): […]` | `CorrelationService` | the CIs to add to the topology so incidents form |
+
+The scheduled pollers also log `BMC/SCOM scheduled poll complete: {IngestionResult}` (or a swallowed error that retries next tick). Redis-down and index issues are logged as `WARN` but never drop alerts (fail-open dedup).
+
 

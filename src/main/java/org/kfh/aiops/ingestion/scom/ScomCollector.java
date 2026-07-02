@@ -36,9 +36,14 @@ public class ScomCollector {
     /** Collect using the caller's tenant/country scope. */
     public IngestionResult collectNow(TenantContext ctx) {
         requireConfigured();
+        long t0 = System.nanoTime();
+        log.info("[COLLECT] SCOM start: country={} env={} window={}h correlationId={}",
+                ctx.countryCode(), ctx.environment(), properties.getHoursBack(), ctx.correlationId());
         var raw = client.fetchRawEvents(properties.getHoursBack());
         var result = ingestionService.ingest(ctx, normalizer, raw);
-        log.info("SCOM collect (country={}, env={}): {}", ctx.countryCode(), ctx.environment(), result);
+        log.info("[COLLECT] SCOM complete: country={} env={} fetched={} indexed={} duplicates={} failed={} took={}ms correlationId={}",
+                ctx.countryCode(), ctx.environment(), raw.size(), result.indexed(), result.duplicatesDropped(),
+                result.failed(), (System.nanoTime() - t0) / 1_000_000, ctx.correlationId());
         return result;
     }
 

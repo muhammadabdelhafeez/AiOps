@@ -48,6 +48,8 @@ public class IngestionService {
         var failed = 0;
         var duplicates = 0;
         List<TelemetryDocument> fresh = new ArrayList<>();
+        log.info("[INGEST] {} batch start: received={} country={} env={} correlationId={}",
+                normalizer.sourceSystem(), received, ctx.countryCode(), ctx.environment(), ctx.correlationId());
 
         for (var raw : rawEvents) {
             TelemetryDocument document;
@@ -55,7 +57,7 @@ public class IngestionService {
                 document = normalizer.normalize(ctx, raw);
             } catch (RuntimeException ex) {
                 failed++;
-                log.warn("Dropping unmappable {} event; correlationId={}, reason={}",
+                log.warn("[INGEST] dropping unmappable {} event; correlationId={}, reason={}",
                         normalizer.sourceSystem(), ctx.correlationId(), ex.toString());
                 continue;
             }
@@ -68,7 +70,7 @@ public class IngestionService {
 
         var indexed = indexWriterService.index(ctx, fresh);
         var result = new IngestionResult(received, received - failed, duplicates, indexed, failed);
-        log.info("Ingested {} batch: received={}, normalized={}, duplicates={}, indexed={}, failed={}, correlationId={}",
+        log.info("[INGEST] {} complete: received={} normalized={} duplicates={} indexed={} failed={} correlationId={}",
                 normalizer.sourceSystem(), result.received(), result.normalized(), result.duplicatesDropped(),
                 result.indexed(), result.failed(), ctx.correlationId());
         return result;
