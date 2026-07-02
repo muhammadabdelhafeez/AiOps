@@ -18,8 +18,24 @@ var Settings = (function() {
       description: 'Azure AI Foundry Responses API using Azure OpenAI API key authentication'
     }
   ];
-  const SETTINGS_ACTIVE_TAB_KEY = 'kfh.aiops.settings.activeTab';
-  const SETTINGS_TAB_IDS = ['azure', 'databases', 'sharepoint', 'teams', 'infrastructure', 'system'];
+  const SETTINGS_ACTIVE_TAB_KEY = 'kfh.aiops.settings.activeSection';
+  // Section IDs used by the KFH Dynatrace-style Settings shell. Old IDs are
+  // migrated in restoreActiveTab() below.
+  const SETTINGS_TAB_IDS = ['ai', 'databases', 'notifications', 'infrastructure', 'connections', 'system'];
+  // A section may render legacy sub-renderers keyed under different IDs; the
+  // alias table lets isVisible() include those when the composite section is
+  // active. Example: "notifications" surfaces both SharePoint and Teams.
+  const TAB_ALIASES = {
+    ai: ['azure'],
+    notifications: ['sharepoint', 'teams']
+  };
+  // Legacy tab IDs from earlier versions map to the new KFH section IDs.
+  const LEGACY_TAB_MIGRATIONS = {
+    azure: 'ai',
+    sharepoint: 'notifications',
+    teams: 'notifications',
+    connectors: 'connections'
+  };
 
   function emptyAzureIntegration(index = 1) {
     return {
@@ -86,7 +102,7 @@ var Settings = (function() {
 
   // State
   const state = {
-    activeTab: 'azure',
+    activeTab: 'ai',
     searchQuery: '',
     hasUnsavedChanges: false,
     revealedSecrets: new Set(),
@@ -104,7 +120,24 @@ var Settings = (function() {
     neo4jDraft: null,
     teamDraft: null,
     teamEditIndex: null,
-    settings: emptySettings()
+    settings: emptySettings(),
+    // Dynatrace-style Connections catalog (Settings → Connections)
+    connectors: [],
+    connectorTypes: [],
+    connectorsLoaded: false,
+    connectorsLoading: false,
+    connectorsError: null,
+    // Add / View connection popup state.
+    // Shape: { pluginType, mode: 'catalog'|'form', activeTab: 'setup'|'share',
+    //          connectorId: string|null, draft: {...}, testing: bool, saving: bool,
+    //          readOnly: bool, message: string|null }
+    connectionPopup: null,
+    // Dynatrace-style connector detail page (drill-down inside Connections).
+    // When set, Settings → Connections shows the per-connector detail page
+    // (breadcrumb + header + toolbar + connections table) instead of the catalog.
+    connectionDetailType: null,
+    connectionDetailSearch: '',
+    connectionDetailOwner: ''
   };
 
   let autoSaveTimer = null;
@@ -175,12 +208,19 @@ var Settings = (function() {
 
   function restoreActiveTab() {
     try {
-      const saved = localStorage.getItem(SETTINGS_ACTIVE_TAB_KEY);
+      let saved = localStorage.getItem(SETTINGS_ACTIVE_TAB_KEY);
+      if (!saved) {
+        // Backward-compat: honor the pre-redesign key one time.
+        saved = localStorage.getItem('kfh.aiops.settings.activeTab');
+      }
+      if (saved && LEGACY_TAB_MIGRATIONS[saved]) {
+        saved = LEGACY_TAB_MIGRATIONS[saved];
+      }
       if (SETTINGS_TAB_IDS.includes(saved)) {
         state.activeTab = saved;
       }
     } catch (error) {
-      state.activeTab = state.activeTab || 'azure';
+      state.activeTab = state.activeTab || 'ai';
     }
   }
 
@@ -309,7 +349,16 @@ var Settings = (function() {
     search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
     alert: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
     close: '<path d="M18 6L6 18"/><path d="m6 6 12 12"/>',
-    plus: '<path d="M5 12h14"/><path d="M12 5v14"/>'
+    plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
+    plug: '<path d="M9 2v6"/><path d="M15 2v6"/><path d="M6 8h12v3a6 6 0 0 1-12 0V8Z"/><path d="M12 17v5"/>',
+    gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/>',
+    globe: '<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
+    server: '<rect x="3" y="4" width="18" height="7" rx="1.5"/><rect x="3" y="13" width="18" height="7" rx="1.5"/><circle cx="7" cy="7.5" r="0.6"/><circle cx="7" cy="16.5" r="0.6"/>',
+    activity: '<path d="M22 12h-4l-3 8-4-16-3 8H2"/>',
+    trash: '<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>',
+    check: '<polyline points="20 6 9 17 4 12"/>',
+    users: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+    info: '<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>'
   };
 
   function icon(name, size = 16) {
@@ -482,13 +531,17 @@ var Settings = (function() {
     setTimeout(() => t.remove(), 4000);
   }
 
-  // Check tab visibility
+  // Check tab visibility. Supports composite sections via TAB_ALIASES so a
+  // single active section (e.g. "notifications") can surface multiple legacy
+  // renderers ("sharepoint" + "teams").
   function isVisible(tabId, keywords) {
     const query = state.searchQuery.trim().toLowerCase();
     if (query) {
       return keywords.toLowerCase().includes(query);
     }
-    return state.activeTab === tabId;
+    if (state.activeTab === tabId) return true;
+    const aliases = TAB_ALIASES[state.activeTab] || [];
+    return aliases.includes(tabId);
   }
 
   // Chip
@@ -502,54 +555,49 @@ var Settings = (function() {
     return `<span class="settings-chip ${variants[variant] || variants.default}">${esc(label)}</span>`;
   }
 
-  // Render header
+  // Render header — Dynatrace-style compact header (title + search).
   function renderHeader() {
     return `
-      <div class="settings-header">
+      <div class="settings-header kfh-settings-header">
         <div class="settings-hero">
           <div class="settings-hero-copy">
             <h1 class="settings-title">Settings</h1>
           </div>
           <div class="settings-actions">
-            <div class="settings-search">
-              <span class="settings-search-icon">${icon('search', 16)}</span>
-              <input id="settings-search" type="text" placeholder="Search variables: redisHost, serverPort, aiMode..." class="settings-search-input" value="${esc(state.searchQuery)}">
-            </div>
             <button onclick="Settings.resetSettings()" class="settings-btn settings-btn-outline">Reset</button>
           </div>
         </div>
-        
       </div>
     `;
   }
 
   function settingsMenuItems() {
+    // KFH-focused Dynatrace-style sub-nav (image 1). Each item is a section
+    // rendered in the main pane. Icons come from the local `icons` map.
     return [
-      { id: 'azure', icon: 'cloud', label: 'Azure OpenAI', hint: 'AI endpoints, deployments, keys' },
-      { id: 'databases', icon: 'database', label: 'Databases', hint: 'Additional DB and Neo4j metadata' },
-      { id: 'sharepoint', icon: 'file', label: 'SharePoint', hint: 'Evidence artifact storage' },
-      { id: 'teams', icon: 'chat', label: 'Microsoft Teams', hint: 'Notification webhooks' },
-      { id: 'infrastructure', icon: 'bolt', label: 'Servers & Index', hint: 'Redis, Kafka, index storage' },
-      { id: 'connectors', icon: 'database', label: 'Connections', hint: 'Data source connectors & collectors', route: 'connections' },
-      { id: 'system', icon: 'bolt', label: 'System Variables', hint: 'Runtime, SSL, AI mode' }
+      { id: 'ai',             icon: 'cloud',    label: 'AI Providers',     hint: 'Azure OpenAI endpoints, deployments, keys' },
+      { id: 'databases',      icon: 'database', label: 'Databases',        hint: 'Neo4j & database connectors' },
+      { id: 'notifications',  icon: 'chat',     label: 'Notifications',    hint: 'SharePoint evidence + Microsoft Teams webhooks' },
+      { id: 'infrastructure', icon: 'bolt',     label: 'Infrastructure',   hint: 'Redis, Kafka, index storage' },
+      { id: 'connections',    icon: 'plug',     label: 'Connections',      hint: 'Data source connector catalog' },
+      { id: 'system',         icon: 'gear',     label: 'System Variables', hint: 'Runtime, SSL, AI mode' }
     ];
   }
 
   function renderSettingsMenu() {
     const searching = state.searchQuery.trim().length > 0;
     return `
-      <aside class="settings-local-sidebar" aria-label="Settings sections">
-        <div class="settings-menu-head">
-          <div class="settings-menu-kicker">Configuration menu</div>
-          <div class="settings-menu-title">Sections</div>
-          ${searching ? `<div class="settings-menu-searching">Filtering variable matches</div>` : ''}
+      <aside class="settings-local-sidebar kfh-settings-sidebar" aria-label="Settings sections">
+        <div class="kfh-settings-search">
+          <span class="kfh-settings-search-icon">${icon('search', 14)}</span>
+          <input id="settings-search" type="text" placeholder="Search settings" class="kfh-settings-search-input" value="${esc(state.searchQuery)}" autocomplete="off">
         </div>
-        <nav class="settings-tabs" aria-label="Settings section navigation">
+        ${searching ? '<div class="settings-menu-searching kfh-settings-menu-searching">Filtering variable matches</div>' : ''}
+        <nav class="settings-tabs kfh-settings-tabs" aria-label="Settings section navigation">
           ${settingsMenuItems().map(item => {
-            const onclick = item.route ? `Router.navigate('${item.route}')` : `Settings.setTab('${item.id}')`;
-            const isActive = !item.route && state.activeTab === item.id;
+            const isActive = state.activeTab === item.id;
             return `
-            <button onclick="${onclick}" class="settings-tab ${isActive ? 'active' : ''}" aria-current="${isActive ? 'page' : 'false'}">
+            <button onclick="Settings.setTab('${item.id}')" class="settings-tab kfh-settings-tab ${isActive ? 'active' : ''}" aria-current="${isActive ? 'page' : 'false'}">
               <span class="settings-tab-icon">${icon(item.icon, 16)}</span>
               <span class="settings-tab-copy">
                 <span class="settings-tab-label">${esc(item.label)}</span>
@@ -970,6 +1018,7 @@ var Settings = (function() {
 
   // Render modal
   function renderModal() {
+    if (state.connectionPopup) return renderConnectionModal();
     if (!state.modalOpen) return '';
     if (state.modalType === 'azure') {
       return renderAzureModal();
@@ -1999,22 +2048,950 @@ var Settings = (function() {
     closeModal();
   }
 
+  // ============================================================
+  // Connections (Dynatrace-style catalog + Add/View popup)
+  // Consolidates the removed #connectors marketplace into a single
+  // Settings section. All connector CRUD still goes through the
+  // existing APIClient.connectors.* endpoints (no new backend).
+  // ============================================================
+
+  // Static fallback catalog mirrors the KFH plugin set. Used when
+  // APIClient.connectors.types is unavailable, and to enrich descriptions
+  // the backend may omit.
+  const CONNECTION_CATALOG_FALLBACK = [
+    { pluginType: 'BMC',         displayName: 'BMC Helix',         icon: 'server',   category: 'Event Management',        description: 'Ingest events from BMC Helix / TrueSight event management into the causal funnel.',        available: true },
+    { pluginType: 'APPDYNAMICS', displayName: 'AppDynamics',       icon: 'activity', category: 'Application Performance', description: 'Ingest application errors, slow transactions and violations from AppDynamics.',           available: true },
+    { pluginType: 'VROPS',       displayName: 'VMware vROps',      icon: 'cloud',    category: 'Infrastructure',          description: 'Pull virtualization metrics and alerts from vRealize Operations / Aria Operations.',      available: true },
+    { pluginType: 'SCOM',        displayName: 'Microsoft SCOM',    icon: 'server',   category: 'Infrastructure',          description: 'Collect infrastructure alerts from System Center Operations Manager over WinRM / PowerShell.', available: true },
+    { pluginType: 'EMCO',        displayName: 'EMCO Ping Monitor', icon: 'database', category: 'Network',                 description: 'Network availability and latency from EMCO Ping Monitor (SQL Server source).',           available: true }
+  ];
+
+  const CONNECTION_OWNER_TEAMS = ['Platform Ops', 'App Support', 'Network Ops', 'Storage Team', 'NOC'];
+  const CONNECTION_ENVIRONMENTS = ['PROD', 'UAT', 'DEV'];
+  const CONNECTION_COUNTRIES = ['KW', 'BH', 'EG'];
+
+  function connectionCatalog() {
+    if (Array.isArray(state.connectorTypes) && state.connectorTypes.length) {
+      return state.connectorTypes.map(function (t) {
+        const fallback = CONNECTION_CATALOG_FALLBACK.find(function (f) { return f.pluginType === (t.pluginType || t.value); }) || {};
+        return {
+          pluginType: t.pluginType || t.value,
+          displayName: t.displayName || t.label || fallback.displayName || (t.pluginType || t.value),
+          icon: t.icon || fallback.icon || 'server',
+          category: t.category || fallback.category || 'Connector',
+          description: t.description || fallback.description || 'Data source connector for governed telemetry collection.',
+          available: t.available !== false,
+          fields: Array.isArray(t.fields) ? t.fields : [],
+          defaults: t.defaults || {}
+        };
+      });
+    }
+    return CONNECTION_CATALOG_FALLBACK.slice();
+  }
+
+  function connectionCatalogEntry(pluginType) {
+    const catalog = connectionCatalog();
+    return catalog.find(function (c) { return c.pluginType === pluginType; })
+        || CONNECTION_CATALOG_FALLBACK.find(function (c) { return c.pluginType === pluginType; })
+        || { pluginType: pluginType, displayName: pluginType, icon: 'server', category: 'Connector', description: '', available: true };
+  }
+
+  function normalizeConnectorRow(row) {
+    if (!row || typeof row !== 'object') return null;
+    const attrs = row.attributes || row.attr || {};
+    const pluginType = row.type || row.pluginType || attrs.pluginType || attrs.type || '';
+    return {
+      raw: row,
+      id: row.id || row.connectorId || attrs.id || null,
+      name: row.name || attrs.name || pluginType,
+      enabled: row.enabled !== false,
+      pluginType: pluginType,
+      countryCode: row.countryCode || attrs.countryCode || '',
+      environment: row.environmentScope || row.environment || attrs.environment || attrs.environmentScope || '',
+      ownerTeam: row.ownerTeam || attrs.ownerTeam || '',
+      baseUrl: row.baseUrl || attrs.baseUrl || attrs.endpoint || attrs.controllerUrl || attrs.host || attrs.sqlServer || '',
+      authMode: row.authMode || attrs.authMode || defaultAuthModeFor(pluginType),
+      lastTestStatus: row.lastTestStatus || attrs.lastTestStatus || '',
+      lastSyncAt: row.lastSyncAt || row.lastRunAt || attrs.lastSyncAt || null,
+      attributes: attrs
+    };
+  }
+
+  function defaultAuthModeFor(pluginType) {
+    switch (pluginType) {
+      case 'BMC': return 'AccessKey';
+      case 'APPDYNAMICS': return 'BasicAuth';
+      case 'VROPS': return 'Token';
+      case 'SCOM': return 'WinRM';
+      case 'EMCO': return 'SqlServerCredentials';
+      default: return 'BasicAuth';
+    }
+  }
+
+  async function loadConnectors() {
+    if (!window.APIClient || !APIClient.connectors || !APIClient.connectors.list) return;
+    state.connectorsLoading = true;
+    state.connectorsError = null;
+    try {
+      const response = await APIClient.connectors.list();
+      const rows = response && Array.isArray(response.content) ? response.content : Array.isArray(response) ? response : [];
+      state.connectors = rows.map(normalizeConnectorRow).filter(Boolean);
+      state.connectorsLoaded = true;
+    } catch (error) {
+      state.connectorsError = errorMessage(error, 'Unable to load connectors');
+      state.connectorsLoaded = true;
+    } finally {
+      state.connectorsLoading = false;
+      // Only re-render when the Connections section is visible so we don't
+      // trash other sections mid-interaction.
+      if (state.activeTab === 'connections' || state.searchQuery) render();
+    }
+  }
+
+  async function loadConnectorTypes() {
+    if (!window.APIClient || !APIClient.connectors || !APIClient.connectors.types) return;
+    try {
+      const response = await APIClient.connectors.types();
+      const rows = response && Array.isArray(response.content) ? response.content : Array.isArray(response) ? response : [];
+      if (rows.length) state.connectorTypes = rows;
+    } catch (error) {
+      // Silent fallback to the static catalog.
+      console.warn('[Settings] Connector types API unavailable — using static catalog', error);
+    } finally {
+      if (state.activeTab === 'connections' || state.searchQuery) render();
+    }
+  }
+
+  function connectorsForType(pluginType) {
+    return (state.connectors || []).filter(function (c) { return c.pluginType === pluginType; });
+  }
+
+  function renderConnections() {
+    if (!isVisible('connections', 'connections connector plugin bmc scom vrops appdynamics emco integrations catalog data source')) return '';
+    if (state.connectionDetailType) {
+      return renderConnectionDetailPage(state.connectionDetailType);
+    }
+    const catalog = connectionCatalog();
+    const rows = catalog.map(function (entry) {
+      const count = connectorsForType(entry.pluginType).length;
+      const disabled = entry.available === false;
+      return `
+        <button type="button" class="kfh-conn-row" ${disabled ? 'disabled aria-disabled="true"' : `onclick="Settings.openConnectionDetail('${esc(entry.pluginType)}')"`}>
+          <span class="kfh-conn-row-ic kfh-conn-ic-${esc(String(entry.pluginType).toLowerCase())}">${icon(entry.icon || 'server', 20)}</span>
+          <span class="kfh-conn-row-body">
+            <span class="kfh-conn-row-title">${esc(entry.displayName)}${disabled ? ' <span class="kfh-conn-row-soon">Coming soon</span>' : ''}</span>
+            <span class="kfh-conn-row-desc">${esc(entry.description || '')}</span>
+          </span>
+          <span class="kfh-conn-row-meta">
+            <span class="kfh-conn-row-cat">${esc(entry.category || '')}</span>
+            <span class="kfh-conn-row-count" title="Existing connections in this tenant">${count} conn.</span>
+            <span class="kfh-conn-row-chev" aria-hidden="true">›</span>
+          </span>
+        </button>`;
+    }).join('');
+
+    const loadingBanner = state.connectorsLoading && !state.connectorsLoaded
+      ? '<div class="kfh-conn-hint">Loading tenant connectors…</div>' : '';
+    const errorBanner = state.connectorsError
+      ? `<div class="kfh-conn-hint kfh-conn-hint-error">${esc(state.connectorsError)}</div>` : '';
+
+    return `
+      <div class="animate-fade-in">
+        <div class="kfh-conn-shell">
+          ${loadingBanner}
+          ${errorBanner}
+          <div class="kfh-conn-list" role="list">${rows}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  // ---- Connector detail page (Dynatrace "Connections › <Name>") --------
+
+  function renderConnectionDetailPage(pluginType) {
+    const entry = connectionCatalogEntry(pluginType);
+    const all = connectorsForType(pluginType);
+    const q = String(state.connectionDetailSearch || '').trim().toLowerCase();
+    const ownerFilter = String(state.connectionDetailOwner || '').trim();
+    const filtered = all.filter(function (row) {
+      if (q && !(String(row.name || '').toLowerCase().includes(q))) return false;
+      if (ownerFilter && (row.ownerTeam || '') !== ownerFilter) return false;
+      return true;
+    });
+
+    const owners = Array.from(new Set(all.map(function (r) { return r.ownerTeam || ''; }).filter(Boolean))).sort();
+    const ownerOptions = ['<option value="">All connections</option>']
+      .concat(owners.map(function (o) { return `<option value="${esc(o)}" ${ownerFilter === o ? 'selected' : ''}>${esc(o)}</option>`; }))
+      .join('');
+
+    const tableRows = filtered.length ? filtered.map(function (row) {
+      const shareCount = Array.isArray(row.attributes && row.attributes.sharedWithTeams) ? row.attributes.sharedWithTeams.length : 0;
+      const shareIcon = shareCount > 0
+        ? `<span class="kfh-conn-detail-shared" title="Shared with ${shareCount} team(s)">${icon('users', 14)}</span>`
+        : '';
+      const owner = row.ownerTeam
+        ? esc(row.ownerTeam)
+        : `<span class="kfh-conn-detail-owner-unknown">Unknown (${esc(String(row.id || '').slice(0, 8))}…)</span>`;
+      return `
+        <tr class="kfh-conn-detail-row" onclick="Settings.openConnectionEditor('${esc(row.id)}')">
+          <td class="kfh-conn-detail-col-name">
+            <span class="kfh-conn-detail-name">${esc(row.name || '(unnamed)')}</span>
+            ${shareIcon}
+          </td>
+          <td class="kfh-conn-detail-col-owner">${owner}</td>
+          <td class="kfh-conn-detail-col-actions" onclick="event.stopPropagation()">
+            <button type="button" class="kfh-conn-detail-menu" title="Actions" onclick="Settings.openConnectionEditor('${esc(row.id)}')" aria-label="Open connection">⋯</button>
+          </td>
+        </tr>`;
+    }).join('') : `
+      <tr><td colspan="3" class="kfh-conn-detail-empty">
+        ${all.length === 0
+          ? `No connections yet. Use <strong>+ Connection</strong> to add your first ${esc(entry.displayName)} connection.`
+          : 'No connections match your filters.'}
+      </td></tr>`;
+
+    const total = filtered.length;
+    const pageOf = total === 0 ? 0 : 1;
+    const learnMoreLink = entry.docsUrl
+      ? ` <a class="kfh-conn-detail-learn" href="${esc(entry.docsUrl)}" target="_blank" rel="noopener">Learn more ↗</a>`
+      : '';
+
+    return `
+      <div class="animate-fade-in">
+        <div class="kfh-conn-shell kfh-conn-detail-shell">
+          <div class="kfh-conn-detail-crumb">
+            <a href="#" class="kfh-conn-detail-crumb-link" onclick="event.preventDefault(); Settings.closeConnectionDetail()">Connections</a>
+            <span class="kfh-conn-detail-crumb-sep">›</span>
+            <span class="kfh-conn-detail-crumb-current">${esc(entry.displayName)}</span>
+          </div>
+          <div class="kfh-conn-detail-header">
+            <span class="kfh-conn-detail-ic kfh-conn-ic-${esc(String(entry.pluginType).toLowerCase())}">${icon(entry.icon || 'server', 26)}</span>
+            <div class="kfh-conn-detail-header-body">
+              <h1 class="kfh-conn-detail-title">${esc(entry.displayName)}</h1>
+              <p class="kfh-conn-detail-desc">${esc(entry.description || '')}${learnMoreLink}</p>
+            </div>
+          </div>
+
+          <div class="kfh-conn-detail-toolbar">
+            <div class="kfh-conn-detail-filter">
+              <label class="kfh-conn-detail-flabel">Name</label>
+              <input type="text" class="kfh-conn-detail-fsearch" value="${esc(state.connectionDetailSearch)}"
+                     placeholder="Search by name" oninput="Settings.setConnectionDetailSearch(this.value)">
+            </div>
+            <div class="kfh-conn-detail-filter">
+              <label class="kfh-conn-detail-flabel">Owner</label>
+              <select class="kfh-conn-detail-fselect" onchange="Settings.setConnectionDetailOwner(this.value)">${ownerOptions}</select>
+            </div>
+            <div class="kfh-conn-detail-toolbar-spacer"></div>
+            <button type="button" class="settings-btn settings-btn-primary kfh-conn-detail-add"
+                    onclick="Settings.openConnectionPopup('${esc(entry.pluginType)}', null, true)">${icon('plus', 14)} Connection</button>
+          </div>
+
+          <div class="kfh-conn-detail-table-wrap">
+            <table class="kfh-conn-detail-table">
+              <thead>
+                <tr>
+                  <th class="kfh-conn-detail-col-name">Connection</th>
+                  <th class="kfh-conn-detail-col-owner">Owner</th>
+                  <th class="kfh-conn-detail-col-actions" aria-label="Actions"></th>
+                </tr>
+              </thead>
+              <tbody>${tableRows}</tbody>
+            </table>
+          </div>
+
+          <div class="kfh-conn-detail-footer">
+            <div class="kfh-conn-detail-rows-per-page">
+              <select class="kfh-conn-detail-fselect" disabled aria-label="Rows per page"><option>100</option></select>
+              <span>rows per page</span>
+            </div>
+            <div class="kfh-conn-detail-pager">
+              <span>Page <strong>${pageOf}</strong> of <strong>${pageOf}</strong></span>
+              <button type="button" class="kfh-conn-detail-pager-btn" disabled aria-label="Previous page">‹</button>
+              <button type="button" class="kfh-conn-detail-pager-btn" disabled aria-label="Next page">›</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function openConnectionDetail(pluginType) {
+    state.connectionDetailType = pluginType;
+    state.connectionDetailSearch = '';
+    state.connectionDetailOwner = '';
+    render();
+  }
+
+  function closeConnectionDetail() {
+    state.connectionDetailType = null;
+    state.connectionDetailSearch = '';
+    state.connectionDetailOwner = '';
+    render();
+  }
+
+  function setConnectionDetailSearch(value) {
+    state.connectionDetailSearch = String(value || '');
+    render();
+    const el = document.querySelector('.kfh-conn-detail-fsearch');
+    if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+  }
+
+  function setConnectionDetailOwner(value) {
+    state.connectionDetailOwner = String(value || '');
+    render();
+  }
+
+  // ---- Add / View connection popup ------------------------------------
+
+  function newConnectionDraft(pluginType) {
+    const entry = connectionCatalogEntry(pluginType);
+    const defaults = entry.defaults || {};
+    const s = session();
+    const country = CONNECTION_COUNTRIES.includes(s.countryCode) ? s.countryCode : 'KW';
+    const environment = CONNECTION_ENVIRONMENTS.includes(s.environment) ? s.environment : 'PROD';
+    return {
+      pluginType: pluginType,
+      name: '',
+      enabled: true,
+      countryCode: country,
+      environment: environment,
+      ownerTeam: '',
+      authMode: defaults.authMode || defaultAuthModeFor(pluginType),
+      baseUrl: defaults.baseUrl || '',
+      // Credential fields (per auth mode). Kept in-memory only, cleared on close.
+      accessKey: '',
+      accessSecretKey: '',
+      username: '',
+      password: '',
+      token: '',
+      // Plugin-specific fields
+      managementServer: '',
+      domain: '',
+      winrmPort: 5986,
+      useHttps: true,
+      sqlServer: '',
+      sqlPort: 1433,
+      kfhDatabase: '',
+      cctvDatabase: '',
+      kfhUsername: '',
+      kfhPassword: '',
+      cctvUsername: '',
+      cctvPassword: '',
+      sharedWithTeams: []
+    };
+  }
+
+  function draftFromExisting(row) {
+    if (!row) return newConnectionDraft('BMC');
+    const attrs = row.attributes || {};
+    return {
+      pluginType: row.pluginType,
+      id: row.id,
+      name: row.name,
+      enabled: row.enabled !== false,
+      countryCode: row.countryCode || 'KW',
+      environment: row.environment || 'PROD',
+      ownerTeam: row.ownerTeam || '',
+      authMode: row.authMode || defaultAuthModeFor(row.pluginType),
+      baseUrl: attrs.baseUrl || attrs.controllerUrl || attrs.host || attrs.sqlServer || '',
+      // Credentials never come back from the API in plaintext — leave blank.
+      accessKey: '', accessSecretKey: '', username: '', password: '', token: '',
+      managementServer: attrs.managementServer || '',
+      domain: attrs.domain || '',
+      winrmPort: attrs.winrmPort || 5986,
+      useHttps: attrs.useHttps !== false,
+      sqlServer: attrs.sqlServer || '',
+      sqlPort: attrs.sqlPort || 1433,
+      kfhDatabase: attrs.kfhDatabase || '',
+      cctvDatabase: attrs.cctvDatabase || '',
+      kfhUsername: '', kfhPassword: '', cctvUsername: '', cctvPassword: '',
+      sharedWithTeams: Array.isArray(attrs.sharedWithTeams) ? attrs.sharedWithTeams.slice() : []
+    };
+  }
+
+  function openConnectionPopup(pluginType, connectorId, forceForm) {
+    const existing = connectorId ? (state.connectors.find(function (c) { return c.id === connectorId; }) || null) : null;
+    let mode;
+    if (existing) {
+      mode = 'form';
+    } else if (forceForm === true) {
+      mode = 'form';
+    } else {
+      // Legacy behaviour (deep-linking from other pages without the detail
+      // page): if there are existing connections of this type show the
+      // catalog list, otherwise open the empty form.
+      mode = connectorsForType(pluginType).length > 0 ? 'catalog' : 'form';
+    }
+    state.connectionPopup = {
+      pluginType: pluginType,
+      mode: mode,
+      activeTab: 'setup',
+      connectorId: existing ? existing.id : null,
+      draft: existing ? draftFromExisting(existing) : newConnectionDraft(pluginType),
+      testing: false,
+      saving: false,
+      deleting: false,
+      readOnly: !canWriteConnectors(),
+      message: null,
+      messageType: 'info'
+    };
+    render();
+  }
+
+  function canWriteConnectors() {
+    const perms = (session().permissions || []);
+    if (perms.includes('*')) return true;
+    // No explicit permission flag today → treat operator as writer, but
+    // never fabricate credentials or bypass server-side auth.
+    return true;
+  }
+
+  function closeConnectionPopup() {
+    // Wipe sensitive fields from memory before releasing the draft.
+    if (state.connectionPopup && state.connectionPopup.draft) {
+      const d = state.connectionPopup.draft;
+      d.accessKey = ''; d.accessSecretKey = ''; d.password = ''; d.token = '';
+      d.kfhPassword = ''; d.cctvPassword = '';
+    }
+    state.connectionPopup = null;
+    render();
+  }
+
+  function switchConnectionTab(tab) {
+    if (!state.connectionPopup) return;
+    if (tab !== 'setup' && tab !== 'share') return;
+    state.connectionPopup.activeTab = tab;
+    render();
+  }
+
+  function setConnectionPopupMode(mode) {
+    if (!state.connectionPopup) return;
+    state.connectionPopup.mode = mode;
+    if (mode === 'form' && !state.connectionPopup.connectorId) {
+      state.connectionPopup.draft = newConnectionDraft(state.connectionPopup.pluginType);
+    }
+    render();
+  }
+
+  function updateConnectionField(field, value) {
+    if (!state.connectionPopup || !state.connectionPopup.draft) return;
+    state.connectionPopup.draft[field] = value;
+    // Only fields that affect visible controls need a re-render.
+    if (field === 'authMode' || field === 'countryCode' || field === 'environment' || field === 'enabled') {
+      render();
+    }
+  }
+
+  function toggleConnectionShareTeam(team) {
+    if (!state.connectionPopup || !state.connectionPopup.draft) return;
+    const list = state.connectionPopup.draft.sharedWithTeams || [];
+    const idx = list.indexOf(team);
+    if (idx >= 0) list.splice(idx, 1); else list.push(team);
+    state.connectionPopup.draft.sharedWithTeams = list;
+    render();
+  }
+
+  function connectionEditPopup(connectorId) {
+    const row = state.connectors.find(function (c) { return c.id === connectorId; });
+    if (!row) return;
+    openConnectionPopup(row.pluginType, row.id);
+    // Ensure form mode
+    if (state.connectionPopup) {
+      state.connectionPopup.mode = 'form';
+      state.connectionPopup.connectorId = row.id;
+      render();
+    }
+  }
+
+  function buildConnectionPayload(draft) {
+    const secretsPlain = {};
+    if (draft.pluginType === 'BMC') {
+      if (draft.accessKey) secretsPlain.accessKey = draft.accessKey;
+      if (draft.accessSecretKey) secretsPlain.accessSecretKey = draft.accessSecretKey;
+    } else if (draft.pluginType === 'APPDYNAMICS') {
+      if (draft.username) secretsPlain.username = draft.username;
+      if (draft.password) secretsPlain.password = draft.password;
+    } else if (draft.pluginType === 'VROPS') {
+      if (draft.token) secretsPlain.token = draft.token;
+    } else if (draft.pluginType === 'SCOM') {
+      if (draft.username) secretsPlain.username = draft.username;
+      if (draft.password) secretsPlain.password = draft.password;
+    } else if (draft.pluginType === 'EMCO') {
+      if (draft.kfhUsername) secretsPlain.kfhUsername = draft.kfhUsername;
+      if (draft.kfhPassword) secretsPlain.kfhPassword = draft.kfhPassword;
+      if (draft.cctvUsername) secretsPlain.cctvUsername = draft.cctvUsername;
+      if (draft.cctvPassword) secretsPlain.cctvPassword = draft.cctvPassword;
+    }
+
+    const attributes = {
+      pluginType: draft.pluginType,
+      countryCode: draft.countryCode,
+      environment: draft.environment,
+      environmentScope: draft.environment,
+      ownerTeam: draft.ownerTeam || null,
+      authMode: draft.authMode,
+      baseUrl: draft.baseUrl || null,
+      sharedWithTeams: Array.isArray(draft.sharedWithTeams) ? draft.sharedWithTeams.slice() : []
+    };
+    if (draft.pluginType === 'SCOM') {
+      attributes.managementServer = draft.managementServer || null;
+      attributes.domain = draft.domain || null;
+      attributes.winrmPort = Number(draft.winrmPort) || 5986;
+      attributes.useHttps = draft.useHttps !== false;
+    }
+    if (draft.pluginType === 'EMCO') {
+      attributes.sqlServer = draft.sqlServer || null;
+      attributes.sqlPort = Number(draft.sqlPort) || 1433;
+      attributes.kfhDatabase = draft.kfhDatabase || null;
+      attributes.cctvDatabase = draft.cctvDatabase || null;
+    }
+    if (Object.keys(secretsPlain).length) {
+      attributes.secretsPlain = secretsPlain;
+    }
+    return { name: draft.name, enabled: draft.enabled !== false, attributes: attributes };
+  }
+
+  function validateConnectionDraft(draft) {
+    if (!draft.name || !draft.name.trim()) return 'Connection name is required.';
+    if (!draft.countryCode) return 'Country is required.';
+    if (!draft.environment) return 'Environment is required.';
+    if (['BMC', 'APPDYNAMICS', 'VROPS'].includes(draft.pluginType) && !draft.baseUrl.trim()) {
+      return 'Endpoint / Base URL is required.';
+    }
+    // On create, require the credentials required by the auth mode.
+    if (!state.connectionPopup.connectorId) {
+      if (draft.pluginType === 'BMC' && (!draft.accessKey || !draft.accessSecretKey)) {
+        return 'Access key and access secret key are required.';
+      }
+      if ((draft.pluginType === 'APPDYNAMICS' || draft.pluginType === 'SCOM') && (!draft.username || !draft.password)) {
+        return 'Username and password are required.';
+      }
+      if (draft.pluginType === 'VROPS' && !draft.token) return 'API token is required.';
+      if (draft.pluginType === 'EMCO' && (!draft.kfhUsername || !draft.kfhPassword)) {
+        return 'KFH SQL Server credentials are required.';
+      }
+    }
+    return null;
+  }
+
+  async function saveConnection() {
+    if (!state.connectionPopup) return;
+    const popup = state.connectionPopup;
+    const draft = popup.draft;
+    const err = validateConnectionDraft(draft);
+    if (err) {
+      popup.message = err; popup.messageType = 'error';
+      render();
+      return;
+    }
+    if (!window.APIClient || !APIClient.connectors) {
+      popup.message = 'Connector API is not available.'; popup.messageType = 'error';
+      render();
+      return;
+    }
+    const payload = buildConnectionPayload(draft);
+    popup.saving = true; popup.message = null;
+    render();
+    try {
+      if (popup.connectorId) {
+        await APIClient.connectors.update(popup.connectorId, payload);
+        toast('Connection updated', 'success');
+      } else {
+        await APIClient.connectors.create(payload);
+        toast('Connection saved', 'success');
+      }
+      // Wipe secrets, refresh the list, close the popup.
+      draft.accessKey = draft.accessSecretKey = draft.password = draft.token = '';
+      draft.kfhPassword = draft.cctvPassword = '';
+      state.connectionPopup = null;
+      await loadConnectors();
+      render();
+    } catch (error) {
+      popup.saving = false;
+      popup.message = errorMessage(error, 'Unable to save connection');
+      popup.messageType = 'error';
+      render();
+    }
+  }
+
+  async function testConnection() {
+    if (!state.connectionPopup) return;
+    const popup = state.connectionPopup;
+    if (!popup.connectorId) {
+      popup.message = 'Save first, then test — a connector must exist before it can be probed.';
+      popup.messageType = 'info';
+      render();
+      return;
+    }
+    if (!window.APIClient || !APIClient.connectors || !APIClient.connectors.test) return;
+    popup.testing = true; popup.message = null;
+    render();
+    try {
+      const result = await APIClient.connectors.test(popup.connectorId);
+      const status = normalizeStatus(result && (result.status || (result.pass === false ? 'Fail' : 'Pass')));
+      popup.message = status === 'Pass'
+        ? ((result && result.message) || 'Connection test passed.')
+        : ((result && result.message) || 'Connection test failed.');
+      popup.messageType = status === 'Pass' ? 'success' : 'error';
+    } catch (error) {
+      popup.message = errorMessage(error, 'Connection test failed');
+      popup.messageType = 'error';
+    } finally {
+      popup.testing = false;
+      render();
+    }
+  }
+
+  async function deleteConnection() {
+    if (!state.connectionPopup || !state.connectionPopup.connectorId) return;
+    if (!confirm('Delete this connection? This action cannot be undone.')) return;
+    const popup = state.connectionPopup;
+    popup.deleting = true;
+    render();
+    try {
+      await APIClient.connectors.delete(popup.connectorId);
+      toast('Connection deleted', 'info');
+      state.connectionPopup = null;
+      await loadConnectors();
+      render();
+    } catch (error) {
+      popup.deleting = false;
+      popup.message = errorMessage(error, 'Unable to delete connection');
+      popup.messageType = 'error';
+      render();
+    }
+  }
+
+  function renderConnectionModal() {
+    const popup = state.connectionPopup;
+    if (!popup) return '';
+    const entry = connectionCatalogEntry(popup.pluginType);
+    const existing = connectorsForType(popup.pluginType);
+    const isEditing = Boolean(popup.connectorId);
+    const isCatalog = popup.mode === 'catalog' && existing.length > 0 && !isEditing;
+    const heading = isEditing ? 'View connection' : (isCatalog ? `${entry.displayName} — Connections` : 'Add connection');
+
+    let body;
+    if (isCatalog) {
+      body = renderConnectionCatalogList(entry, existing);
+    } else {
+      body = renderConnectionForm(entry, popup);
+    }
+
+    return `
+      <div id="settings-modal-overlay" class="settings-modal-overlay open kfh-conn-modal-overlay" onclick="Settings.keepConnectionPopup(event)">
+        <div class="settings-modal kfh-conn-modal">
+          <div class="settings-modal-header kfh-conn-modal-header">
+            <div class="kfh-conn-modal-title-wrap">
+              <span class="kfh-conn-modal-ic kfh-conn-ic-${esc(String(entry.pluginType).toLowerCase())}">${icon(entry.icon || 'server', 18)}</span>
+              <div>
+                <h3 class="settings-modal-title kfh-conn-modal-title">${esc(heading)}</h3>
+                <p class="settings-modal-subtitle kfh-conn-modal-sub">${esc(entry.displayName)} · ${esc(entry.category || '')}</p>
+              </div>
+            </div>
+            <button onclick="Settings.closeConnectionPopup()" class="settings-modal-close" aria-label="Close">${icon('close', 20)}</button>
+          </div>
+          ${body}
+        </div>
+      </div>
+    `;
+  }
+
+  function renderConnectionCatalogList(entry, existing) {
+    const rows = existing.map(function (row) {
+      const status = row.enabled ? 'Enabled' : 'Disabled';
+      const scope = `${esc(row.countryCode || '—')} · ${esc(row.environment || '—')}`;
+      return `
+        <div class="kfh-conn-inst-row">
+          <div class="kfh-conn-inst-body">
+            <div class="kfh-conn-inst-name">${esc(row.name)}</div>
+            <div class="kfh-conn-inst-meta">${scope} · ${esc(row.authMode || '')}</div>
+          </div>
+          <div class="kfh-conn-inst-status kfh-conn-inst-status-${row.enabled ? 'ok' : 'off'}">${esc(status)}</div>
+          <div class="kfh-conn-inst-actions">
+            <button type="button" class="settings-btn settings-btn-outline" onclick="Settings.openConnectionEditor('${esc(row.id)}')">View / Edit</button>
+          </div>
+        </div>`;
+    }).join('');
+
+    return `
+      <div class="settings-modal-body kfh-conn-modal-body">
+        <div class="kfh-conn-banner kfh-conn-banner-info">
+          <span class="kfh-conn-banner-ic">${icon('info', 16)}</span>
+          <div>${esc(entry.description || '')}</div>
+        </div>
+        <div class="kfh-conn-inst-head">
+          <div class="kfh-conn-inst-head-title">Existing connections (${existing.length})</div>
+          <button type="button" class="settings-btn settings-btn-primary" onclick="Settings.setConnectionPopupMode('form')">${icon('plus', 14)} New connection</button>
+        </div>
+        <div class="kfh-conn-inst-list">${rows}</div>
+      </div>
+      <div class="settings-modal-footer kfh-conn-modal-footer">
+        <button type="button" onclick="Settings.closeConnectionPopup()" class="settings-btn settings-btn-primary">Close</button>
+      </div>
+    `;
+  }
+
+  function renderConnectionForm(entry, popup) {
+    const draft = popup.draft;
+    const testing = popup.testing;
+    const saving = popup.saving;
+    const readOnly = popup.readOnly === true;
+    const isEditing = Boolean(popup.connectorId);
+    const activeTab = popup.activeTab || 'setup';
+
+    const infoBanner = readOnly
+      ? `<div class="kfh-conn-banner kfh-conn-banner-info"><span class="kfh-conn-banner-ic">${icon('info', 16)}</span><div>You do not have the permission to change any values in this dialog.</div></div>`
+      : `<div class="kfh-conn-banner kfh-conn-banner-info"><span class="kfh-conn-banner-ic">${icon('info', 16)}</span><div>You are ${isEditing ? 'viewing' : 'creating a new connection to'} <strong>${esc(entry.displayName)}</strong>.</div></div>`;
+
+    const secBanner = `
+      <div class="kfh-conn-banner kfh-conn-banner-warn">
+        <span class="kfh-conn-banner-ic">${icon('alert', 16)}</span>
+        <div>For security reasons, KFH AIOps blocks outgoing traffic by default. You need to allow the URL under external requests.</div>
+        <button type="button" class="settings-btn settings-btn-outline kfh-conn-banner-btn" onclick="Settings.setTab('system')">Manage External Requests</button>
+      </div>`;
+
+    const msg = popup.message
+      ? `<div class="kfh-conn-msg kfh-conn-msg-${esc(popup.messageType || 'info')}">${esc(popup.message)}</div>`
+      : '';
+
+    const setupBody = renderConnectionSetupFields(entry, draft, readOnly, isEditing);
+    const shareBody = renderConnectionShareFields(draft, readOnly);
+
+    return `
+      <div class="settings-modal-body kfh-conn-modal-body">
+        ${infoBanner}
+        <div class="kfh-conn-tabs" role="tablist">
+          <button role="tab" aria-selected="${activeTab === 'setup'}" class="kfh-conn-tab ${activeTab === 'setup' ? 'active' : ''}" onclick="Settings.switchConnectionTab('setup')">Set up connection</button>
+          <button role="tab" aria-selected="${activeTab === 'share'}" class="kfh-conn-tab ${activeTab === 'share' ? 'active' : ''}" onclick="Settings.switchConnectionTab('share')">Share access</button>
+        </div>
+        ${activeTab === 'setup' ? secBanner : ''}
+        ${msg}
+        <div class="kfh-conn-tab-panel">
+          ${activeTab === 'setup' ? setupBody : shareBody}
+        </div>
+      </div>
+      <div class="settings-modal-footer kfh-conn-modal-footer">
+        ${isEditing && !readOnly ? `<button type="button" class="settings-btn settings-btn-danger-text" onclick="Settings.deleteConnection()" ${popup.deleting ? 'disabled' : ''}>${popup.deleting ? 'Deleting…' : 'Delete this connection'}</button>` : '<span></span>'}
+        <div class="kfh-conn-modal-footer-actions">
+          <button type="button" class="settings-btn settings-btn-outline" onclick="Settings.testConnection()" ${testing || readOnly ? 'disabled' : ''}>${testing ? 'Testing…' : 'Test connection'}</button>
+          <button type="button" class="settings-btn settings-btn-primary" onclick="Settings.saveConnection()" ${saving || readOnly ? 'disabled' : ''}>${saving ? 'Saving…' : (isEditing ? 'Save' : 'Save')}</button>
+          <button type="button" class="settings-btn settings-btn-outline" onclick="Settings.closeConnectionPopup()">Close</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderConnectionSetupFields(entry, draft, readOnly, isEditing) {
+    const ro = readOnly ? 'readonly disabled' : '';
+    const authOptions = ['AccessKey', 'BasicAuth', 'Token', 'WinRM', 'SqlServerCredentials']
+      .map(function (m) { return `<option value="${m}" ${draft.authMode === m ? 'selected' : ''}>${m}</option>`; }).join('');
+    const countryOptions = CONNECTION_COUNTRIES.map(function (c) {
+      return `<option value="${c}" ${draft.countryCode === c ? 'selected' : ''}>${c}</option>`;
+    }).join('');
+    const envOptions = CONNECTION_ENVIRONMENTS.map(function (e) {
+      return `<option value="${e}" ${draft.environment === e ? 'selected' : ''}>${e}</option>`;
+    }).join('');
+    const teamOptions = ['<option value="">— None —</option>'].concat(CONNECTION_OWNER_TEAMS.map(function (t) {
+      return `<option value="${t}" ${draft.ownerTeam === t ? 'selected' : ''}>${t}</option>`;
+    })).join('');
+
+    return `
+      <div class="kfh-conn-form">
+        <div class="kfh-conn-field kfh-conn-field-wide">
+          <label class="kfh-conn-label">Connection name<span class="kfh-conn-req">*</span></label>
+          <input type="text" class="kfh-conn-input" value="${esc(draft.name)}" oninput="Settings.updateConnectionField('name', this.value)" placeholder="e.g. kfh-${esc(String(entry.pluginType).toLowerCase())}-kw-prod" ${ro}>
+          <small class="kfh-conn-help">Unique and clearly identifiable connection name.</small>
+        </div>
+        <div class="kfh-conn-field">
+          <label class="kfh-conn-label">Type</label>
+          <select class="kfh-conn-input" disabled aria-disabled="true"><option>${esc(entry.displayName)}</option></select>
+          <small class="kfh-conn-help">${esc(entry.category || '')}${isEditing ? ' · read-only when editing' : ''}</small>
+        </div>
+        <div class="kfh-conn-field-row">
+          <div class="kfh-conn-field">
+            <label class="kfh-conn-label">Country</label>
+            <select class="kfh-conn-input" onchange="Settings.updateConnectionField('countryCode', this.value)" ${ro}>${countryOptions}</select>
+          </div>
+          <div class="kfh-conn-field">
+            <label class="kfh-conn-label">Environment</label>
+            <select class="kfh-conn-input" onchange="Settings.updateConnectionField('environment', this.value)" ${ro}>${envOptions}</select>
+          </div>
+        </div>
+        ${['BMC','APPDYNAMICS','VROPS'].includes(draft.pluginType) ? `
+        <div class="kfh-conn-field kfh-conn-field-wide">
+          <label class="kfh-conn-label">Endpoint / Base URL<span class="kfh-conn-req">*</span></label>
+          <input type="url" class="kfh-conn-input" value="${esc(draft.baseUrl)}" oninput="Settings.updateConnectionField('baseUrl', this.value)" placeholder="https://…" ${ro}>
+          <small class="kfh-conn-help">Full URL of the source system. Must resolve from the KFH AIOps collector network.</small>
+        </div>` : ''}
+        <div class="kfh-conn-field">
+          <label class="kfh-conn-label">Authentication mode</label>
+          <select class="kfh-conn-input" onchange="Settings.updateConnectionField('authMode', this.value)" ${ro}>${authOptions}</select>
+        </div>
+        <div class="kfh-conn-field">
+          <label class="kfh-conn-label">Owner team</label>
+          <select class="kfh-conn-input" onchange="Settings.updateConnectionField('ownerTeam', this.value)" ${ro}>${teamOptions}</select>
+        </div>
+        ${renderConnectionCredentialFields(draft, ro, isEditing)}
+        ${renderConnectionAdvancedFields(draft, ro)}
+      </div>
+    `;
+  }
+
+  function renderConnectionCredentialFields(draft, ro, isEditing) {
+    const placeholder = isEditing ? '•••••• (leave blank to keep existing)' : '';
+    const pw = 'password';
+    if (draft.pluginType === 'BMC') {
+      return `
+        <div class="kfh-conn-field">
+          <label class="kfh-conn-label">Access key${isEditing ? '' : '<span class="kfh-conn-req">*</span>'}</label>
+          <input type="${pw}" class="kfh-conn-input" value="${esc(draft.accessKey)}" oninput="Settings.updateConnectionField('accessKey', this.value)" autocomplete="new-password" placeholder="${placeholder}" ${ro}>
+        </div>
+        <div class="kfh-conn-field">
+          <label class="kfh-conn-label">Access secret key${isEditing ? '' : '<span class="kfh-conn-req">*</span>'}</label>
+          <input type="${pw}" class="kfh-conn-input" value="${esc(draft.accessSecretKey)}" oninput="Settings.updateConnectionField('accessSecretKey', this.value)" autocomplete="new-password" placeholder="${placeholder}" ${ro}>
+        </div>`;
+    }
+    if (draft.pluginType === 'APPDYNAMICS' || draft.pluginType === 'SCOM') {
+      return `
+        <div class="kfh-conn-field">
+          <label class="kfh-conn-label">Username${isEditing ? '' : '<span class="kfh-conn-req">*</span>'}</label>
+          <input type="text" class="kfh-conn-input" value="${esc(draft.username)}" oninput="Settings.updateConnectionField('username', this.value)" ${ro}>
+        </div>
+        <div class="kfh-conn-field">
+          <label class="kfh-conn-label">Password${isEditing ? '' : '<span class="kfh-conn-req">*</span>'}</label>
+          <input type="${pw}" class="kfh-conn-input" value="${esc(draft.password)}" oninput="Settings.updateConnectionField('password', this.value)" autocomplete="new-password" placeholder="${placeholder}" ${ro}>
+        </div>`;
+    }
+    if (draft.pluginType === 'VROPS') {
+      return `
+        <div class="kfh-conn-field kfh-conn-field-wide">
+          <label class="kfh-conn-label">API token${isEditing ? '' : '<span class="kfh-conn-req">*</span>'}</label>
+          <input type="${pw}" class="kfh-conn-input" value="${esc(draft.token)}" oninput="Settings.updateConnectionField('token', this.value)" autocomplete="new-password" placeholder="${placeholder}" ${ro}>
+        </div>`;
+    }
+    if (draft.pluginType === 'EMCO') {
+      return `
+        <div class="kfh-conn-field-row">
+          <div class="kfh-conn-field">
+            <label class="kfh-conn-label">KFH SQL user${isEditing ? '' : '<span class="kfh-conn-req">*</span>'}</label>
+            <input type="text" class="kfh-conn-input" value="${esc(draft.kfhUsername)}" oninput="Settings.updateConnectionField('kfhUsername', this.value)" ${ro}>
+          </div>
+          <div class="kfh-conn-field">
+            <label class="kfh-conn-label">KFH SQL password${isEditing ? '' : '<span class="kfh-conn-req">*</span>'}</label>
+            <input type="${pw}" class="kfh-conn-input" value="${esc(draft.kfhPassword)}" oninput="Settings.updateConnectionField('kfhPassword', this.value)" autocomplete="new-password" placeholder="${placeholder}" ${ro}>
+          </div>
+        </div>
+        <div class="kfh-conn-field-row">
+          <div class="kfh-conn-field">
+            <label class="kfh-conn-label">CCTV SQL user</label>
+            <input type="text" class="kfh-conn-input" value="${esc(draft.cctvUsername)}" oninput="Settings.updateConnectionField('cctvUsername', this.value)" ${ro}>
+          </div>
+          <div class="kfh-conn-field">
+            <label class="kfh-conn-label">CCTV SQL password</label>
+            <input type="${pw}" class="kfh-conn-input" value="${esc(draft.cctvPassword)}" oninput="Settings.updateConnectionField('cctvPassword', this.value)" autocomplete="new-password" placeholder="${placeholder}" ${ro}>
+          </div>
+        </div>`;
+    }
+    return '';
+  }
+
+  function renderConnectionAdvancedFields(draft, ro) {
+    if (draft.pluginType === 'SCOM') {
+      return `
+        <details class="kfh-conn-advanced"><summary>Advanced (SCOM)</summary>
+          <div class="kfh-conn-field-row">
+            <div class="kfh-conn-field">
+              <label class="kfh-conn-label">Management server</label>
+              <input type="text" class="kfh-conn-input" value="${esc(draft.managementServer)}" oninput="Settings.updateConnectionField('managementServer', this.value)" ${ro}>
+            </div>
+            <div class="kfh-conn-field">
+              <label class="kfh-conn-label">Domain</label>
+              <input type="text" class="kfh-conn-input" value="${esc(draft.domain)}" oninput="Settings.updateConnectionField('domain', this.value)" ${ro}>
+            </div>
+          </div>
+          <div class="kfh-conn-field-row">
+            <div class="kfh-conn-field">
+              <label class="kfh-conn-label">WinRM port</label>
+              <input type="number" class="kfh-conn-input" value="${esc(draft.winrmPort)}" oninput="Settings.updateConnectionField('winrmPort', Number(this.value)||5986)" ${ro}>
+            </div>
+            <div class="kfh-conn-field kfh-conn-field-inline">
+              <label class="kfh-conn-check"><input type="checkbox" ${draft.useHttps !== false ? 'checked' : ''} onchange="Settings.updateConnectionField('useHttps', this.checked)" ${ro}> Use HTTPS</label>
+            </div>
+          </div>
+        </details>`;
+    }
+    if (draft.pluginType === 'EMCO') {
+      return `
+        <details class="kfh-conn-advanced"><summary>Advanced (EMCO SQL Server)</summary>
+          <div class="kfh-conn-field-row">
+            <div class="kfh-conn-field">
+              <label class="kfh-conn-label">SQL Server</label>
+              <input type="text" class="kfh-conn-input" value="${esc(draft.sqlServer)}" oninput="Settings.updateConnectionField('sqlServer', this.value)" placeholder="host or instance" ${ro}>
+            </div>
+            <div class="kfh-conn-field">
+              <label class="kfh-conn-label">SQL port</label>
+              <input type="number" class="kfh-conn-input" value="${esc(draft.sqlPort)}" oninput="Settings.updateConnectionField('sqlPort', Number(this.value)||1433)" ${ro}>
+            </div>
+          </div>
+          <div class="kfh-conn-field-row">
+            <div class="kfh-conn-field">
+              <label class="kfh-conn-label">KFH database</label>
+              <input type="text" class="kfh-conn-input" value="${esc(draft.kfhDatabase)}" oninput="Settings.updateConnectionField('kfhDatabase', this.value)" ${ro}>
+            </div>
+            <div class="kfh-conn-field">
+              <label class="kfh-conn-label">CCTV database</label>
+              <input type="text" class="kfh-conn-input" value="${esc(draft.cctvDatabase)}" oninput="Settings.updateConnectionField('cctvDatabase', this.value)" ${ro}>
+            </div>
+          </div>
+        </details>`;
+    }
+    return '';
+  }
+
+  function renderConnectionShareFields(draft, readOnly) {
+    const ro = readOnly ? 'disabled' : '';
+    const shared = Array.isArray(draft.sharedWithTeams) ? draft.sharedWithTeams : [];
+    const rows = CONNECTION_OWNER_TEAMS.map(function (team) {
+      const checked = shared.includes(team) ? 'checked' : '';
+      return `
+        <label class="kfh-conn-share-row">
+          <input type="checkbox" ${checked} ${ro} onchange="Settings.toggleConnectionShareTeam('${esc(team)}')">
+          <span>${esc(team)}</span>
+        </label>`;
+    }).join('');
+    return `
+      <div class="kfh-conn-form">
+        <p class="kfh-conn-help">Share this connection with other KFH teams. Sharing grants read access; write access remains restricted to the owner team.</p>
+        <div class="kfh-conn-share-list">${rows}</div>
+      </div>
+    `;
+  }
+
+  function keepConnectionPopup(event) {
+    if (event && event.target && event.target.id === 'settings-modal-overlay') {
+      closeConnectionPopup();
+    }
+  }
+
   // Main render
   function render() {
     const container = document.getElementById('settings-content') || document.getElementById('page-root') || document.getElementById('content-area');
     if (!container) return;
 
     container.innerHTML = `
-      <div class="settings-page-shell">
+      <div class="settings-page-shell kfh-settings-shell">
         ${renderHeader()}
-        <div class="settings-content">
+        <div class="settings-content kfh-settings-content">
           ${renderSettingsMenu()}
-          <div class="settings-section">
+          <div class="settings-section kfh-settings-section">
             ${renderAzureOpenAI()}
             ${renderDatabases()}
             ${renderSharePoint()}
             ${renderTeams()}
             ${renderInfrastructure()}
+            ${renderConnections()}
             ${renderSystem()}
           </div>
         </div>
@@ -2035,6 +3012,11 @@ var Settings = (function() {
   function setTab(tab) {
     if (!SETTINGS_TAB_IDS.includes(tab)) return;
     state.activeTab = tab;
+    if (tab !== 'connections') {
+      state.connectionDetailType = null;
+      state.connectionDetailSearch = '';
+      state.connectionDetailOwner = '';
+    }
     persistActiveTab(tab);
     render();
   }
@@ -2048,9 +3030,17 @@ var Settings = (function() {
     toast('Azure OpenAI integration removed', 'info');
   }
 
-  async function init() {
+  async function init(preferredSection) {
     restoreActiveTab();
+    if (preferredSection && SETTINGS_TAB_IDS.includes(preferredSection)) {
+      state.activeTab = preferredSection;
+      persistActiveTab(preferredSection);
+    }
     await loadSettings();
+    // Fire and forget: catalog + list load in background; UI re-renders
+    // when data arrives. Failures fall back to the static catalog.
+    loadConnectorTypes();
+    loadConnectors();
     render();
     console.log('Settings module initialized');
   }
@@ -2093,6 +3083,23 @@ var Settings = (function() {
     openModal,
     closeModal,
     keepModalOpen,
+    // Dynatrace-style Connections popup public API
+    openConnectionPopup,
+    openConnectionEditor: connectionEditPopup,
+    openConnectionDetail,
+    closeConnectionDetail,
+    setConnectionDetailSearch,
+    setConnectionDetailOwner,
+    closeConnectionPopup,
+    switchConnectionTab,
+    setConnectionPopupMode,
+    updateConnectionField,
+    toggleConnectionShareTeam,
+    saveConnection,
+    testConnection,
+    deleteConnection,
+    keepConnectionPopup,
+    reloadConnectors: loadConnectors,
     toast
   };
 })();

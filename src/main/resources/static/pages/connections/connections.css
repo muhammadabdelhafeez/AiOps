@@ -1,2 +1,4 @@
-/* KFH AIOps — Connections page. Component styles are injected at runtime (see connections.js,
-   #conn-styles) so they can use the shared kfhx tokens; this file is a placeholder for the router. */
+/* KFH AIOps — Connections page has been consolidated into Settings.
+   All Connections styles now live in pages/settings/settings.css under the
+   .kfh-conn-* class prefix. This file is kept as a placeholder for the
+   legacy #connections route registered in shared/js/router.js. */

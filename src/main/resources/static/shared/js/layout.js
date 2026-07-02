@@ -27,7 +27,6 @@ window.KFHLayout = (function() {
     {
       title: 'Configuration',
       items: [
-        { id: 'connectors', label: 'Connectors', icon: '🔌', href: '../connectors/connectors.html' },
         { id: 'schedules', label: 'Schedules', icon: '⏰', href: '../schedules/schedules.html' },
         { id: 'users', label: 'User Management', icon: '👥', href: '../users/users.html' },
         { id: 'settings', label: 'Settings', icon: '⚙️', href: '../settings/settings.html' },

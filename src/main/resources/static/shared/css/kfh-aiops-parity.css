@@ -2786,3 +2786,84 @@ textarea:focus,
   .kfh-scope-check,
   .kfh-scope-button svg { transition: none !important; }
 }
+
+
+/* ==========================================================================
+   KFH AIOps — Collapsed sidebar tight spacing (Dynatrace parity, 2026-07-02)
+   Overrides earlier collapsed spacing so icons stack tightly like Dynatrace
+   with no visible group gaps.
+   ========================================================================== */
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-nav,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-nav,
+#sidebar-container.kfh-sidebar-collapsed .kfh-sidebar-nav {
+  padding: 6px 0 4px !important;
+  gap: 2px !important;
+  row-gap: 2px !important;
+}
+
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-group,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-group,
+#sidebar-container.kfh-sidebar-collapsed .kfh-sidebar-group {
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-group + .kfh-sidebar-group,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-group + .kfh-sidebar-group,
+#sidebar-container.kfh-sidebar-collapsed .kfh-sidebar-group + .kfh-sidebar-group {
+  margin-top: 2px !important;
+}
+
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-group-items,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-group-items,
+#sidebar-container.kfh-sidebar-collapsed .kfh-sidebar-group-items {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 2px !important;
+  row-gap: 2px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-nav-item,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-nav-item,
+#sidebar-container.kfh-sidebar-collapsed .kfh-sidebar-nav-item {
+  width: 40px !important;
+  min-width: 40px !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  margin: 0 auto !important;
+  border-radius: 10px !important;
+}
+
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-nav-item .kfh-sidebar-nav-icon,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-nav-item .kfh-sidebar-nav-icon,
+#sidebar-container.kfh-sidebar-collapsed .kfh-sidebar-nav-item .kfh-sidebar-nav-icon {
+  width: 20px !important;
+  height: 20px !important;
+}
+
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-nav-item .kfh-sidebar-nav-icon svg,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-nav-item .kfh-sidebar-nav-icon svg,
+#sidebar-container.kfh-sidebar-collapsed .kfh-sidebar-nav-item .kfh-sidebar-nav-icon svg {
+  width: 20px !important;
+  height: 20px !important;
+}
+
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-group-title,
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-group-header,
+.kfh-app-layout.kfh-sidebar-collapsed .kfh-sidebar-group-divider,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-group-title,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-group-header,
+.kfh-sidebar.kfh-sidebar-collapsed .kfh-sidebar-group-divider,
+#sidebar-container.kfh-sidebar-collapsed .kfh-sidebar-group-title,
+#sidebar-container.kfh-sidebar-collapsed .kfh-sidebar-group-header,
+#sidebar-container.kfh-sidebar-collapsed .kfh-sidebar-group-divider {
+  display: none !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+}

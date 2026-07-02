@@ -1,13 +1,16 @@
 /**
- * KFH AIOps Command Center — Incidents (Problems), reconstructed to the Dynatrace "Problem" organization
- * in KFH "Beyond Horizons" colors. Self-mounting, vanilla, uses the shared kfhx-* design system.
+ * KFH AIOps Command Center — Incidents (Problems)
+ * Dynatrace-parity list view in KFH "Beyond Horizons" colors.
  *
- * List view  : faceted filter rail + timeline strip + dense incident table.
- * Detail view: header (status·id·severity·category·duration + Explain/Graph/Notify) → impact tile strip →
- *              tabs → Overview = Impact ↔ Root cause + Visual resolution path. Each card is a drill-down.
+ * List view  : dense faceted filter rail (flush with content) + toolbar
+ *              (Type-to-filter, time range, refresh) + area chart + compact
+ *              incident table, matching Dynatrace Problems page density.
+ * Detail view: header (status·id·severity·category·duration + Explain/Graph/Notify)
+ *              → impact tile strip → tabs → Overview = Impact ↔ Root cause
+ *              + Visual resolution path. Each card is a drill-down.
  *
- * Data below is the Fund Transfer / SAN-STORAGE worked example — illustrative until the correlation +
- * RCA + AI stages (Phases 2–4) light it up with live incidents.
+ * Data below is the Fund Transfer / SAN-STORAGE worked example — illustrative
+ * until the correlation + RCA + AI stages (Phases 2–4) light it up live.
  */
 (function () {
   'use strict';
@@ -67,23 +70,127 @@
     }
   ];
 
-  var state = { view: 'list', selected: null, filters: { status: '', severity: '', category: '', source: '' }, tab: 'overview', impactTab: 'journeys', eventEntity: null };
+  var state = {
+    view: 'list',
+    selected: null,
+    filters: {
+      status: 'all',
+      categories: [],
+      impacts: [],
+      severities: [],
+      search: ''
+    },
+    open: { status: true, category: true, impact: true, severity: true },
+    timeRange: 'Last 2 hours',
+    showChart: true,
+    tab: 'overview',
+    impactTab: 'journeys',
+    eventEntity: null
+  };
+
+  var CATEGORY_VALUES = ['Availability', 'Error', 'Slowdown', 'Resource contention', 'Custom alert', 'Monitoring unavailable', 'Performance'];
+  var IMPACT_VALUES = ['Frontends', 'Services', 'Infrastructure', 'Synthetic monitors', 'Environment'];
+  var SEVERITY_VALUES = ['Critical', 'Major', 'Minor', 'Warning', 'Informational'];
+  var SEVERITY_MAP_UI = { Critical: 'Critical', High: 'Major', Medium: 'Minor', Low: 'Warning' };
+  var SEVERITY_MAP_FROM_UI = { Critical: ['Critical'], Major: ['High'], Minor: ['Medium'], Warning: ['Low'], Informational: [] };
+  var IMPACT_MAP_FROM_STAGE = { Storage: 'Infrastructure', Database: 'Infrastructure', Server: 'Infrastructure', Service: 'Services', Gateway: 'Services', Directory: 'Infrastructure' };
+
+  function impactsOf(x) {
+    var set = {};
+    (x.path || []).forEach(function (n) { var m = IMPACT_MAP_FROM_STAGE[n.stage]; if (m) set[m] = 1; });
+    if ((x.journeysDetail || []).length) set.Frontends = 1;
+    return Object.keys(set);
+  }
 
   function injectStyles() {
     if (document.getElementById('inc-styles')) return;
     var s = document.createElement('style');
     s.id = 'inc-styles';
     s.textContent = [
-      '.inc-wrap{display:grid;grid-template-columns:220px 1fr;gap:16px;padding:18px;max-width:1560px;margin:0 auto;}',
-      '.inc-rail{background:var(--surface-card);border:1px solid var(--surface-border);border-radius:12px;padding:14px;height:max-content;position:sticky;top:72px;}',
-      '.inc-facet{margin-bottom:16px;}',
-      '.inc-facet h4{font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin:0 0 8px;}',
-      '.inc-facet button{display:flex;width:100%;justify-content:space-between;align-items:center;background:none;border:none;padding:5px 8px;border-radius:7px;font-size:.8rem;color:var(--text-secondary);cursor:pointer;text-align:left;}',
-      '.inc-facet button:hover{background:var(--surface-off-white);}',
-      '.inc-facet button.on{background:var(--kfh-primary-light);color:var(--kfh-primary-dark);font-weight:700;}',
+      /* ========== Dynatrace-parity list layout (KFH green) ========== */
+      '.incx-shell{display:grid;grid-template-columns:264px 1fr;gap:12px;background:#f4f6f8;min-height:calc(100vh - 60px);font-size:12.5px;color:#242a33;padding:12px;}',
+      '.incx-rail{border:1px solid #dfe3e8;background:#fff;padding:12px 12px 18px;overflow-y:auto;border-radius:10px;box-shadow:0 1px 2px rgba(15,23,42,.04);height:max-content;position:sticky;top:12px;max-height:calc(100vh - 84px);}',
+      '.incx-rail-head{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:2px 2px 12px;}',
+      '.incx-filter-chip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px 3px 12px;border-radius:14px;background:#e6f2ec;color:#00634A;font-size:12px;font-weight:600;border:1px solid #cfe5d8;}',
+      '.incx-filter-chip .chk{color:#00834f;font-weight:700;}',
+      '.incx-bell{width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;border-radius:6px;color:#5a6470;cursor:pointer;border:1px solid transparent;background:none;}',
+      '.incx-bell:hover{background:#eef1f4;color:#242a33;}',
+      '.incx-facet{border-top:1px solid #eceff3;padding:10px 0 4px;}',
+      '.incx-facet:first-of-type{border-top:0;}',
+      '.incx-facet-head{display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:2px 2px 6px;color:#242a33;font-size:12px;font-weight:600;user-select:none;}',
+      '.incx-facet-head .chev{color:#5a6470;font-size:10px;transition:transform .12s ease;}',
+      '.incx-facet.closed .chev{transform:rotate(-90deg);}',
+      '.incx-facet-body{display:flex;flex-direction:column;gap:2px;padding-bottom:6px;}',
+      '.incx-facet.closed .incx-facet-body{display:none;}',
+      '.incx-opt{display:flex;align-items:center;gap:8px;padding:4px 4px;border-radius:5px;font-size:12.5px;color:#242a33;cursor:pointer;user-select:none;}',
+      '.incx-opt:hover{background:#eef1f4;}',
+      '.incx-opt input{margin:0;accent-color:#00634A;width:14px;height:14px;flex:0 0 auto;}',
+      '.incx-opt-label{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
+      '.incx-opt-count{font-size:11px;color:#78828e;font-variant-numeric:tabular-nums;}',
+
+      '.incx-main{display:flex;flex-direction:column;min-width:0;background:#fff;border:1px solid #dfe3e8;border-radius:10px;box-shadow:0 1px 2px rgba(15,23,42,.04);overflow:hidden;}',
+      '.incx-topbar{display:flex;align-items:center;gap:10px;padding:10px 16px 8px;border-bottom:1px solid #eceff3;}',
+      '.incx-icobtn{width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border-radius:6px;background:#fff;border:1px solid #dfe3e8;color:#242a33;cursor:pointer;font-size:14px;}',
+      '.incx-icobtn:hover{background:#f4f6f8;}',
+      '.incx-title{font-size:13.5px;font-weight:600;color:#242a33;display:inline-flex;align-items:center;gap:6px;}',
+      '.incx-badge-active{display:inline-flex;align-items:center;gap:5px;padding:1px 8px;border-radius:10px;background:#fbeaea;color:#c11e23;font-size:11.5px;font-weight:600;}',
+      '.incx-badge-active .dot{width:6px;height:6px;border-radius:50%;background:#e0353b;display:inline-block;}',
+      '.incx-title-total{color:#78828e;font-weight:500;font-size:12.5px;}',
+      '.incx-topbar-spacer{flex:1;}',
+      '.incx-linkbtn{display:inline-flex;align-items:center;gap:6px;background:none;border:0;color:#242a33;font-size:12.5px;cursor:pointer;padding:4px 6px;border-radius:5px;}',
+      '.incx-linkbtn:hover{background:#eef1f4;}',
+      '.incx-linkbtn .ico{color:#5a6470;}',
+      '.incx-topbar-meta{font-size:12px;color:#78828e;}',
+
+      '.incx-toolbar{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid #eceff3;background:#fff;}',
+      '.incx-entity-picker{width:34px;height:32px;border:1px solid #dfe3e8;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;color:#5a6470;background:#fff;cursor:pointer;}',
+      '.incx-entity-picker:hover{background:#f4f6f8;}',
+      '.incx-search{flex:1;min-width:180px;position:relative;}',
+      '.incx-search input{width:100%;height:32px;padding:0 10px 0 32px;border:1px solid #dfe3e8;border-radius:6px;background:#fff;font-size:12.5px;color:#242a33;outline:none;font-family:inherit;}',
+      '.incx-search input:focus{border-color:#00634A;box-shadow:0 0 0 2px rgba(0,99,74,.14);}',
+      '.incx-search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:#78828e;}',
+      '.incx-time{height:32px;padding:0 10px;border:1px solid #dfe3e8;border-radius:6px;background:#fff;font-size:12.5px;color:#242a33;cursor:pointer;font-family:inherit;outline:none;}',
+      '.incx-tbtn{width:32px;height:32px;border:1px solid #dfe3e8;border-radius:6px;background:#fff;color:#5a6470;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;}',
+      '.incx-tbtn:hover{background:#f4f6f8;color:#242a33;}',
+      '.incx-refresh{height:32px;padding:0 12px;border:1px solid #dfe3e8;border-radius:6px;background:#fff;font-size:12.5px;color:#242a33;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;}',
+      '.incx-refresh:hover{background:#f4f6f8;}',
+
+      '.incx-body{padding:14px 16px 20px;overflow-y:auto;}',
+      '.incx-chart{background:#fff;border:1px solid #eceff3;border-radius:6px;padding:8px 12px 4px;}',
+      '.incx-chart svg{display:block;width:100%;height:180px;}',
+
+      '.incx-tablewrap{margin-top:14px;background:#fff;border:1px solid #eceff3;border-radius:6px;overflow-x:auto;}',
+      '.incx-tablehead-note{display:flex;align-items:center;justify-content:flex-end;gap:12px;padding:6px 8px;font-size:11.5px;color:#78828e;}',
+      '.incx-table{width:100%;border-collapse:collapse;font-size:12.5px;color:#242a33;}',
+      '.incx-table thead th{position:sticky;top:0;background:#fff;text-align:left;font-weight:600;color:#5a6470;font-size:11.5px;padding:8px 10px;border-bottom:1px solid #eceff3;white-space:nowrap;}',
+      '.incx-table tbody td{padding:9px 10px;border-bottom:1px solid #f2f4f7;white-space:nowrap;vertical-align:middle;}',
+      '.incx-table tbody tr{cursor:pointer;}',
+      '.incx-table tbody tr:hover td{background:#f6f9f7;}',
+      '.incx-table tbody tr.crit td:first-child{border-left:3px solid #e0353b;padding-left:8px;}',
+      '.incx-cellid{color:#242a33;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;}',
+      '.incx-cellname{color:#242a33;font-weight:500;}',
+      '.incx-pill-status{display:inline-flex;align-items:center;gap:5px;padding:1px 8px;border-radius:10px;font-size:11.5px;font-weight:600;}',
+      '.incx-pill-status.open{background:#fbeaea;color:#c11e23;}',
+      '.incx-pill-status.open .d{width:6px;height:6px;border-radius:50%;background:#e0353b;}',
+      '.incx-pill-status.closed{background:#eef1f4;color:#5a6470;}',
+      '.incx-pill-cat{display:inline-flex;align-items:center;gap:5px;color:#242a33;font-size:12px;}',
+      '.incx-pill-cat .ci{width:14px;height:14px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:9px;color:#fff;}',
+      '.incx-pill-cat .ci.availability{background:#e0353b;}',
+      '.incx-pill-cat .ci.error{background:#e0353b;}',
+      '.incx-pill-cat .ci.performance{background:#c78900;}',
+      '.incx-pill-cat .ci.resource{background:#7a5cc4;}',
+      '.incx-pill-cat .ci.custom{background:#5a6470;}',
+      '.incx-pill-affected{display:inline-flex;align-items:center;gap:6px;padding:2px 8px;border-radius:4px;background:#eef4f0;color:#00634A;font-size:12px;font-weight:500;}',
+      '.incx-pill-affected .ico{color:#00634A;}',
+      '.incx-pill-more{display:inline-flex;align-items:center;padding:2px 6px;border-radius:4px;background:#eef1f4;color:#5a6470;font-size:11.5px;margin-left:4px;}',
+      '.incx-cellmuted{color:#78828e;}',
+      '.incx-cellchk{width:26px;text-align:center;padding-left:6px;padding-right:0;}',
+      '.incx-cellchk input{width:14px;height:14px;margin:0;accent-color:#00634A;}',
+      '.incx-empty{padding:36px;text-align:center;color:#78828e;font-size:13px;}',
+
+      /* ========== Original .inc-* styles (retained for detail view) ========== */
       '.inc-timeline{display:flex;align-items:flex-end;gap:3px;height:70px;padding:12px 0 0;}',
       '.inc-timeline .b{flex:1;border-radius:2px 2px 0 0;background:var(--surface-border);}',
-      '.inc-row{cursor:pointer;}',
       '.inc-pill{display:inline-flex;align-items:center;gap:4px;height:20px;padding:0 8px;border-radius:999px;background:var(--surface-off-white);border:1px solid var(--surface-border);font-size:.7rem;font-weight:600;color:var(--text-secondary);margin:1px 2px 1px 0;}',
       '.inc-path{display:flex;align-items:center;gap:2px;flex-wrap:wrap;}',
       '.inc-pnode{border:1px solid var(--surface-border);border-radius:9px;padding:8px 12px;background:var(--surface-off-white);min-width:120px;}',
@@ -101,104 +208,303 @@
       '.inc-subtab.on{background:var(--kfh-primary);color:#fff;border-color:var(--kfh-primary);}',
       '.inc-subn{font-weight:800;opacity:.85;}',
       '.inc-impact-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--surface-border-subtle);}',
-      '.inc-erow{cursor:pointer;}.inc-erow.on td{background:var(--kfh-primary-light);}'
+      '.inc-erow{cursor:pointer;}.inc-erow.on td{background:var(--kfh-primary-light);}',
+
+      /* Responsive: collapse rail on narrow screens */
+      '@media (max-width: 960px){.incx-shell{grid-template-columns:1fr;}.incx-rail{display:none;}}'
     ].join('');
     document.head.appendChild(s);
   }
 
-  function timelineBars() {
-    var out = '';
-    for (var i = 0; i < 40; i++) {
-      var active = i > 26;
-      var hgt = 12 + ((i * 7) % 40) + (active ? 15 : 0);
-      out += '<div class="b" style="height:' + hgt + 'px;background:' + (active ? '#ef4444' : 'var(--surface-border)') + ';"></div>';
-    }
-    return out;
-  }
-
-  function facet(title, key, values) {
-    var cur = state.filters[key];
-    var btns = ['<button class="' + (cur === '' ? 'on' : '') + '" data-facet="' + key + '" data-val="">All</button>'];
-    values.forEach(function (v) {
-      var count = INCIDENTS.filter(function (x) { return matchesExcept(x, key) && String(x[mapKey(key)]).indexOf(v) > -1 || (key === 'source' && x.sources.indexOf(v) > -1 && matchesExcept(x, key)); }).length;
-      // simple count by direct field
-      var c = INCIDENTS.filter(function (x) { return valueOf(x, key) === v || (key === 'source' && x.sources.indexOf(v) > -1); }).length;
-      btns.push('<button class="' + (cur === v ? 'on' : '') + '" data-facet="' + key + '" data-val="' + esc(v) + '"><span>' + esc(v) + '</span><span style="color:var(--text-muted);font-weight:700;">' + c + '</span></button>');
-    });
-    return '<div class="inc-facet"><h4>' + esc(title) + '</h4>' + btns.join('') + '</div>';
-  }
-
-  function mapKey(key) { return key; }
-  function valueOf(x, key) { return x[key]; }
-  function matchesExcept() { return true; }
-
+  // ---- Filter matching ----
   function passes(x) {
     var f = state.filters;
-    if (f.status && x.status !== f.status) return false;
-    if (f.severity && x.severity !== f.severity) return false;
-    if (f.category && x.category !== f.category) return false;
-    if (f.source && x.sources.indexOf(f.source) < 0) return false;
+    if (f.status === 'active' && x.status !== 'Open') return false;
+    if (f.status === 'closed' && x.status !== 'Closed') return false;
+    if (f.categories.length && f.categories.indexOf(x.category) < 0) return false;
+    if (f.severities.length) {
+      var mapped = SEVERITY_MAP_UI[x.severity] || x.severity;
+      if (f.severities.indexOf(mapped) < 0) return false;
+    }
+    if (f.impacts.length) {
+      var imp = impactsOf(x);
+      var any = f.impacts.some(function (v) { return imp.indexOf(v) >= 0; });
+      if (!any) return false;
+    }
+    if (f.search) {
+      var q = f.search.toLowerCase();
+      var hay = (x.id + ' ' + x.title + ' ' + x.category + ' ' + x.severity + ' ' + x.status + ' ' + (x.rootCause && x.rootCause.id ? x.rootCause.id : '') + ' ' + (x.apps || []).join(' ')).toLowerCase();
+      if (hay.indexOf(q) < 0) return false;
+    }
     return true;
   }
 
-  function renderList() {
-    var rows = INCIDENTS.filter(passes).map(function (x) {
-      var apps = x.apps.slice(0, 2).map(function (a) { return '<span class="inc-pill">' + esc(a) + '</span>'; }).join('') + (x.apps.length > 2 ? '<span class="inc-pill">+' + (x.apps.length - 2) + '</span>' : '');
-      var statusBadge = x.status === 'Open'
-        ? '<span class="kfhx-badge crit"><span class="kfhx-dot crit"></span>Open</span>'
-        : '<span class="kfhx-badge ok">Closed</span>';
-      var cls = x.classification === 'New'
-        ? '<span class="kfh-chip kfh-chip-new">New</span>'
-        : '<span class="kfh-chip kfh-chip-recurring">Recurring</span>';
-      return '<tr class="inc-row" data-id="' + x.id + '">' +
-        '<td class="mono">' + esc(x.id) + '</td>' +
-        '<td><div style="font-weight:600;color:var(--text-primary);">' + esc(x.title) + '</div><div style="font-size:.72rem;color:var(--text-muted);">' + cls + ' · ' + esc(x.category) + '</div></td>' +
-        '<td>' + statusBadge + '</td>' +
-        '<td><span class="kfh-chip kfh-chip-' + x.severity.toLowerCase() + '">' + esc(x.severity) + '</span></td>' +
-        '<td>' + apps + '</td>' +
-        '<td><span class="inc-pill" title="Root cause">◈ ' + esc(x.rootCause.id) + '</span></td>' +
-        '<td style="color:var(--text-muted);">' + esc(x.started) + '</td>' +
-        '<td style="font-weight:600;">' + esc(x.duration) + '</td>' +
-        '<td style="text-align:right;font-weight:700;">' + x.alerts + '</td>' +
+  // Count how many incidents pass all OTHER active filters (used for per-option counts)
+  function countWith(overrides) {
+    var saved = JSON.parse(JSON.stringify(state.filters));
+    Object.keys(overrides).forEach(function (k) { state.filters[k] = overrides[k]; });
+    var n = INCIDENTS.filter(passes).length;
+    state.filters = saved;
+    return n;
+  }
+
+  // ---- Filter rail ----
+  function chevronSvg() {
+    return '<svg class="chev" viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 5 L6 8 L9 5"/></svg>';
+  }
+  function facetHead(key, label) {
+    var closed = !state.open[key];
+    return '<div class="incx-facet-head" data-facet-toggle="' + key + '"><span>' + esc(label) + '</span>' + chevronSvg() + '</div>';
+  }
+  function radioFacet(key, label, options) {
+    var body = options.map(function (o) {
+      var val = o.value, lbl = o.label;
+      var checked = state.filters.status === val;
+      return '<label class="incx-opt"><input type="radio" name="status" value="' + esc(val) + '" ' + (checked ? 'checked' : '') + ' data-radio-status><span class="incx-opt-label">' + esc(lbl) + '</span></label>';
+    }).join('');
+    return '<div class="incx-facet ' + (state.open[key] ? '' : 'closed') + '">' + facetHead(key, label) + '<div class="incx-facet-body">' + body + '</div></div>';
+  }
+  function checkboxFacet(key, filterKey, label, options) {
+    var body = options.map(function (v) {
+      var checked = state.filters[filterKey].indexOf(v) >= 0;
+      var overrides = {};
+      overrides[filterKey] = checked ? state.filters[filterKey] : state.filters[filterKey].concat(v);
+      var count = countWith(overrides);
+      return '<label class="incx-opt"><input type="checkbox" value="' + esc(v) + '" ' + (checked ? 'checked' : '') + ' data-cb="' + esc(filterKey) + '"><span class="incx-opt-label">' + esc(v) + '</span><span class="incx-opt-count">' + count + '</span></label>';
+    }).join('');
+    return '<div class="incx-facet ' + (state.open[key] ? '' : 'closed') + '">' + facetHead(key, label) + '<div class="incx-facet-body">' + body + '</div></div>';
+  }
+
+  function railHtml() {
+    return '<aside class="incx-rail">' +
+      '<div class="incx-rail-head">' +
+        '<span class="incx-filter-chip">Default filter <span class="chk">✓</span></span>' +
+        '<button class="incx-bell" title="Notification settings" aria-label="Notification settings">' +
+          '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>' +
+        '</button>' +
+      '</div>' +
+      radioFacet('status', 'Status', [
+        { value: 'all', label: 'All' },
+        { value: 'active', label: 'Active' },
+        { value: 'closed', label: 'Closed' }
+      ]) +
+      checkboxFacet('category', 'categories', 'Category', CATEGORY_VALUES) +
+      checkboxFacet('impact', 'impacts', 'Impact', IMPACT_VALUES) +
+      checkboxFacet('severity', 'severities', 'Severity', SEVERITY_VALUES) +
+    '</aside>';
+  }
+
+  // ---- Header + toolbar + chart ----
+  function chartSvg(list) {
+    // Stack bars over ~24 buckets; height proportional to incidents active during that bucket.
+    var buckets = 24;
+    var maxRows = Math.max(4, list.length + 2);
+    var w = 1200, h = 180, pad = 24, colW = (w - pad * 2) / buckets;
+    var bars = '';
+    for (var i = 0; i < buckets; i++) {
+      // Density curve: mostly full, slight tail-off on the last bucket
+      var count = i === buckets - 1 ? Math.max(1, list.length - 2) : list.length;
+      var bh = (count / maxRows) * (h - 40);
+      var x = pad + i * colW;
+      var y = h - 20 - bh;
+      bars += '<rect x="' + (x + 1) + '" y="' + y + '" width="' + (colW - 2) + '" height="' + bh + '" fill="#e0353b" opacity="0.78"/>';
+    }
+    // baseline
+    bars += '<line x1="' + pad + '" y1="' + (h - 20) + '" x2="' + (w - pad) + '" y2="' + (h - 20) + '" stroke="#e6e8ec" stroke-width="1"/>';
+    // simple x-axis ticks
+    var ticks = '';
+    var labels = ['05:45', '06:00', '06:15', '06:30', '06:45', '07:00', '07:15', '07:30'];
+    for (var t = 0; t < labels.length; t++) {
+      var tx = pad + (t / (labels.length - 1)) * (w - pad * 2);
+      ticks += '<text x="' + tx + '" y="' + (h - 4) + '" font-size="10" fill="#78828e" text-anchor="middle" font-family="inherit">' + labels[t] + '</text>';
+    }
+    return '<svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none">' + bars + ticks + '</svg>';
+  }
+
+  function catIconClass(cat) {
+    var c = String(cat || '').toLowerCase();
+    if (c.indexOf('avail') >= 0) return 'availability';
+    if (c.indexOf('error') >= 0) return 'error';
+    if (c.indexOf('perf') >= 0 || c.indexOf('slow') >= 0) return 'performance';
+    if (c.indexOf('resource') >= 0) return 'resource';
+    return 'custom';
+  }
+  function catIconGlyph(cat) {
+    var c = String(cat || '').toLowerCase();
+    if (c.indexOf('avail') >= 0) return '!';
+    if (c.indexOf('error') >= 0) return '✕';
+    if (c.indexOf('perf') >= 0 || c.indexOf('slow') >= 0) return '~';
+    if (c.indexOf('resource') >= 0) return '≡';
+    return '•';
+  }
+
+  function affectedEntitiesCell(x) {
+    var apps = (x.apps || []).slice(0, 1).map(function (a) {
+      return '<span class="incx-pill-affected"><span class="ico">◈</span>' + esc(a) + '</span>';
+    }).join('');
+    var extra = (x.apps && x.apps.length > 1) ? '<span class="incx-pill-more">+ ' + (x.apps.length - 1) + '</span>' : '';
+    return apps + extra;
+  }
+
+  function rowsHtml(list) {
+    if (!list.length) {
+      return '<tr><td colspan="10" class="incx-empty">No incidents match the current filters.</td></tr>';
+    }
+    return list.map(function (x) {
+      var cls = x.status === 'Open' ? 'crit' : '';
+      var status = x.status === 'Open'
+        ? '<span class="incx-pill-status open"><span class="d"></span>Active</span>'
+        : '<span class="incx-pill-status closed">Closed</span>';
+      var catIco = '<span class="incx-pill-cat"><span class="ci ' + catIconClass(x.category) + '">' + catIconGlyph(x.category) + '</span>' + esc(x.category) + '</span>';
+      return '<tr class="' + cls + '" data-id="' + esc(x.id) + '">' +
+        '<td class="incx-cellchk" onclick="event.stopPropagation()"><input type="checkbox" aria-label="Select ' + esc(x.id) + '"></td>' +
+        '<td class="incx-cellid">' + esc(x.id) + '</td>' +
+        '<td class="incx-cellname">' + esc(x.title) + '</td>' +
+        '<td>' + status + '</td>' +
+        '<td>' + catIco + '</td>' +
+        '<td class="incx-cellmuted">' + (x.apps ? x.apps.length : 0) + '</td>' +
+        '<td>' + affectedEntitiesCell(x) + '</td>' +
+        '<td>' + (x.rootCause && x.rootCause.id ? '<span class="incx-pill-affected"><span class="ico">◈</span>' + esc(x.rootCause.id) + '</span>' : '<span class="incx-cellmuted">—</span>') + '</td>' +
+        '<td class="incx-cellmuted">' + esc(x.started) + '</td>' +
+        '<td>' + esc(x.duration) + '</td>' +
         '</tr>';
     }).join('');
+  }
 
+  function toolbarHtml() {
+    return '<div class="incx-toolbar">' +
+      '<button class="incx-entity-picker" title="Entity picker" aria-label="Entity picker">' +
+        '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 12l9 4 9-4"/><path d="M3 17l9 4 9-4"/></svg>' +
+      '</button>' +
+      '<div class="incx-search">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>' +
+        '<input id="incx-search-input" type="text" placeholder="Type to filter" value="' + esc(state.filters.search) + '" autocomplete="off">' +
+      '</div>' +
+      '<select class="incx-time" id="incx-time-select" aria-label="Time range">' +
+        ['Last 30 minutes', 'Last 2 hours', 'Last 24 hours', 'Last 7 days', 'Last 15 days'].map(function (t) {
+          return '<option value="' + esc(t) + '" ' + (t === state.timeRange ? 'selected' : '') + '>' + esc(t) + '</option>';
+        }).join('') +
+      '</select>' +
+      '<button class="incx-tbtn" title="Previous" aria-label="Previous">‹</button>' +
+      '<button class="incx-tbtn" title="Next" aria-label="Next">›</button>' +
+      '<button class="incx-refresh" id="incx-refresh" title="Refresh">' +
+        '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M20.49 15A9 9 0 1 1 5.64 5.64L23 10"/></svg>' +
+        '<span>Refresh</span>' +
+      '</button>' +
+      '<button class="incx-tbtn" title="More" aria-label="More">⌄</button>' +
+    '</div>';
+  }
+
+  function headerHtml(list, active, total) {
+    return '<div class="incx-topbar">' +
+      '<button class="incx-icobtn" title="Collapse filter rail" aria-label="Collapse filter rail">' +
+        '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="9" y1="4" x2="9" y2="20"/></svg>' +
+      '</button>' +
+      '<span class="incx-title">Incidents <span class="incx-badge-active"><span class="dot"></span>' + active + ' active</span><span class="incx-title-total">/ ' + total + '</span></span>' +
+      '<span class="incx-topbar-spacer"></span>' +
+      '<button class="incx-linkbtn" id="incx-toggle-chart">' +
+        '<svg class="ico" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="10" width="4" height="10"/><rect x="10" y="4" width="4" height="16"/><rect x="17" y="14" width="4" height="6"/></svg>' +
+        (state.showChart ? 'Hide chart' : 'Show chart') +
+      '</button>' +
+      '<span class="incx-topbar-meta">⟳ refreshed 20 sec. ago</span>' +
+    '</div>';
+  }
+
+  function renderList() {
+    var list = INCIDENTS.filter(passes);
     var active = INCIDENTS.filter(function (x) { return x.status === 'Open'; }).length;
+    var chartHtml = state.showChart ? '<div class="incx-chart">' + chartSvg(list) + '</div>' : '';
 
     mount.innerHTML =
-      '<div class="inc-wrap">' +
-        '<aside class="inc-rail">' +
-          facet('Status', 'status', ['Open', 'Closed']) +
-          facet('Severity', 'severity', ['Critical', 'High', 'Medium', 'Low']) +
-          facet('Category', 'category', ['Availability', 'Performance', 'Resource contention']) +
-          facet('Source', 'source', ['BMC', 'SCOM']) +
-        '</aside>' +
-        '<section>' +
-          '<div class="kfhx-section-head">' +
-            '<div class="kfhx-section-title">Incidents <span style="color:var(--color-critical);">' + active + ' active</span> <span style="color:var(--text-muted);font-weight:500;">/ ' + INCIDENTS.length + '</span></div>' +
-            '<span class="kfhx-badge info">Illustrative — live from Phase 2–4</span>' +
-          '</div>' +
-          '<div class="kfhx-panel" style="padding:10px 16px;margin-bottom:14px;">' +
-            '<div style="font-size:.72rem;color:var(--text-muted);">Active incidents over time (last 2h)</div>' +
-            '<div class="inc-timeline">' + timelineBars() + '</div>' +
-          '</div>' +
-          '<div class="kfhx-panel" style="padding:0;overflow:hidden;">' +
-            '<table class="kfhx-table"><thead><tr>' +
-              '<th>ID</th><th>Name</th><th>Status</th><th>Severity</th><th>Impacted apps</th><th>Root cause</th><th>Started</th><th>Duration</th><th style="text-align:right;">Alerts</th>' +
-            '</tr></thead><tbody>' + (rows || '<tr><td colspan="9" style="padding:30px;text-align:center;color:var(--text-muted);">No incidents match the filter.</td></tr>') + '</tbody></table>' +
+      '<div class="incx-shell">' +
+        railHtml() +
+        '<section class="incx-main">' +
+          headerHtml(list, active, INCIDENTS.length) +
+          toolbarHtml() +
+          '<div class="incx-body">' +
+            chartHtml +
+            '<div class="incx-tablewrap">' +
+              '<div class="incx-tablehead-note">7 columns hidden <span>⬇</span></div>' +
+              '<table class="incx-table"><thead><tr>' +
+                '<th class="incx-cellchk"><input type="checkbox" aria-label="Select all"></th>' +
+                '<th>ID</th>' +
+                '<th>Name</th>' +
+                '<th>Status</th>' +
+                '<th>Category</th>' +
+                '<th>Affected</th>' +
+                '<th>Affected entities</th>' +
+                '<th>Root cause</th>' +
+                '<th>Started</th>' +
+                '<th>Duration</th>' +
+              '</tr></thead><tbody>' + rowsHtml(list) + '</tbody></table>' +
+            '</div>' +
           '</div>' +
         '</section>' +
       '</div>';
 
-    mount.querySelectorAll('[data-facet]').forEach(function (b) {
-      b.addEventListener('click', function () { state.filters[b.getAttribute('data-facet')] = b.getAttribute('data-val'); renderList(); });
+    // Facet section toggles
+    mount.querySelectorAll('[data-facet-toggle]').forEach(function (el) {
+      el.addEventListener('click', function () {
+        var k = el.getAttribute('data-facet-toggle');
+        state.open[k] = !state.open[k];
+        renderList();
+      });
     });
-    mount.querySelectorAll('.inc-row').forEach(function (r) {
-      r.addEventListener('click', function () { state.selected = r.getAttribute('data-id'); state.tab = 'overview'; render(); });
+    // Status radios
+    mount.querySelectorAll('[data-radio-status]').forEach(function (r) {
+      r.addEventListener('change', function () {
+        state.filters.status = r.value;
+        renderList();
+      });
+    });
+    // Category / impact / severity checkboxes
+    mount.querySelectorAll('[data-cb]').forEach(function (c) {
+      c.addEventListener('change', function () {
+        var key = c.getAttribute('data-cb');
+        var v = c.value;
+        var arr = state.filters[key];
+        var idx = arr.indexOf(v);
+        if (c.checked && idx < 0) arr.push(v);
+        else if (!c.checked && idx >= 0) arr.splice(idx, 1);
+        renderList();
+      });
+    });
+    // Search — debounced re-render
+    var search = mount.querySelector('#incx-search-input');
+    if (search) {
+      var timer = null;
+      search.addEventListener('input', function () {
+        clearTimeout(timer);
+        var v = search.value;
+        timer = setTimeout(function () {
+          state.filters.search = v;
+          renderList();
+          var f = mount.querySelector('#incx-search-input');
+          if (f) { f.focus(); f.setSelectionRange(v.length, v.length); }
+        }, 180);
+      });
+    }
+    // Time range
+    var time = mount.querySelector('#incx-time-select');
+    if (time) time.addEventListener('change', function () { state.timeRange = time.value; });
+    // Refresh
+    var refresh = mount.querySelector('#incx-refresh');
+    if (refresh) refresh.addEventListener('click', function () { renderList(); });
+    // Hide/Show chart
+    var tc = mount.querySelector('#incx-toggle-chart');
+    if (tc) tc.addEventListener('click', function () { state.showChart = !state.showChart; renderList(); });
+    // Row click → detail
+    mount.querySelectorAll('.incx-table tbody tr[data-id]').forEach(function (r) {
+      r.addEventListener('click', function () {
+        state.selected = r.getAttribute('data-id');
+        state.tab = 'overview';
+        render();
+      });
     });
   }
 
-  function tile(label, value, icon) {
+  // ---- Detail view (retained from prior implementation) ----
+  function tile(label, value) {
     return '<div class="kfhx-tile"><div class="kfhx-tile-label">' + esc(label) + '</div><div class="kfhx-tile-value" style="font-size:1.5rem;">' + esc(value) + '</div></div>';
   }
 
@@ -226,7 +532,6 @@
     return ents;
   }
 
-  // Error-rate chart with a red problem-window band over the incident interval.
   function problemChart() {
     var pts = [8, 6, 7, 5, 40, 55, 48, 62, 51, 70, 58, 66, 60, 44, 20, 8];
     var w = 320, h = 130, n = pts.length, max = 90, step = (w - 20) / (n - 1);
@@ -386,8 +691,6 @@
     renderList();
   }
 
-  // "← All incidents" and other data-page links inside are intercepted by the router globally,
-  // but the back link should just return to the list without a full navigation.
   mount.addEventListener('click', function (e) {
     var back = e.target.closest && e.target.closest('#inc-back');
     if (back) { e.preventDefault(); e.stopPropagation(); state.selected = null; render(); }

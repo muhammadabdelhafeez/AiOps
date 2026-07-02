@@ -64,18 +64,24 @@ window.Router = (function() {
       usesReactModule: false
     },
     'connections': {
-      js: 'pages/connections/connections.js',
-      css: 'pages/connections/connections.css',
+      // Connections opens the Settings shell with the Connections section active.
+      // No standalone Connections page any more.
+      js: 'pages/settings/settings.js',
+      css: 'pages/settings/settings.css',
       title: 'Connections',
       usesReactModule: false,
-      sidebarPageId: 'settings'
+      sidebarPageId: 'settings',
+      settingsSection: 'connections'
     },
     'connectors': {
-      js: 'pages/connectors/connectors.js',
-      css: 'pages/connectors/connectors.css',
-      title: 'Connectors',
+      // Legacy hash alias — standalone Connectors marketplace has been removed.
+      // Redirect into Settings → Connections (Dynatrace-style catalog + popup).
+      js: 'pages/settings/settings.js',
+      css: 'pages/settings/settings.css',
+      title: 'Connections',
       usesReactModule: false,
-      sidebarPageId: 'settings' // Connectors inventory (real management), reached from Connections
+      sidebarPageId: 'settings',
+      settingsSection: 'connections'
     },
     'schedules': {
       js: 'pages/schedules/schedules.js',
@@ -263,14 +269,12 @@ window.Router = (function() {
         if (pageId === 'reports' && window.Reports && typeof window.Reports.init === 'function') {
           window.Reports.init();
         }
-        if (pageId === 'connectors' && window.Connectors && typeof window.Connectors.init === 'function') {
-          window.Connectors.init();
-        }
         if (pageId === 'users' && window.Users && typeof window.Users.init === 'function') {
           window.Users.init();
         }
-        if (pageId === 'settings' && window.Settings && typeof window.Settings.init === 'function') {
-          window.Settings.init();
+        // Settings module also serves the "connections" and legacy "connectors" hash routes.
+        if ((pageId === 'settings' || pageId === 'connections' || pageId === 'connectors') && window.Settings && typeof window.Settings.init === 'function') {
+          window.Settings.init(pageConfig.settingsSection || null);
         }
         if (pageId === 'audit' && window.Audit && typeof window.Audit.init === 'function') {
           window.Audit.init();

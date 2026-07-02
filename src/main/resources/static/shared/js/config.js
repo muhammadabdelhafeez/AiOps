@@ -63,7 +63,6 @@ window.KFHConfig = (function() {
     {
       group: 'Configuration',
       items: [
-        { id: 'connectors', label: 'Connectors', icon: 'connector', path: '/connectors' },
         { id: 'schedules', label: 'Schedules', icon: 'schedule', path: '/schedules' },
         { id: 'users', label: 'User Management', icon: 'users', path: '/users' },
         { id: 'settings', label: 'Settings', icon: 'settings', path: '/settings' },
@@ -82,7 +81,7 @@ window.KFHConfig = (function() {
     'inventory': 'Inventory & Infrastructure',
     'applications': 'Applications',
     'reports': 'Reports',
-    'connectors': 'Connectors',
+    'connections': 'Connections',
     'schedules': 'Schedules',
     'users': 'User Management',
     'settings': 'Settings',
