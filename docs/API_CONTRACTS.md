@@ -338,6 +338,14 @@ If missing: 400/401 (implementation choice) with standard error response.
   - Opt-in scheduled poll: `kfh.ingestion.scom.enabled=true` (`poll-interval-ms`, default 20 min).
   - Config (env-only secrets): `kfh.ingestion.scom.management-server`, `username` (`BMC_ANALYSIS_SCOM_USERNAME`), `password` (`BMC_ANALYSIS_SCOM_PASSWORD`), `domain`, `hours-back`, `winrm-port`, `use-https`, `auth-method` (Kerberos/Negotiate/CredSSP/Default), `server-local-offset-hours` (Kuwait=3), `tenant-id`, `country-code`, `environment`.
 
+### Correlation (Phase 2 — Stages 4–6)
+- GET `/api/v1/correlation?minutes=120` — Correlate the recent alert window into candidate incidents
+  - Permission: `ALERT_READ` (enforced at the service layer). Tenant/country/environment-scoped.
+  - `minutes` (default 120, floored at 1, capped at 7 days) sets the window `[now-minutes, now]`.
+  - Reads that window's `ALERTS` from the Custom Index → resolves each alert's CI via the topology (`resourceId → Asset → Component → Application(s)`) → groups failing components by shared blast radius → picks the most-upstream failing component as the candidate root cause.
+  - Returns `CorrelationResult`: `{ incidents[], unmappedCis[], alertsProcessed, alertsMapped }` where each incident is `{ incidentKey (country|env|rootComponent), title, severity, started, rootCauseComponentId, rootCauseComponentName, rootCauseAssetCi, impactedApplications[], alertCount, evidence[] }` and each evidence is `{ resourceId, componentId, componentName, severity, source, timestamp, message }`.
+  - `unmappedCis` lists alert CIs not present in the topology (CMDB gaps). Topology is a hand-modelled KFH seed for now (CMDB/agent/Neo4j-backed later, no contract change).
+
 Implemented frontend-aligned connector endpoints in this scaffold:
 - GET `/api/v1/connectors?page=&size=`
   - With `X-Country-Code: ALL` and `COUNTRY_GLOBAL_VIEW` / `*`, returns all connectors for the current tenant/environment across physical country configs (`KW`, `BH`, `EG`). With a physical country header, returns only that country.

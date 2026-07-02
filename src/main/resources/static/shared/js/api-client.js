@@ -154,7 +154,8 @@ window.APIClient = (function() {
     updateStatus: (id, status) => patch(`/incidents/${id}/status`, { status }),
     getEvidence: (id) => get(`/incidents/${id}/evidence`),
     getRelated: (id) => get(`/incidents/${id}/related`),
-    getTimeline: (id) => get(`/incidents/${id}/timeline`)
+    getTimeline: (id) => get(`/incidents/${id}/timeline`),
+    correlate: (minutes) => get('/correlation', { minutes })
   };
 
   // Alerts
