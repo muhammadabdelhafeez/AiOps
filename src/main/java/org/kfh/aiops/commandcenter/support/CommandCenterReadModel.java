@@ -405,15 +405,6 @@ public class CommandCenterReadModel {
         applications.put(mobileApp, row(mobileApp, "KW", "PROD", "Mobile Banking", Map.of(
                 "code", "MOBILE_BANKING", "businessDomain", "Digital Banking", "criticality", "CRITICAL", "health", "AT_RISK")));
         var incidentId = UUID.fromString("30000000-0000-0000-0000-000000000001");
-        incidents.put(incidentId, row(incidentId, "KW", "PROD", "Fund Transfer degradation", Map.of(
-                "incidentNumber", "INC-20260610-001", "title", "Mobile fund transfer timeout spike", "severity", "CRITICAL",
-                "status", "OPEN", "businessJourney", journey, "applicationId", mobileApp.toString(), "rootCauseEntityId", storage.toString(),
-                "confidence", 91, "summary", "Storage latency preceded DB waits and transfer service timeouts.",
-                "recommendedAction", "Storage team to validate SAN-STORAGE-02 latency and Oracle wait events.")));
-        var alertId = UUID.fromString("40000000-0000-0000-0000-000000000001");
-        alerts.put(alertId, row(alertId, "KW", "PROD", "Storage latency high", Map.of(
-                "severity", "CRITICAL", "status", "OPEN", "sourceSystem", "SolarWinds", "resourceId", storage.toString(),
-                "message", "SAN-STORAGE-02 latency exceeded baseline", "rawRef", "object://evidence/kw/prod/2026-06-10/storage-latency.json.gz")));
         schedules.put(UUID.fromString("60000000-0000-0000-0000-000000000001"), row(UUID.fromString("60000000-0000-0000-0000-000000000001"), "KW", "PROD", "Hourly production collection", Map.of(
                 "cronExpression", "0 0 * * * *", "timezone", "Asia/Kuwait", "enabled", true, "lastRunStatus", "SUCCESS")));
         reports.put(UUID.fromString("70000000-0000-0000-0000-000000000001"), row(UUID.fromString("70000000-0000-0000-0000-000000000001"), "KW", "PROD", "Executive RCA pack", Map.of(
