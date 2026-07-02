@@ -54,7 +54,6 @@ window.KFHConfig = (function() {
     {
       group: 'Analysis & Topology',
       items: [
-        { id: 'servicemap', label: 'Service Map', icon: 'app', path: '/servicemap' },
         { id: 'applications', label: 'Applications', icon: 'app', path: '/applications' },
         { id: 'inventory', label: 'Inventory', icon: 'inventory', path: '/inventory' },
         { id: 'reports', label: 'Reports', icon: 'report', path: '/reports' }

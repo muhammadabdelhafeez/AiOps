@@ -48,8 +48,9 @@ window.Router = (function() {
     'servicemap': {
       js: 'pages/servicemap/servicemap.js',
       css: 'pages/servicemap/servicemap.css',
-      title: 'Service Map — Application Topology',
-      usesReactModule: false
+      title: 'Topology — Blast radius',
+      usesReactModule: false,
+      sidebarPageId: 'incidents' // topology is opened from an incident; keep Incidents highlighted
     },
     'applications': {
       js: 'pages/applications/applications.js',
