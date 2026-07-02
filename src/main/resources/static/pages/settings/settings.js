@@ -2451,30 +2451,33 @@ var Settings = (function() {
 
   function draftFromExisting(row) {
     if (!row) return newConnectionDraft('BMC');
-    const attrs = row.attributes || {};
+    // Reload config from BOTH the raw backend row (the DB store returns config at the top level) and
+    // any nested attributes object, so editing always shows the saved values — you never re-enter the
+    // URL/host/etc. Only credentials stay blank ("leave blank to keep existing").
+    const src = Object.assign({}, row.raw || {}, row.attributes || {});
     return {
-      pluginType: row.pluginType,
+      pluginType: row.pluginType || src.pluginType,
       id: row.id,
-      name: row.name,
+      name: row.name || src.name,
       enabled: row.enabled !== false,
-      countryCode: row.countryCode || 'KW',
-      environment: row.environment || 'PROD',
-      ownerTeam: row.ownerTeam || '',
-      intervalMin: attrs.intervalMin || '',
-      authMode: row.authMode || defaultAuthModeFor(row.pluginType),
-      baseUrl: attrs.baseUrl || attrs.controllerUrl || attrs.host || attrs.sqlServer || '',
-      // Credentials never come back from the API in plaintext — leave blank.
+      countryCode: row.countryCode || src.countryCode || 'KW',
+      environment: row.environment || src.environment || 'PROD',
+      ownerTeam: row.ownerTeam || src.ownerTeam || '',
+      intervalMin: src.intervalMin || src.pollIntervalMin || '',
+      authMode: row.authMode || src.authMode || defaultAuthModeFor(row.pluginType),
+      baseUrl: row.baseUrl || src.baseUrl || src.endpointUrl || src.controllerUrl || src.host || src.sqlServer || '',
+      // Credentials never come back from the API in plaintext — leave blank to keep existing.
       accessKey: '', accessSecretKey: '', username: '', password: '', token: '',
-      managementServer: attrs.managementServer || '',
-      domain: attrs.domain || '',
-      winrmPort: attrs.winrmPort || 5986,
-      useHttps: attrs.useHttps !== false,
-      sqlServer: attrs.sqlServer || '',
-      sqlPort: attrs.sqlPort || 1433,
-      kfhDatabase: attrs.kfhDatabase || '',
-      cctvDatabase: attrs.cctvDatabase || '',
+      managementServer: src.managementServer || '',
+      domain: src.domain || '',
+      winrmPort: src.winrmPort || 5986,
+      useHttps: src.useHttps !== false,
+      sqlServer: src.sqlServer || '',
+      sqlPort: src.sqlPort || 1433,
+      kfhDatabase: src.kfhDatabase || '',
+      cctvDatabase: src.cctvDatabase || '',
       kfhUsername: '', kfhPassword: '', cctvUsername: '', cctvPassword: '',
-      sharedWithTeams: Array.isArray(attrs.sharedWithTeams) ? attrs.sharedWithTeams.slice() : []
+      sharedWithTeams: Array.isArray(src.sharedWithTeams) ? src.sharedWithTeams.slice() : []
     };
   }
 
