@@ -106,4 +106,21 @@ class ScomWinRmClientTest {
                 .contains("-Authentication Kerberos")
                 .contains("AddHours(-4)");       // 1h window + 3h Kuwait buffer
     }
+
+    @Test
+    void ntlmNegotiationTypeMapsToWinRmNegotiateAuth() {
+        var props = new ScomProperties();
+        props.setManagementServer("scom-mgmt.corp.local");
+        props.setUsername("svc_scom");
+        props.setPassword("pwd");
+        props.setAuthMethod("NTLM"); // operator picks NTLM because the collector can't reach a KDC
+        props.setUseHttps(true);
+        var scoped = new ScomWinRmClient(props, new ObjectMapper());
+
+        var script = scoped.buildInvokeCommandScript(ScomWinRmClient.buildRemoteScript(), 1);
+
+        // NTLM is carried by WinRM Negotiate (SPNEGO) with explicit credentials — no literal "NTLM".
+        assertThat(script).contains("-Authentication Negotiate");
+        assertThat(script).doesNotContain("-Authentication NTLM");
+    }
 }

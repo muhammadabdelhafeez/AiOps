@@ -179,8 +179,11 @@ public class ScomConnectorConfigValidator {
     private static String normalizeAuthMethod(Object value) {
         var raw = stringValue(value).isBlank() ? "Kerberos" : stringValue(value);
         var normalized = raw.toUpperCase(Locale.ROOT);
+        if ("NTLM".equals(normalized)) {
+            return "NTLM"; // carried by WinRM Negotiate at the client; persist the operator's choice as-is.
+        }
         if (!AUTH_METHODS.contains(normalized)) {
-            throw new ValidationException("SCOM authMethod must be Kerberos, Negotiate, Default, or CredSSP");
+            throw new ValidationException("SCOM authMethod must be Kerberos, NTLM, Negotiate, Default, or CredSSP");
         }
         return normalized.charAt(0) + normalized.substring(1).toLowerCase(Locale.ROOT);
     }

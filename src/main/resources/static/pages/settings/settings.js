@@ -2437,6 +2437,7 @@ var Settings = (function() {
       domain: '',
       winrmPort: 5986,
       useHttps: true,
+      authMethod: 'Kerberos',
       sqlServer: '',
       sqlPort: 1433,
       kfhDatabase: '',
@@ -2472,6 +2473,7 @@ var Settings = (function() {
       domain: src.domain || '',
       winrmPort: src.winrmPort || 5986,
       useHttps: src.useHttps !== false,
+      authMethod: src.authMethod || 'Kerberos',
       sqlServer: src.sqlServer || '',
       sqlPort: src.sqlPort || 1433,
       kfhDatabase: src.kfhDatabase || '',
@@ -2611,6 +2613,7 @@ var Settings = (function() {
       attributes.domain = draft.domain || null;
       attributes.winrmPort = Number(draft.winrmPort) || 5986;
       attributes.useHttps = draft.useHttps !== false;
+      attributes.authMethod = draft.authMethod || 'Kerberos';
     }
     if (draft.pluginType === 'EMCO') {
       attributes.sqlServer = draft.sqlServer || null;
@@ -3012,9 +3015,17 @@ var Settings = (function() {
               <label class="kfh-conn-label">WinRM port</label>
               <input type="number" class="kfh-conn-input" value="${esc(draft.winrmPort)}" oninput="Settings.updateConnectionField('winrmPort', Number(this.value)||5986)" ${ro}>
             </div>
-            <div class="kfh-conn-field kfh-conn-field-inline">
-              <label class="kfh-conn-check"><input type="checkbox" ${draft.useHttps !== false ? 'checked' : ''} onchange="Settings.updateConnectionField('useHttps', this.checked)" ${ro}> Use HTTPS</label>
+            <div class="kfh-conn-field">
+              <label class="kfh-conn-label">Negotiation type</label>
+              <select class="kfh-conn-input" onchange="Settings.updateConnectionField('authMethod', this.value)" ${ro}>
+                <option value="Kerberos" ${(draft.authMethod === 'NTLM' || draft.authMethod === 'Negotiate') ? '' : 'selected'}>Kerberos</option>
+                <option value="NTLM" ${(draft.authMethod === 'NTLM' || draft.authMethod === 'Negotiate') ? 'selected' : ''}>NTLM</option>
+              </select>
+              <small class="kfh-conn-help">Use <strong>NTLM</strong> if the collector can't reach a domain controller (Kerberos error 0x80090311 "domain isn't available").</small>
             </div>
+          </div>
+          <div class="kfh-conn-field kfh-conn-field-inline">
+            <label class="kfh-conn-check"><input type="checkbox" ${draft.useHttps !== false ? 'checked' : ''} onchange="Settings.updateConnectionField('useHttps', this.checked)" ${ro}> Use HTTPS</label>
           </div>
         </details>`;
     }

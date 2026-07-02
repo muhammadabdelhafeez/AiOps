@@ -347,6 +347,9 @@ public class ScomWinRmClient {
         var value = method == null ? "" : method.trim();
         return switch (value) {
             case "Kerberos", "Negotiate", "CredSSP", "Default" -> value;
+            // NTLM is carried by WinRM Negotiate (SPNEGO) with explicit credentials — the working path
+            // when the collector can't reach a KDC (Kerberos 0x80090311 "domain isn't available").
+            case "NTLM", "Ntlm", "ntlm" -> "Negotiate";
             default -> throw new IllegalArgumentException("Invalid WinRM auth-method: " + method);
         };
     }

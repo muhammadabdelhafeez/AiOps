@@ -29,6 +29,21 @@ class TopologyServiceTest {
     }
 
     @Test
+    void autoMapsUnknownCiToSyntheticSingleNodeComponentWhenEnabled() {
+        var auto = new TopologyService();
+        auto.setAutoMap(true);
+
+        var r = auto.resolve("prod-oracle-07");
+
+        assertThat(r.mapped()).isTrue();
+        assertThat(r.component().name()).isEqualTo("prod-oracle-07");
+        assertThat(r.component().id()).isEqualTo("auto:PROD-ORACLE-07"); // stable id → same incident across cycles
+        assertThat(r.asset().ciKey()).isEqualTo("prod-oracle-07");
+        assertThat(r.applications()).isEmpty();
+        assertThat(auto.blastRadiusComponents(r.component().id())).containsExactly("auto:PROD-ORACLE-07");
+    }
+
+    @Test
     void blastRadiusOfStorageReachesGatewayAndChannels() {
         var comps = topology.blastRadiusComponents("san-storage");
 

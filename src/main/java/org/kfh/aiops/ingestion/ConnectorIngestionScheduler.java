@@ -169,6 +169,7 @@ public class ConnectorIngestionScheduler {
         p.setWinrmPort(intOr(c.get("winrmPort"), 5986));
         p.setUseHttps(!Boolean.FALSE.equals(c.get("useHttps")));
         p.setVerifySsl(!Boolean.FALSE.equals(c.get("verifySsl")));
+        p.setAuthMethod(strOr(c.get("authMethod"), "Kerberos"));
         p.setTenantId(tenantId);
         p.setCountryCode(country);
         p.setEnvironment(environment);

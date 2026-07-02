@@ -32,11 +32,44 @@ class HttpActionLoggingFilterTest {
 
         assertThat(output).contains("http action method=POST path=/api/v1/users status=503");
         assertThat(output).contains("countryCode=KW");
-        assertThat(output).contains("environment=PROD");
+        assertThat(output).doesNotContain("environment="); // environment removed from the log line
         assertThat(output).contains("correlationId=corr-users-create");
         assertThat(output).doesNotContain("password=DoNotLog");
         assertThat(output).doesNotContain("token=DoNotLog");
         assertThat(output).doesNotContain("{\"password\":\"DoNotLog\"}");
+    }
+
+    @Test
+    void doesNotLogSuccessfulReads(CapturedOutput output) throws Exception {
+        var request = new MockHttpServletRequest("GET", "/api/v1/alerts");
+        var response = new MockHttpServletResponse();
+        FilterChain chain = (req, res) -> response.setStatus(200);
+
+        new HttpActionLoggingFilter().doFilter(request, response, chain);
+
+        assertThat(output).doesNotContain("http action");
+    }
+
+    @Test
+    void doesNotLogReadStylePostSearch(CapturedOutput output) throws Exception {
+        var request = new MockHttpServletRequest("POST", "/api/v1/logs/search");
+        var response = new MockHttpServletResponse();
+        FilterChain chain = (req, res) -> response.setStatus(200);
+
+        new HttpActionLoggingFilter().doFilter(request, response, chain);
+
+        assertThat(output).doesNotContain("http action");
+    }
+
+    @Test
+    void logsSuccessfulStateChangingAction(CapturedOutput output) throws Exception {
+        var request = new MockHttpServletRequest("POST", "/api/v1/connectors");
+        var response = new MockHttpServletResponse();
+        FilterChain chain = (req, res) -> response.setStatus(201);
+
+        new HttpActionLoggingFilter().doFilter(request, response, chain);
+
+        assertThat(output).contains("http action method=POST path=/api/v1/connectors status=201");
     }
 }
 
